@@ -8,55 +8,56 @@
 <style>
 :root{--bg:#f4f6f8;--card:#fff;--navy:#1a3a5c;--orange:#e8743b;--green:#22aa66;--red:#cc3344;--blue:#4a9edb;--line:#e3e8ee;--muted:#8a98a8;--faint:#a8b3c0;--sh:0 1px 4px rgba(26,58,92,0.07)}
 *{margin:0;padding:0;box-sizing:border-box}
-body{background:var(--bg);color:var(--navy);font-family:-apple-system,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;padding:16px 14px 60px}
+body{background:var(--bg);color:var(--navy);font-family:-apple-system,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;padding:16px 14px 60px;font-size:16px;font-weight:500}
 .wrap{max-width:880px;margin:0 auto}
 header{display:flex;align-items:center;gap:10px;margin-bottom:16px}
 .logo{width:38px;height:38px;border-radius:10px;background:var(--orange);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:18px}
-.ttl{font-size:19px;font-weight:800}.sub{font-size:11px;color:var(--muted);margin-top:1px}
+.ttl{font-size:23px;font-weight:800}.sub{font-size:13px;color:var(--muted);margin-top:2px}
 .upd{margin-left:auto;font-size:11px;color:var(--muted)}
 .track-tabs{display:flex;gap:8px;margin-bottom:14px}
 .track-tab{flex:1;padding:12px;border-radius:12px;background:var(--card);border:1px solid var(--line);cursor:pointer;text-align:center}
 .track-tab.active{border-color:var(--navy);background:var(--navy);color:#fff}
-.track-tab .tt{font-size:14px;font-weight:700}.track-tab .td{font-size:11px;color:var(--muted);margin-top:2px}
+.track-tab .tt{font-size:16px;font-weight:800}.track-tab .td{font-size:13px;color:var(--muted);margin-top:3px;font-weight:600}
 .track-tab.active .td{color:#cdd9e5}
 .summary{display:flex;gap:8px;margin-bottom:14px}
 .stat{flex:1;background:var(--card);border-radius:12px;padding:12px 10px;box-shadow:var(--sh)}
-.stat .n{font-size:22px;font-weight:800}.stat .l{font-size:11px;color:var(--muted);margin-top:2px}
+.stat .n{font-size:26px;font-weight:800}.stat .l{font-size:13px;color:var(--muted);margin-top:3px;font-weight:600}
 .s3 .n{color:var(--orange)}
 .tabs{display:flex;gap:7px;margin-bottom:12px;flex-wrap:wrap}
-.tab{padding:7px 14px;border-radius:999px;background:var(--card);color:var(--muted);font-size:12px;border:1px solid var(--line);cursor:pointer}
+.tab{padding:9px 16px;border-radius:999px;background:var(--card);color:var(--muted);font-size:14px;font-weight:600;border:1px solid var(--line);cursor:pointer}
 .tab.active{background:var(--navy);color:#fff;border-color:var(--navy);font-weight:600}
 .list{display:flex;flex-direction:column;gap:8px}
 .item{background:var(--card);border-radius:12px;box-shadow:var(--sh);overflow:hidden}
 .row{display:flex;align-items:center;padding:14px;cursor:pointer;user-select:none}
-.grade{width:48px;font-size:13px;letter-spacing:1px}
+.grade{width:52px;font-size:16px;letter-spacing:1px;font-weight:800}
 .g3{color:var(--orange)}.g2{color:var(--navy)}.g1{color:#4a9edb}
-.info{flex:1;min-width:0}.name{font-weight:700}.code{font-size:11px;color:var(--faint);margin-left:5px}
-.meta{font-size:11px;color:var(--faint);margin-top:2px}.kosdaq{color:var(--orange);font-weight:600}
-.right{text-align:right}.price{font-weight:700}
+.info{flex:1;min-width:0}.name{font-weight:800;font-size:17px}.code{font-size:13px;color:var(--faint);margin-left:6px}
+.meta{font-size:13px;color:var(--muted);margin-top:3px;font-weight:600}.kosdaq{color:var(--orange);font-weight:600}
+.right{text-align:right}.price{font-weight:800;font-size:17px}
 .ind{font-size:11px;margin-top:2px}.on{color:var(--orange)}.off{color:#cdd5de}
 .arr{font-size:14px;color:var(--faint);margin-left:8px;transition:transform .2s}.arr.open{transform:rotate(180deg)}
 .detail{display:none;padding:0 14px 14px}.detail.show{display:block}
 .chart-wrap{position:relative;height:230px;margin-bottom:12px}
 .prices{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:10px}
-.pcell{background:var(--bg);border-radius:10px;padding:10px;text-align:center}
-.pcell .pv{font-size:15px;font-weight:700}.pcell .pl{font-size:11px;color:var(--muted);margin-top:2px}
-.buy{color:var(--orange)}.t1{color:var(--navy)}.t2{color:var(--green)}.cut{color:var(--red)}
+.pcell{background:var(--bg);border-radius:10px;padding:11px;text-align:center}
+.pcell:first-child{background:#fff3e8;border:1.5px solid var(--orange)}
+.pcell .pv{font-size:18px;font-weight:800}.pcell .pl{font-size:12px;color:var(--muted);margin-top:3px;font-weight:600}
+.buy{color:var(--orange);font-weight:800}.t1{color:var(--navy)}.t2{color:var(--green)}.cut{color:var(--red)}
 .copy-btn{display:flex;align-items:center;justify-content:center;gap:5px;width:100%;padding:9px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--navy);font-size:12px;font-weight:600;cursor:pointer}
 .copy-btn.copied{background:var(--green);color:#fff}
-.note{font-size:11px;color:var(--faint);margin-top:14px;line-height:1.7}
+.note{font-size:13px;color:var(--muted);margin-top:16px;line-height:1.9;font-weight:500}
 .loading,.empty{text-align:center;padding:40px;color:var(--muted)}
 /* 종목 입력 (스캐너 아래) */
 .search-sec{margin-top:26px;border-top:2px solid var(--line);padding-top:20px}
-.search-title{font-size:14px;font-weight:700;margin-bottom:10px}
+.search-title{font-size:17px;font-weight:800;margin-bottom:12px}
 .search-box{position:relative}
-.search-box input{width:100%;height:44px;border:1px solid #d5dce4;border-radius:10px;padding:0 14px;font-size:15px;outline:none}
+.search-box input{width:100%;height:50px;border:2px solid #d5dce4;border-radius:10px;padding:0 16px;font-size:17px;font-weight:600;outline:none}
 .search-box input:focus{border-color:var(--navy)}
 .ac{position:absolute;top:48px;left:0;right:0;background:#fff;border:1px solid var(--line);border-radius:10px;overflow:hidden;z-index:10;box-shadow:var(--sh);display:none}
 .ac.show{display:block}
 .ac-item{padding:10px 14px;display:flex;align-items:center;gap:10px;cursor:pointer;border-top:1px solid var(--line)}
 .ac-item:first-child{border-top:none}.ac-item:hover{background:var(--bg)}
-.ac-item .an{font-weight:600;font-size:14px}.ac-item .acode{font-size:12px;color:var(--faint)}
+.ac-item .an{font-weight:800;font-size:16px}.ac-item .acode{font-size:14px;color:var(--faint);font-weight:600}
 .ac-item .amk{margin-left:auto;font-size:11px;padding:2px 8px;border-radius:6px;background:#fff3e8;color:var(--orange)}
 .search-hint{font-size:11px;color:var(--faint);margin-top:8px}
 /* 두 트랙 결과 */
@@ -64,15 +65,16 @@ header{display:flex;align-items:center;gap:10px;margin-bottom:16px}
 @media(max-width:620px){.tracks{grid-template-columns:1fr}}
 .tcard{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px}
 .tc-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
-.tc-name{font-weight:700;font-size:14px}
-.tbadge{font-size:12px;font-weight:700;padding:4px 10px;border-radius:8px}
-.tbadge.ok{background:#e8f6ed;color:#1a8a4a}.tbadge.past{background:#fff3e0;color:#cc7700}.tbadge.no{background:#fdecec;color:#cc3344}
+.tc-name{font-weight:800;font-size:16px}
+.tbadge{font-size:14px;font-weight:800;padding:5px 12px;border-radius:8px}
+.tbadge.ok{background:var(--orange);color:#fff}.tbadge.past{background:#fff3e0;color:#cc7700}.tbadge.no{background:#fdecec;color:#cc3344}
 .tc-chart{height:150px;margin-bottom:10px}
-.tc-reason{font-size:12px;line-height:1.7;color:#555}
+.tc-reason{font-size:14px;line-height:1.8;color:#444;font-weight:500}
 .tc-reason .ic{font-style:normal;margin-right:4px}
 .tc-prices{display:grid;grid-template-columns:repeat(2,1fr);gap:6px;margin:8px 0}
-.tc-prices .pc{background:var(--bg);border-radius:8px;padding:7px;text-align:center}
-.tc-prices .pc .v{font-size:13px;font-weight:700}.tc-prices .pc .l{font-size:10px;color:var(--muted)}
+.tc-prices .pc{background:var(--bg);border-radius:8px;padding:8px;text-align:center}
+.tc-prices .pc:first-child{background:#fff3e8;border:1.5px solid var(--orange)}
+.tc-prices .pc .v{font-size:16px;font-weight:800}.tc-prices .pc .l{font-size:12px;color:var(--muted);font-weight:600}
 </style>
 </head>
 <body>
