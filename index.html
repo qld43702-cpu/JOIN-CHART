@@ -6,235 +6,283 @@
 <title>JOIN CHART</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
-:root{--bg:#f4f6f8;--card:#fff;--navy:#1a3a5c;--orange:#e8743b;--line:#e3e8ee;--muted:#8a98a8;--faint:#a8b3c0;--sh:0 1px 4px rgba(26,58,92,0.07)}
+:root{--bg:#f4f6f8;--card:#fff;--navy:#1a3a5c;--orange:#e8743b;--green:#22aa66;--red:#cc3344;--blue:#4a9edb;--line:#e3e8ee;--muted:#8a98a8;--faint:#a8b3c0;--sh:0 1px 4px rgba(26,58,92,0.07)}
 *{margin:0;padding:0;box-sizing:border-box}
 body{background:var(--bg);color:var(--navy);font-family:-apple-system,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;padding:16px 14px 60px}
-.wrap{max-width:860px;margin:0 auto}
+.wrap{max-width:880px;margin:0 auto}
 header{display:flex;align-items:center;gap:10px;margin-bottom:16px}
 .logo{width:38px;height:38px;border-radius:10px;background:var(--orange);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:18px}
-.ttl{font-size:19px;font-weight:800;letter-spacing:-0.3px}
-.sub{font-size:11px;color:var(--muted);margin-top:1px}
+.ttl{font-size:19px;font-weight:800}.sub{font-size:11px;color:var(--muted);margin-top:1px}
 .upd{margin-left:auto;font-size:11px;color:var(--muted)}
+.track-tabs{display:flex;gap:8px;margin-bottom:14px}
+.track-tab{flex:1;padding:12px;border-radius:12px;background:var(--card);border:1px solid var(--line);cursor:pointer;text-align:center}
+.track-tab.active{border-color:var(--navy);background:var(--navy);color:#fff}
+.track-tab .tt{font-size:14px;font-weight:700}.track-tab .td{font-size:11px;color:var(--muted);margin-top:2px}
+.track-tab.active .td{color:#cdd9e5}
 .summary{display:flex;gap:8px;margin-bottom:14px}
 .stat{flex:1;background:var(--card);border-radius:12px;padding:12px 10px;box-shadow:var(--sh)}
-.stat .n{font-size:22px;font-weight:800}
-.stat .l{font-size:11px;color:var(--muted);margin-top:2px}
+.stat .n{font-size:22px;font-weight:800}.stat .l{font-size:11px;color:var(--muted);margin-top:2px}
 .s3 .n{color:var(--orange)}
 .tabs{display:flex;gap:7px;margin-bottom:12px;flex-wrap:wrap}
-.tab{padding:7px 14px;border-radius:999px;background:var(--card);color:var(--muted);font-size:12px;border:1px solid var(--line);cursor:pointer;transition:all .15s}
+.tab{padding:7px 14px;border-radius:999px;background:var(--card);color:var(--muted);font-size:12px;border:1px solid var(--line);cursor:pointer}
 .tab.active{background:var(--navy);color:#fff;border-color:var(--navy);font-weight:600}
 .list{display:flex;flex-direction:column;gap:8px}
 .item{background:var(--card);border-radius:12px;box-shadow:var(--sh);overflow:hidden}
-.row{display:flex;align-items:center;padding:14px;cursor:pointer;transition:background .1s;user-select:none}
-.row:hover{background:#fafbfc}
+.row{display:flex;align-items:center;padding:14px;cursor:pointer;user-select:none}
 .grade{width:48px;font-size:13px;letter-spacing:1px}
-.g3{color:var(--orange)}.g2{color:var(--navy)}.g1{color:#4a9edb}.g0{color:var(--faint)}
-.info{flex:1;min-width:0}
-.name{font-weight:700}
-.code{font-size:11px;color:var(--faint);margin-left:5px}
-.meta{font-size:11px;color:var(--faint);margin-top:2px}
-.right{text-align:right}
-.price{font-weight:700;font-variant-numeric:tabular-nums}
-.ind{font-size:11px;margin-top:2px}
-.on{color:var(--orange)}.off{color:#cdd5de}
-.arr{font-size:14px;color:var(--faint);margin-left:8px;transition:transform .2s}
-.arr.open{transform:rotate(180deg)}
-.detail{display:none;padding:0 14px 14px}
-.detail.show{display:block}
-.chart-wrap{position:relative;height:240px;margin-bottom:12px}
-.signals{display:flex;gap:8px;flex-wrap:wrap}
-.sig{flex:1;min-width:80px;background:var(--bg);border-radius:10px;padding:10px;text-align:center}
-.sig .sv{font-size:16px;font-weight:700}
-.sig .sl{font-size:11px;color:var(--muted);margin-top:2px}
-.buy-sig{color:#e8743b}.sell-sig{color:#4a9edb}
+.g3{color:var(--orange)}.g2{color:var(--navy)}.g1{color:#4a9edb}
+.info{flex:1;min-width:0}.name{font-weight:700}.code{font-size:11px;color:var(--faint);margin-left:5px}
+.meta{font-size:11px;color:var(--faint);margin-top:2px}.kosdaq{color:var(--orange);font-weight:600}
+.right{text-align:right}.price{font-weight:700}
+.ind{font-size:11px;margin-top:2px}.on{color:var(--orange)}.off{color:#cdd5de}
+.arr{font-size:14px;color:var(--faint);margin-left:8px;transition:transform .2s}.arr.open{transform:rotate(180deg)}
+.detail{display:none;padding:0 14px 14px}.detail.show{display:block}
+.chart-wrap{position:relative;height:230px;margin-bottom:12px}
+.prices{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:10px}
+.pcell{background:var(--bg);border-radius:10px;padding:10px;text-align:center}
+.pcell .pv{font-size:15px;font-weight:700}.pcell .pl{font-size:11px;color:var(--muted);margin-top:2px}
+.buy{color:var(--orange)}.t1{color:var(--navy)}.t2{color:var(--green)}.cut{color:var(--red)}
+.copy-btn{display:flex;align-items:center;justify-content:center;gap:5px;width:100%;padding:9px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--navy);font-size:12px;font-weight:600;cursor:pointer}
+.copy-btn.copied{background:var(--green);color:#fff}
 .note{font-size:11px;color:var(--faint);margin-top:14px;line-height:1.7}
-.loading{text-align:center;padding:60px;color:var(--muted)}
-.empty{text-align:center;padding:40px;color:var(--muted)}
+.loading,.empty{text-align:center;padding:40px;color:var(--muted)}
+/* 종목 입력 (스캐너 아래) */
+.search-sec{margin-top:26px;border-top:2px solid var(--line);padding-top:20px}
+.search-title{font-size:14px;font-weight:700;margin-bottom:10px}
+.search-box{position:relative}
+.search-box input{width:100%;height:44px;border:1px solid #d5dce4;border-radius:10px;padding:0 14px;font-size:15px;outline:none}
+.search-box input:focus{border-color:var(--navy)}
+.ac{position:absolute;top:48px;left:0;right:0;background:#fff;border:1px solid var(--line);border-radius:10px;overflow:hidden;z-index:10;box-shadow:var(--sh);display:none}
+.ac.show{display:block}
+.ac-item{padding:10px 14px;display:flex;align-items:center;gap:10px;cursor:pointer;border-top:1px solid var(--line)}
+.ac-item:first-child{border-top:none}.ac-item:hover{background:var(--bg)}
+.ac-item .an{font-weight:600;font-size:14px}.ac-item .acode{font-size:12px;color:var(--faint)}
+.ac-item .amk{margin-left:auto;font-size:11px;padding:2px 8px;border-radius:6px;background:#fff3e8;color:var(--orange)}
+.search-hint{font-size:11px;color:var(--faint);margin-top:8px}
+/* 두 트랙 결과 */
+.tracks{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px}
+@media(max-width:620px){.tracks{grid-template-columns:1fr}}
+.tcard{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px}
+.tc-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.tc-name{font-weight:700;font-size:14px}
+.tbadge{font-size:12px;font-weight:700;padding:4px 10px;border-radius:8px}
+.tbadge.ok{background:#e8f6ed;color:#1a8a4a}.tbadge.past{background:#fff3e0;color:#cc7700}.tbadge.no{background:#fdecec;color:#cc3344}
+.tc-chart{height:150px;margin-bottom:10px}
+.tc-reason{font-size:12px;line-height:1.7;color:#555}
+.tc-reason .ic{font-style:normal;margin-right:4px}
+.tc-prices{display:grid;grid-template-columns:repeat(2,1fr);gap:6px;margin:8px 0}
+.tc-prices .pc{background:var(--bg);border-radius:8px;padding:7px;text-align:center}
+.tc-prices .pc .v{font-size:13px;font-weight:700}.tc-prices .pc .l{font-size:10px;color:var(--muted)}
 </style>
 </head>
 <body>
 <div class="wrap">
 <header>
   <div class="logo">J</div>
-  <div><div class="ttl">JOIN CHART</div><div class="sub">작도 신호 자동 스캔</div></div>
+  <div><div class="ttl">JOIN CHART</div><div class="sub">작도 신호 자동 스캔 · 두 트랙</div></div>
   <div class="upd" id="upd">불러오는 중...</div>
 </header>
+
+<!-- 트랙 선택 -->
+<div class="track-tabs">
+  <div class="track-tab active" data-track="day" onclick="switchTrack('day')">
+    <div class="tt">📅 일봉 스윙</div><div class="td">보유 수일 · 거래당 큼</div></div>
+  <div class="track-tab" data-track="60m" onclick="switchTrack('60m')">
+    <div class="tt">⏱️ 60분 데이트레이딩</div><div class="td">보유 수시간 · 회전 빠름</div></div>
+</div>
+
 <div class="summary" id="summary"></div>
 <div class="tabs">
   <div class="tab active" data-f="best">매수후보 ★★↑</div>
   <div class="tab" data-f="all">전체</div>
-  <div class="tab" data-f="kospi">코스피</div>
   <div class="tab" data-f="kosdaq">코스닥</div>
+  <div class="tab" data-f="kospi">코스피</div>
 </div>
 <div id="content"><div class="loading">불러오는 중...</div></div>
+
+<!-- 종목 입력 (스캐너 아래) -->
+<div class="search-sec">
+  <div class="search-title">🔍 종목 직접 분석 — 일봉 · 60분 두 트랙</div>
+  <div class="search-box">
+    <input type="text" id="codeInput" placeholder="종목명 또는 코드 입력 (예: 로보스타 / 090360)" autocomplete="off">
+    <div class="ac" id="acList"></div>
+  </div>
+  <div class="search-hint">이름 일부나 코드를 입력하면 후보가 뜹니다. 선택하면 일봉·60분 두 트랙 작도를 그리고, 이미 매수 시점이 지났으면 그 이유와 잔여 여력을 표시합니다.</div>
+  <div id="searchResult"></div>
+</div>
+
 <div class="note">
-  ★★★ 추세+MACD+완만도0.7↓ · ★★ 추세+MACD · ★ 추세만<br>
-  ▲ 매수시점 = 완만한 하락 종료 후 진입 · ▼ 매도시점 = 상승각도선 이탈<br>
-  매일 장 마감 후 자동 갱신 · 투자 판단과 책임은 본인에게 있습니다.
+  일봉 ★★★ 완만도+추세+MACD+가산점 · 60분 ★★ 최신교차점+거래량2배+추세<br>
+  매수 = 완만한 하락 끝 즉시 · 1차익절 = 교차점 · 2차익절 = 상승각도선<br>
+  과거 신호는 참고용이며 이미 지난 진입은 따라가지 않는 것이 원칙입니다 · 투자 책임은 본인에게 있습니다.
 </div>
 </div>
 
 <script>
-let DATA=null, filter='best', charts={};
+let TRACK='day', DATA={day:null,m60:null}, STOCKS=[], filter='best', charts={};
 
 async function load(){
   try{
-    const res=await fetch('result.json?t='+Date.now());
-    DATA=await res.json();
-    document.getElementById('upd').textContent='갱신 '+DATA.업데이트;
+    const [d,m,s]=await Promise.all([
+      fetch('result_day.json?t='+Date.now()).then(r=>r.json()).catch(()=>null),
+      fetch('result_60m.json?t='+Date.now()).then(r=>r.json()).catch(()=>null),
+      fetch('stocks.json?t='+Date.now()).then(r=>r.json()).catch(()=>[])
+    ]);
+    DATA.day=d; DATA.m60=m; STOCKS=s||[];
+    document.getElementById('upd').textContent=d?('갱신 '+d.업데이트):'';
     renderSummary(); render();
-  }catch(e){
-    document.getElementById('content').innerHTML='<div class="empty">아직 데이터가 없습니다.<br>첫 스캔 후 표시됩니다.</div>';
-    document.getElementById('upd').textContent='';
-  }
+  }catch(e){ document.getElementById('content').innerHTML='<div class="empty">데이터 없음</div>'; }
 }
-
+function cur(){ return TRACK==='day'?DATA.day:DATA.m60; }
+function switchTrack(t){
+  TRACK=t;
+  document.querySelectorAll('.track-tab').forEach(x=>x.classList.toggle('active',x.dataset.track===t));
+  Object.values(charts).forEach(c=>c&&c.destroy()); charts={};
+  renderSummary(); render();
+}
 function renderSummary(){
-  const r=DATA.결과;
-  const c=g=>r.filter(x=>x.추천도===g).length;
-  document.getElementById('summary').innerHTML=`
+  const D=cur(); if(!D){document.getElementById('summary').innerHTML='';return;}
+  const r=D.결과, c=g=>r.filter(x=>x.추천도===g).length;
+  if(TRACK==='day') document.getElementById('summary').innerHTML=`
     <div class="stat s3"><div class="n">${c('★★★')}</div><div class="l">★★★ 최우선</div></div>
     <div class="stat"><div class="n">${c('★★')}</div><div class="l">★★ 우량</div></div>
     <div class="stat"><div class="n">${c('★')}</div><div class="l">★ 관심</div></div>
     <div class="stat"><div class="n">${r.length}</div><div class="l">전체</div></div>`;
+  else document.getElementById('summary').innerHTML=`
+    <div class="stat s3"><div class="n">${c('★★')}</div><div class="l">★★ 거래량+추세</div></div>
+    <div class="stat"><div class="n">${c('★')}</div><div class="l">★ 추세만</div></div>
+    <div class="stat"><div class="n">${r.length}</div><div class="l">전체</div></div>`;
 }
-
-function gc(g){return g==='★★★'?'g3':g==='★★'?'g2':g==='★'?'g1':'g0';}
-
+function gc(g){return g==='★★★'?'g3':g==='★★'?'g2':'g1';}
 function render(){
-  let rows=DATA.결과;
+  const D=cur(); if(!D){document.getElementById('content').innerHTML='<div class="empty">아직 데이터 없음</div>';return;}
+  let rows=D.결과;
   if(filter==='best') rows=rows.filter(x=>x.추천도==='★★★'||x.추천도==='★★');
-  else if(filter==='kospi') rows=rows.filter(x=>x.시장==='코스피');
   else if(filter==='kosdaq') rows=rows.filter(x=>x.시장==='코스닥');
+  else if(filter==='kospi') rows=rows.filter(x=>x.시장==='코스피');
   if(!rows.length){document.getElementById('content').innerHTML='<div class="empty">해당 조건 종목 없음</div>';return;}
-  
   let h='<div class="list">';
-  rows.forEach((x,i)=>{
-    const idx=DATA.결과.indexOf(x);
-    h+=`<div class="item" id="item-${idx}">
-      <div class="row" onclick="toggle(${idx})">
-        <div class="grade ${gc(x.추천도)}">${x.추천도}</div>
-        <div class="info">
-          <span class="name">${x.종목명}</span><span class="code">${x.종목코드}</span>
-          <div class="meta">${x.시장} · 완만도 ${x.완만도}</div>
-        </div>
-        <div class="right">
-          <div class="price">${x.현재가.toLocaleString()}</div>
-          <div class="ind">추세<span class="${x['20일선위']?'on':'off'}">●</span> MACD<span class="${x.MACD양전?'on':'off'}">●</span></div>
-        </div>
-        <span class="arr" id="arr-${idx}">▾</span>
-      </div>
+  rows.forEach(x=>{
+    const idx=D.결과.indexOf(x);
+    const is60=TRACK==='60m';
+    h+=`<div class="item"><div class="row" onclick="toggle(${idx})">
+      <div class="grade ${gc(x.추천도)}">${x.추천도}</div>
+      <div class="info"><span class="name">${x.종목명}</span><span class="code">${x.종목코드}</span>
+        <div class="meta"><span class="${x.시장==='코스닥'?'kosdaq':''}">${x.시장}</span>${is60?'':' · 완만도 '+x.완만도}</div></div>
+      <div class="right"><div class="price">${x.현재가.toLocaleString()}</div>
+        <div class="ind">${is60?('거래량'+(x['거래량2배']?'<span class=on>●</span>':'<span class=off>●</span>')):('추세<span class="'+(x['20일선위']?'on':'off')+'">●</span> MACD<span class="'+(x.MACD양전?'on':'off')+'">●</span>')}</div></div>
+      <span class="arr" id="arr-${idx}">▾</span></div>
       <div class="detail" id="detail-${idx}">
         <div class="chart-wrap"><canvas id="canvas-${idx}"></canvas></div>
-        <div class="signals">
-          <div class="sig"><div class="sv buy-sig">▲ 매수</div><div class="sl">${x.drawing&&x.drawing.entry_x!==null?'작도 완성 다음봉':'—'}</div></div>
-          <div class="sig"><div class="sv sell-sig">▼ 매도</div><div class="sl">${x.drawing&&x.drawing.sell_x!==null?'상승각도선 이탈':'홀딩중'}</div></div>
-          <div class="sig"><div class="sv">${x.완만도}</div><div class="sl">완만도</div></div>
-          <div class="sig"><div class="sv">${x.추천도}</div><div class="sl">등급</div></div>
-        </div>
-      </div>
-    </div>`;
+        ${priceCells(x,is60)}
+        <button class="copy-btn" id="copy-${idx}" onclick="copySum(${idx},event)">📋 요약 복사</button>
+      </div></div>`;
   });
-  h+='</div>';
-  document.getElementById('content').innerHTML=h;
+  document.getElementById('content').innerHTML=h+'</div>';
 }
-
+function priceCells(x,is60){
+  if(is60) return `<div class="prices">
+    <div class="pcell"><div class="pv buy">${x.매수가.toLocaleString()}</div><div class="pl">매수가</div></div>
+    <div class="pcell"><div class="pv t2">${x.익절가.toLocaleString()}</div><div class="pl">익절 +4%</div></div>
+    <div class="pcell"><div class="pv cut">${x.손절가.toLocaleString()}</div><div class="pl">손절 -2%</div></div>
+    <div class="pcell"><div class="pv t1">${x.경과봉}봉</div><div class="pl">경과</div></div></div>`;
+  return `<div class="prices">
+    <div class="pcell"><div class="pv buy">${x.매수가.toLocaleString()}</div><div class="pl">매수가</div></div>
+    <div class="pcell"><div class="pv t1">${x['1차익절'].toLocaleString()}</div><div class="pl">1차 익절</div></div>
+    <div class="pcell"><div class="pv t2">${x['2차익절'].toLocaleString()}</div><div class="pl">2차 익절</div></div>
+    <div class="pcell"><div class="pv cut">${x.손절가.toLocaleString()}</div><div class="pl">손절 -4%</div></div></div>`;
+}
 function toggle(idx){
-  const det=document.getElementById('detail-'+idx);
-  const arr=document.getElementById('arr-'+idx);
-  const isOpen=det.classList.contains('show');
-  det.classList.toggle('show');
-  arr.classList.toggle('open');
-  if(!isOpen && !charts[idx]){
-    setTimeout(()=>drawChart(idx),50);
-  }
+  const det=document.getElementById('detail-'+idx),arr=document.getElementById('arr-'+idx);
+  const open=det.classList.contains('show'); det.classList.toggle('show'); arr.classList.toggle('open');
+  if(!open && !charts[idx]) setTimeout(()=>drawChart('canvas-'+idx,cur().결과[idx],idx),50);
+}
+function copySum(idx,e){
+  e.stopPropagation(); const x=cur().결과[idx]; const is60=TRACK==='60m';
+  let txt;
+  if(is60) txt=`[${x.추천도}] ${x.종목명}(${x.종목코드}) ${x.현재가.toLocaleString()} [60분]\n매수 ${x.매수가.toLocaleString()}/익절 ${x.익절가.toLocaleString()}/손절 ${x.손절가.toLocaleString()}`;
+  else txt=`[${x.추천도}] ${x.종목명}(${x.종목코드}) ${x.현재가.toLocaleString()} [일봉]\n매수 ${x.매수가.toLocaleString()}/1차 ${x['1차익절'].toLocaleString()}/2차 ${x['2차익절'].toLocaleString()}/손절 ${x.손절가.toLocaleString()}`;
+  navigator.clipboard.writeText(txt).then(()=>{const b=document.getElementById('copy-'+idx);b.textContent='✅ 복사됨';b.classList.add('copied');setTimeout(()=>{b.textContent='📋 요약 복사';b.classList.remove('copied');},2000);});
+}
+function drawChart(canvasId,x,key){
+  if(!x.chart||!x.drawing)return;
+  const d=x.drawing,ch=x.chart,n=ch.length;
+  const labels=ch.map(r=>r.d),closes=ch.map(r=>r.c),ma2=ch.map(r=>r.m2),ma5=ch.map(r=>r.m5);
+  function line(x0,y0,x1,y1){const a=new Array(n).fill(null);if(x0<0||x1<0||x0>=n||x1>=n)return a;const s=(y1-y0)/(x1-x0||1);for(let i=Math.max(0,Math.min(x0,x1));i<=Math.min(n-1,Math.max(x0,x1));i++)a[i]=Math.round(y0+s*(i-x0));return a;}
+  const up=new Array(n).fill(null);for(let i=d.up_x0;i<n;i++)up[i]=Math.round(d.up_y0+d.up_slope*(i-d.up_x0));
+  const buyPt=new Array(n).fill(null);if(d.entry_x>=0&&d.entry_x<n)buyPt[d.entry_x]=closes[d.entry_x];
+  if(charts[key])charts[key].destroy();
+  charts[key]=new Chart(document.getElementById(canvasId).getContext('2d'),{type:'line',data:{labels,datasets:[
+    {label:'종가',data:closes,borderColor:'#1a3a5c',borderWidth:1.5,pointRadius:0,tension:0.1},
+    {label:'2일선',data:ma2,borderColor:'#333',borderWidth:1.2,pointRadius:0,tension:0.1},
+    {label:'5일선',data:ma5,borderColor:'#e8743b',borderWidth:1,pointRadius:0,borderDash:[3,3],tension:0.1},
+    {label:'가파른하락',data:line(d.A_x0,d.A_y0,d.A_x1,d.A_y1),borderColor:'#ff3300',borderWidth:2.5,pointRadius:0},
+    {label:'완만한하락',data:line(d.B_x0,d.B_y0,d.B_x1,d.B_y1),borderColor:'#0066ff',borderWidth:2.5,pointRadius:0},
+    {label:'1차익절',data:new Array(n).fill(Math.round(d.yc)),borderColor:'#e8743b',borderWidth:1.2,pointRadius:0,borderDash:[5,4]},
+    {label:'2차익절',data:up,borderColor:'#22aa66',borderWidth:1.5,pointRadius:0,borderDash:[5,3]},
+    {label:'매수',data:buyPt,type:'scatter',pointStyle:'triangle',pointRadius:11,backgroundColor:'#e8743b',borderColor:'#fff',borderWidth:1.5},
+  ]},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
+    plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>{if(c.dataset.label==='매수')return'▲ 매수';if(['1차익절','2차익절'].includes(c.dataset.label))return null;return c.dataset.label+': '+(c.raw?c.raw.toLocaleString():'');}}}},
+    scales:{x:{grid:{color:'#f0f2f5'},ticks:{font:{size:10},color:'#a8b3c0',maxTicksLimit:7}},y:{position:'right',grid:{color:'#f0f2f5'},ticks:{font:{size:10},color:'#a8b3c0',callback:v=>v.toLocaleString()}}}}});
 }
 
-function drawChart(idx){
-  const x=DATA.결과[idx];
-  if(!x.chart||!x.drawing) return;
-  const d=x.drawing, ch=x.chart;
-  const labels=ch.map(r=>r.d);
-  const closes=ch.map(r=>r.c);
-  const ma2=ch.map(r=>r.m2);
-  const ma5=ch.map(r=>r.m5);
-  const n=ch.length;
+// === 자동완성 ===
+const inp=document.getElementById('codeInput'), ac=document.getElementById('acList');
+inp.addEventListener('input',()=>{
+  const q=inp.value.trim().toLowerCase();
+  if(!q){ac.classList.remove('show');return;}
+  const hit=STOCKS.filter(s=>s.code.includes(q)||(s.name&&s.name.toLowerCase().includes(q))).slice(0,6);
+  if(!hit.length){ac.classList.remove('show');return;}
+  ac.innerHTML=hit.map(s=>`<div class="ac-item" onclick="pick('${s.code}','${s.name}')"><span class="an">${s.name}</span><span class="acode">${s.code}</span><span class="amk">${s.market}</span></div>`).join('');
+  ac.classList.add('show');
+});
+inp.addEventListener('keydown',e=>{if(e.key==='Enter'){ac.classList.remove('show');const v=inp.value.trim();const m=v.match(/\d{6}/);if(m)analyzeStock(m[0]);}});
+document.addEventListener('click',e=>{if(!e.target.closest('.search-box'))ac.classList.remove('show');});
+function pick(code,name){ inp.value=name+' ('+code+')'; ac.classList.remove('show'); analyzeStock(code); }
 
-  // 작도선 데이터 생성
-  function makeLine(x0,y0,x1,y1){
-    const arr=new Array(n).fill(null);
-    if(x0<0||x1<0||x0>=n||x1>=n) return arr;
-    const slope=(y1-y0)/(x1-x0||1);
-    for(let i=Math.max(0,Math.min(x0,x1));i<=Math.min(n-1,Math.max(x0,x1));i++){
-      arr[i]=Math.round(y0+slope*(i-x0));
-    }
-    return arr;
-  }
-
-  // 교차점선 (수평)
-  const crossLine=new Array(n).fill(null);
-  if(d.xc>=0&&d.xc<n) crossLine[Math.round(d.xc)]=Math.round(d.yc);
-
-  // 상승각도 연장선
-  const upLine=new Array(n).fill(null);
-  for(let i=d.up_x0;i<n;i++){
-    upLine[i]=Math.round(d.up_y0+d.up_slope*(i-d.up_x0));
-  }
-
-  // 매수/매도 포인트
-  const buyPt=new Array(n).fill(null);
-  const sellPt=new Array(n).fill(null);
-  if(d.entry_x>=0&&d.entry_x<n) buyPt[d.entry_x]=closes[d.entry_x];
-  if(d.sell_x&&d.sell_x>=0&&d.sell_x<n) sellPt[d.sell_x]=closes[d.sell_x];
-
-  const ctx=document.getElementById('canvas-'+idx).getContext('2d');
-  charts[idx]=new Chart(ctx,{
-    type:'line',
-    data:{
-      labels,
-      datasets:[
-        {label:'종가',data:closes,borderColor:'#1a3a5c',borderWidth:1.5,pointRadius:0,tension:0.1,fill:false,order:5},
-        {label:'2일선',data:ma2,borderColor:'#333',borderWidth:1.2,pointRadius:0,tension:0.1,fill:false,borderDash:[],order:4},
-        {label:'5일선',data:ma5,borderColor:'#e8743b',borderWidth:1,pointRadius:0,tension:0.1,fill:false,borderDash:[3,3],order:4},
-        {label:'가파른하락',data:makeLine(d.A_x0,d.A_y0,d.A_x1,d.A_y1),borderColor:'#ff4444',borderWidth:2,pointRadius:0,fill:false,borderDash:[],order:3},
-        {label:'완만한하락',data:makeLine(d.B_x0,d.B_y0,d.B_x1,d.B_y1),borderColor:'#4488ff',borderWidth:2,pointRadius:0,fill:false,borderDash:[],order:3},
-        {label:'교차가로선',data:new Array(n).fill(Math.round(d.yc)),borderColor:'#e8743b',borderWidth:1,pointRadius:0,fill:false,borderDash:[4,4],order:2},
-        {label:'상승각도',data:upLine,borderColor:'#22aa66',borderWidth:1.5,pointRadius:0,fill:false,borderDash:[5,3],order:2},
-        {label:'매수',data:buyPt,type:'scatter',pointStyle:'triangle',pointRadius:10,backgroundColor:'#e8743b',borderColor:'#e8743b',order:1},
-        {label:'매도',data:sellPt,type:'scatter',pointStyle:'triangle',rotation:180,pointRadius:10,backgroundColor:'#4488ff',borderColor:'#4488ff',order:1},
-      ]
-    },
-    options:{
-      responsive:true,maintainAspectRatio:false,
-      interaction:{mode:'index',intersect:false},
-      plugins:{
-        legend:{display:false},
-        tooltip:{
-          callbacks:{
-            label:ctx=>{
-              if(ctx.dataset.label==='매수') return '▲ 매수시점';
-              if(ctx.dataset.label==='매도') return '▼ 매도시점';
-              if(ctx.dataset.label==='교차가로선'||ctx.dataset.label==='상승각도') return null;
-              return ctx.dataset.label+': '+(ctx.raw?ctx.raw.toLocaleString():'');
-            }
-          }
-        }
-      },
-      scales:{
-        x:{grid:{color:'#f0f2f5'},ticks:{font:{size:10},color:'#a8b3c0',maxTicksLimit:8}},
-        y:{position:'right',grid:{color:'#f0f2f5'},ticks:{font:{size:10},color:'#a8b3c0',callback:v=>v.toLocaleString()}}
-      }
-    }
-  });
+async function analyzeStock(code){
+  const box=document.getElementById('searchResult');
+  box.innerHTML='<div class="loading">일봉·60분 두 트랙 분석 중...</div>';
+  try{
+    const x=await fetch('/api/analyze?code='+code).then(r=>r.json());
+    if(x.error){box.innerHTML='<div class="empty">'+x.error+'</div>';return;}
+    renderTwoTracks(x);
+  }catch(e){box.innerHTML='<div class="empty">분석 실패. 잠시 후 다시 시도하세요.</div>';}
 }
-
+function trackCard(title, sub, t, kind){
+  if(!t || !t['있음']) return `<div class="tcard"><div class="tc-head"><span class="tc-name">${title}</span><span class="tbadge no">신호 없음</span></div><div class="tc-reason">${(t&&t.사유)||'작도 구조 없음'}</div></div>`;
+  const ok=t['진입가능'], past=t['시점지남'];
+  const badge=ok?'<span class="tbadge ok">진입 가능 '+t.추천도+'</span>':(past?'<span class="tbadge past">시점 지남</span>':'<span class="tbadge no">진입 불가</span>');
+  let prices='';
+  if(kind==='day') prices=`<div class="tc-prices">
+    <div class="pc"><div class="v buy">${t.매수가.toLocaleString()}</div><div class="l">매수</div></div>
+    <div class="pc"><div class="v t1">${t['1차익절'].toLocaleString()}</div><div class="l">1차익절</div></div>
+    <div class="pc"><div class="v t2">${t['2차익절'].toLocaleString()}</div><div class="l">2차익절</div></div>
+    <div class="pc"><div class="v cut">${t.손절가.toLocaleString()}</div><div class="l">손절</div></div></div>`;
+  else prices=`<div class="tc-prices">
+    <div class="pc"><div class="v buy">${t.매수가.toLocaleString()}</div><div class="l">매수</div></div>
+    <div class="pc"><div class="v t2">${t.익절가.toLocaleString()}</div><div class="l">익절</div></div>
+    <div class="pc"><div class="v cut">${t.손절가.toLocaleString()}</div><div class="l">손절</div></div>
+    <div class="pc"><div class="v t1">${t.경과봉}봉</div><div class="l">경과</div></div></div>`;
+  let reason='';
+  if(ok) reason=`<i class="ic">✅</i>지금 진입 조건 충족`;
+  else if(past) reason=`<i class="ic">⚠️</i>${t.사유}<br><i class="ic">↗</i>그래도 들어가면: 약 ${Math.abs(t.잔여여력)}% 여력`;
+  else reason=`<i class="ic">✕</i>${t.사유}`;
+  const cid='tc-canvas-'+kind;
+  setTimeout(()=>drawChart(cid,t,'tc-'+kind),60);
+  return `<div class="tcard"><div class="tc-head"><span class="tc-name">${title} <span style="font-size:11px;color:var(--muted)">${sub}</span></span>${badge}</div>
+    <div class="tc-chart"><canvas id="${cid}"></canvas></div>${prices}<div class="tc-reason">${reason}</div></div>`;
+}
+function renderTwoTracks(x){
+  const box=document.getElementById('searchResult');
+  box.innerHTML=`<div style="margin-top:14px;font-weight:700;font-size:15px">${x.종목명||''} <span style="font-size:12px;color:var(--faint)">${x.종목코드} · ${x.시장||''}</span></div>
+    <div class="tracks">${trackCard('📅 일봉','스윙',x['일봉'],'day')}${trackCard('⏱️ 60분','데이트레이딩',x['60분'],'60m')}</div>`;
+}
 document.querySelectorAll('.tab').forEach(t=>t.addEventListener('click',()=>{
   document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
   t.classList.add('active'); filter=t.dataset.f;
-  Object.values(charts).forEach(c=>c.destroy()); charts={};
-  render();
+  Object.values(charts).forEach(c=>c&&c.destroy()); charts={}; render();
 }));
-
 load();
 </script>
 </body>
