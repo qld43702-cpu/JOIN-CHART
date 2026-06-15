@@ -10,11 +10,18 @@ import os, json, requests
 BASE="https://openapi.ls-sec.co.kr:8080"
 
 def token():
+    key=os.environ.get("LS_APP_KEY","").strip()
+    secret=os.environ.get("LS_APP_SECRET","").strip()
+    if not key or not secret:
+        raise RuntimeError("환경변수 미설정 (Vercel에서 LS_APP_KEY/LS_APP_SECRET 확인 후 재배포 필요)")
     r=requests.post(f"{BASE}/oauth2/token",verify=False,
         headers={"Content-Type":"application/x-www-form-urlencoded"},
-        params={"grant_type":"client_credentials","appkey":os.environ["LS_APP_KEY"],
-                "appsecretkey":os.environ["LS_APP_SECRET"],"scope":"oob"})
-    return r.json()["access_token"]
+        params={"grant_type":"client_credentials","appkey":key,
+                "appsecretkey":secret,"scope":"oob"})
+    j=r.json()
+    if "access_token" not in j:
+        raise RuntimeError("토큰 발급 실패 (키 값 오류 가능): "+str(j.get("error_description") or j.get("error") or j))
+    return j["access_token"]
 
 def get_day(tk,code):
     r=requests.post(f"{BASE}/stock/chart",verify=False,
