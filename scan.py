@@ -18,10 +18,15 @@ BASE = "https://openapi.ls-sec.co.kr:8080"
 거래대금기준_억 = 100
 
 def get_token():
+    if not APP_KEY or not APP_SECRET:
+        raise RuntimeError("환경변수 미설정: GitHub Secrets에 LS_APP_KEY/LS_APP_SECRET 확인")
     url=f"{BASE}/oauth2/token"
     h={"Content-Type":"application/x-www-form-urlencoded"}
     p={"grant_type":"client_credentials","appkey":APP_KEY,"appsecretkey":APP_SECRET,"scope":"oob"}
-    return requests.post(url,verify=False,headers=h,params=p).json()["access_token"]
+    j=requests.post(url,verify=False,headers=h,params=p).json()
+    if "access_token" not in j:
+        raise RuntimeError("토큰 발급 실패 (키 값 오류 가능): "+str(j.get("error_description") or j.get("error") or j))
+    return j["access_token"]
 
 def get_stock_list(token, gubun):
     h={"Content-Type":"application/json; charset=UTF-8","authorization":f"Bearer {token}","tr_cd":"t8436","tr_cont":"N"}

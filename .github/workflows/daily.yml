@@ -2,9 +2,9 @@ name: 매일 작도 스캔
 
 on:
   schedule:
-    # 한국시간 매일 오후 4시 30분 (UTC 07:30) 실행
+    # 한국시간 매일 오후 4시 30분 (UTC 07:30), 평일
     - cron: '30 7 * * 1-5'
-  workflow_dispatch:   # 수동 실행 버튼도 활성화
+  workflow_dispatch:   # 수동 실행 버튼
 
 jobs:
   scan:
@@ -21,7 +21,7 @@ jobs:
       - name: 라이브러리 설치
         run: pip install requests pandas numpy
 
-      - name: 스캔 실행
+      - name: 스캔 실행 (일봉 + 60분 두 트랙)
         env:
           LS_APP_KEY: ${{ secrets.LS_APP_KEY }}
           LS_APP_SECRET: ${{ secrets.LS_APP_SECRET }}
@@ -31,6 +31,6 @@ jobs:
         run: |
           git config user.name "github-actions"
           git config user.email "actions@github.com"
-          git add result.json
-          git commit -m "스캔 결과 업데이트" || echo "변경 없음"
+          git add result_day.json result_60m.json stocks.json
+          git commit -m "스캔 결과 업데이트 (두 트랙)" || echo "변경 없음"
           git push
