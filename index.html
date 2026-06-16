@@ -113,6 +113,13 @@ function render(x){
   html+=`<div class="legend"><span><i style="background:#000"></i>2일선</span><span><i style="background:#1d9e75"></i>상승목표</span><span><i style="background:#d4537e"></i>위험</span><span><i style="background:#8a98a8"></i>삼각수렴</span><span style="color:#a8b3c0">| 점선 우측=미래 3개월</span></div>`;
   let info='';d.draws.forEach((dd,i)=>{info+=`<div class="di"><span class="${dd.alive?'alive':'dead'}">${dd.alive?'● 살아있음':'○ 지남'}</span> 작도${i+1} · 매수 <span class="v">${dd.ep.toLocaleString()}</span> · 1차 <span class="v">${dd.yc.toLocaleString()}</span></div>`;});
   html+=`<div class="draws-info">${info}</div>`;
+  const pt=d.pattern;
+  if(pt&&pt.best){
+    const colMap={'엘리엇':'#7f77dd','피보나치':'#1d9e75','갠':'#ba7517','몬테카를로':'#378add'};
+    const col=colMap[pt.best]||'#1a3a5c';
+    const scoreStr=Object.entries(pt.scores).map(([k,v])=>`${k} ${v}점`).join(' · ');
+    html+=`<div style="margin-top:12px;padding:12px 14px;border-radius:10px;background:#f7f9fb;border-left:4px solid ${col}"><div style="font-size:13px;color:#8a98a8;margin-bottom:4px">과거 ${pt.sample}개 작도 녹색 이후 반응 분석</div><div style="font-size:16px;font-weight:800;color:${col};margin-bottom:5px">📊 ${pt.best} 패턴과 유사</div><div style="font-size:13px;color:#3a4a5a;line-height:1.7">${pt.detail}</div><div style="font-size:12px;color:#a8b3c0;margin-top:6px">${scoreStr}</div></div>`;
+  }
   box.innerHTML=html;
   setTimeout(()=>mkChart(d,pj),50);
 }
@@ -121,6 +128,9 @@ function mkChart(data,pj){
   const cv=document.getElementById('cv'),tip=document.getElementById('tip');
   const ch=data.chart,n=ch.length,draws=data.draws||[],risks=data.risks||[];
   const FUT=(pj&&pj.fut)||63, TOTAL=n+FUT, cur=data.cur;
+  const GREEN_START=(pj&&pj.green_start!=null)?pj.green_start:(draws.length?draws[draws.length-1].M_t1:n-1);
+  const green_base=GREEN_START<n?c[GREEN_START]:cur;
+  const green_span=TOTAL-1-GREEN_START;
   const c=ch.map(r=>r.c),ma2=ch.map(r=>r.m2);
   const DPR=window.devicePixelRatio||1;const padR=64,padL=8,padT=14,padB=38;
   let W,H,plot,viewS=0,viewE=TOTAL-1;
@@ -146,9 +156,10 @@ function mkChart(data,pj){
   const FF=()=>getComputedStyle(document.body).fontFamily;
   const ms=()=>Array.from(document.querySelectorAll('.mtd:checked')).map(c=>c.value);
   function seg(ctx,i0,y0,i1,y1,color,w,dash){if(i1<viewS||i0>viewE)return;ctx.strokeStyle=color;ctx.lineWidth=w;ctx.setLineDash(dash||[]);ctx.beginPath();ctx.moveTo(xOf(i0),yOf(y0));ctx.lineTo(xOf(i1),yOf(y1));ctx.stroke();ctx.setLineDash([]);}
-  function fwave(ctx,fn,color,wid,dash){ctx.strokeStyle=color;ctx.lineWidth=wid;ctx.setLineDash(dash||[]);ctx.beginPath();
-    const start=n-1,end=Math.min(viewE,TOTAL-1);ctx.moveTo(xOf(start),yOf(cur));
-    for(let i=start;i<=end;i++){const t=(i-(n-1))/FUT;ctx.lineTo(xOf(i),yOf(fn(t)));}ctx.stroke();ctx.setLineDash([]);}
+  function fwave(ctx,fn,color,wid,dash,fromGreen){ctx.strokeStyle=color;ctx.lineWidth=wid;ctx.setLineDash(dash||[]);ctx.beginPath();
+    const start=fromGreen?GREEN_START:n-1,base=fromGreen?green_base:cur,span=fromGreen?green_span:FUT;
+    const end=Math.min(viewE,TOTAL-1);ctx.moveTo(xOf(start),yOf(base));
+    for(let i=start;i<=end;i++){const t=(i-start)/span;ctx.lineTo(xOf(i),yOf(fn(t,base)));}ctx.stroke();ctx.setLineDash([]);}
   let prog=0;
   function draw(mx,my){
     const ctx=cv.getContext('2d');ctx.clearRect(0,0,W,H);ctx.font='12px '+FF();
@@ -178,15 +189,15 @@ function mkChart(data,pj){
       if(d.entry>=viewS&&d.entry<=viewE&&d.entry<n){ctx.fillStyle=d.alive?'#e8743b':'rgba(232,116,59,.4)';const ex=xOf(d.entry),ey=yOf(c[d.entry]);ctx.beginPath();ctx.moveTo(ex,ey-6);ctx.lineTo(ex-5,ey+5);ctx.lineTo(ex+5,ey+5);ctx.closePath();ctx.fill();}});
     if(viewE>=n&&pj){
       const us=pj.up_slope||0, upT=pj.up_target, dnT=pj.dn_target, vol=pj.volatility||0.02;
-      fwave(ctx,t=>cur+(upT-cur)*t+Math.sin(t*Math.PI*3)*cur*0.03,'rgba(29,158,117,.95)',2.4,[6,4]);
-      fwave(ctx,t=>cur+(dnT-cur)*t+Math.sin(t*Math.PI*3)*cur*0.025,'rgba(212,83,126,.9)',2.4,[6,4]);
-      [1,-1].forEach(s=>fwave(ctx,t=>cur+s*cur*0.10*(1-t),'rgba(138,152,168,.6)',1.3));
-      fwave(ctx,t=>cur+Math.sin(t*Math.PI*5)*cur*0.10*(1-t),'rgba(138,152,168,.8)',1.4);
+      fwave(ctx,(t,b)=>b+(upT-b)*t+Math.sin(t*Math.PI*3)*b*0.03,'rgba(29,158,117,.95)',2.4,[6,4]);
+      fwave(ctx,(t,b)=>b+(dnT-b)*t+Math.sin(t*Math.PI*3)*b*0.025,'rgba(212,83,126,.9)',2.4,[6,4]);
+      [1,-1].forEach(s=>fwave(ctx,(t,b)=>b+s*b*0.10*(1-t),'rgba(138,152,168,.6)',1.3));
+      fwave(ctx,(t,b)=>b+Math.sin(t*Math.PI*5)*b*0.10*(1-t),'rgba(138,152,168,.8)',1.4);
       const M=ms();
-      if(M.includes('ell'))fwave(ctx,t=>{const pts=[0,0.11,0.05,0.24,0.16,0.32];const sg=t*5,k=Math.floor(sg),f=sg-k,a=pts[Math.min(k,4)],b=pts[Math.min(k+1,5)];return cur*(1+(a+(b-a)*f));},'rgba(127,119,221,.6)',1.7);
-      if(M.includes('mc'))for(let p=0;p<8;p++){ctx.strokeStyle='rgba(55,138,221,.13)';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(xOf(n-1),yOf(cur));let v=cur;for(let i=n;i<=Math.min(viewE,TOTAL-1);i++){v*=Math.exp((us/cur*0.4)+(Math.random()-0.5)*vol*2.2);ctx.lineTo(xOf(i),yOf(v));}ctx.stroke();}
-      if(M.includes('fib'))(pj.fib_levels||[]).forEach(lv=>{const up=lv>cur;ctx.strokeStyle=up?'rgba(29,158,117,.4)':'rgba(212,83,126,.4)';ctx.setLineDash([3,3]);ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(xOf(n-1),yOf(lv));ctx.lineTo(xOf(Math.min(viewE,TOTAL-1)),yOf(lv));ctx.stroke();ctx.setLineDash([]);});
-      if(M.includes('gann'))fwave(ctx,t=>{const step=Math.floor(t*6)/6;return cur+(upT-cur)*0.7*step+Math.sin(t*Math.PI*6)*cur*0.015;},'rgba(186,117,23,.55)',1.6);
+      if(M.includes('ell'))fwave(ctx,(t,b)=>{const pts=[0,0.08,0.04,0.20,0.13,0.32];const sg=t*5,k=Math.floor(sg),f=sg-k,a=pts[Math.min(k,4)],bv=pts[Math.min(k+1,5)];return b*(1+(a+(bv-a)*f));},'rgba(127,119,221,.75)',1.8,[],true);
+      if(M.includes('mc'))for(let p=0;p<8;p++){ctx.strokeStyle='rgba(55,138,221,.15)';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(xOf(GREEN_START),yOf(green_base));let v=green_base;for(let i=GREEN_START+1;i<=Math.min(viewE,TOTAL-1);i++){v*=Math.exp((us/cur*0.4)+(Math.random()-0.5)*vol*2.2);ctx.lineTo(xOf(i),yOf(v));}ctx.stroke();}
+      if(M.includes('fib')){const fibR=[1.236,1.382,1.618,0.786,0.618];fibR.forEach(r=>{const lv=green_base*r;const up=lv>green_base;ctx.strokeStyle=up?'rgba(29,158,117,.45)':'rgba(212,83,126,.45)';ctx.setLineDash([3,3]);ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(xOf(GREEN_START),yOf(lv));ctx.lineTo(xOf(Math.min(viewE,TOTAL-1)),yOf(lv));ctx.stroke();ctx.setLineDash([]);ctx.fillStyle=up?'rgba(29,158,117,.7)':'rgba(212,83,126,.7)';ctx.font='10px '+FF();ctx.textAlign='right';ctx.fillText((r*100).toFixed(1)+'%',xOf(GREEN_START)-2,yOf(lv)+3);});}
+      if(M.includes('gann'))fwave(ctx,(t,b)=>{const step=Math.floor(t*6)/6;return b+(upT-b)*0.7*step+Math.sin(t*Math.PI*6)*b*0.015;},'rgba(186,117,23,.65)',1.7,[],true);
     }
     if(mx!=null&&mx>=plot.x0&&mx<=plot.x1&&my!=null){
       ctx.strokeStyle='rgba(26,58,92,.5)';ctx.lineWidth=1;ctx.setLineDash([4,4]);ctx.beginPath();ctx.moveTo(mx,plot.y0);ctx.lineTo(mx,plot.y1);ctx.stroke();ctx.beginPath();ctx.moveTo(plot.x0,my);ctx.lineTo(plot.x1,my);ctx.stroke();ctx.setLineDash([]);

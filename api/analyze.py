@@ -240,6 +240,8 @@ def build_projection(bars, draws, risk_level, fut=63):
         'gann':{'up':prob_reach(cur+(up_reach-cur)*0.85,True),'dn':prob_reach(cur+(dn_reach-cur)*0.85,False)},
         'mc':{'up':mc_up,'dn':mc_dn},
     }
+    # 최근 살아있는 작도의 녹색 시작 인덱스
+    green_start = alive[-1].get('M_t1') if alive else (draws[-1].get('M_t1') if draws else None)
     return {
         'fut':fut, 'cur':int(cur),
         'up_slope':round(up_slope,3), 'up_target':int(up_target),
@@ -248,7 +250,112 @@ def build_projection(bars, draws, risk_level, fut=63):
         'mc_up':mc_up, 'mc_dn':mc_dn,
         'methods':methods,
         'fib_levels':[round(cur*f) for f in (1.236,1.382,1.618,0.786,0.618)],
+        'green_start': green_start,
     }
+
+def analyze_pattern(bars, draws):
+    """과거 5개 작도의 녹색선 시작(M_t1) 이후 실제 주가 반응을 보고
+    엘리엇/피보나치/갠/몬테카를로 중 어느 패턴과 유사한지 판별.
+    반환: {'best': '엘리엇', 'scores': {...}, 'detail': '...', 'sample': N}"""
+    import math
+    c = [b['c'] for b in bars]
+    n = len(c)
+    scores = {'엘리엇': 0, '피보나치': 0, '갠': 0, '몬테카를로': 0}
+    samples = 0
+
+    for d in draws:
+        mt1 = d.get('M_t1')
+        if mt1 is None or mt1 >= n - 5:
+            continue
+        # 녹색 시작가
+        base = c[mt1]
+        if base <= 0:
+            continue
+        # 녹색 이후 실제 가격 (최대 작도 끝까지, 또는 현재까지)
+        seg = c[mt1:]
+        if len(seg) < 5:
+            continue
+        samples += 1
+        peak_i = max(range(len(seg)), key=lambda i: seg[i])
+        peak_v = seg[peak_i]
+        end_v = seg[-1]
+        ratio_peak = peak_v / base  # 녹색 시작 대비 최고점 비율
+        ratio_end = end_v / base    # 녹색 시작 대비 현재(끝) 비율
+
+        # ── 엘리엇: 상승 후 되돌림 후 재상승 구조 확인
+        # 조건: 고점 이후 되돌림(0.382~0.618) 후 다시 반등
+        if peak_i > 2 and peak_i < len(seg) - 2:
+            retraced = min(seg[peak_i:])
+            retrace_r = (peak_v - retraced) / (peak_v - base) if (peak_v - base) > 0 else 0
+            if 0.3 <= retrace_r <= 0.68 and end_v > retraced:
+                scores['엘리엇'] += 2
+            elif retrace_r < 0.3 and ratio_peak > 1.05:
+                scores['엘리엇'] += 1
+
+        # ── 피보나치: 상승폭이 황금비율(1.236/1.382/1.618) 근처에서 멈춤
+        fib_targets = [1.236, 1.382, 1.618, 2.0, 0.786]
+        for ft in fib_targets:
+            if abs(ratio_peak - ft) < 0.08:
+                scores['피보나치'] += 2
+                break
+        else:
+            # 현재가가 피보 레벨 근처
+            for ft in fib_targets:
+                if abs(ratio_end - ft) < 0.06:
+                    scores['피보나치'] += 1
+                    break
+
+        # ── 갠: 계단식 일정 비율 상승 — 변동성 대비 추세 일관성
+        if len(seg) >= 10:
+            # 10봉 단위로 수익률 계산, 편차가 작으면 갠(일정 속도)
+            step = max(1, len(seg) // 5)
+            rets = []
+            for k in range(0, len(seg) - step, step):
+                if seg[k] > 0:
+                    rets.append(seg[k + step] / seg[k] - 1)
+            if rets:
+                avg_r = sum(rets) / len(rets)
+                std_r = math.sqrt(sum((r - avg_r) ** 2 for r in rets) / len(rets)) if len(rets) > 1 else 1
+                cv_r = abs(std_r / avg_r) if avg_r != 0 else 99
+                if avg_r > 0 and cv_r < 0.6:   # 상승 일관성 높음
+                    scores['갠'] += 2
+                elif avg_r > 0 and cv_r < 1.0:
+                    scores['갠'] += 1
+
+        # ── 몬테카를로: 방향성 없이 노이즈만 — 위 셋 다 낮을 때
+        # (적극적으로 점수 주는 게 아니라, 나머지가 낮을 때 기본점)
+        if ratio_peak < 1.04 or (ratio_peak > 1.0 and abs(ratio_end - 1.0) < 0.03):
+            scores['몬테카를로'] += 1
+
+    # 기본점: 샘플 없으면 판단 불가
+    if samples == 0:
+        return {'best': None, 'scores': scores, 'detail': '분석 가능한 과거 작도 없음', 'sample': 0}
+
+    best = max(scores, key=lambda k: scores[k])
+    # 동점이면 몬테카를로 제외 우선
+    if list(scores.values()).count(scores[best]) > 1:
+        for k in ['엘리엇', '피보나치', '갠']:
+            if scores[k] == scores[best]:
+                best = k
+                break
+
+    # 설명 문구
+    desc = {
+        '엘리엇': f'상승 후 되돌림·재상승 3파 구조가 반복됨. 현재 파동 위치 확인 후 3파 목표가 참고 권장.',
+        '피보나치': f'녹색선 이후 황금비율(1.382~1.618배) 부근에서 고점 형성 패턴. 목표가 산정 시 피보나치 레벨 활용 유효.',
+        '갠': f'일정한 속도(계단식)로 상승하는 흐름. 갠 각도선 기준 추세 이탈 여부가 핵심 지표.',
+        '몬테카를로': f'방향성보다 변동성 중심 움직임. 특정 기법보다 리스크 관리(손절·비중) 우선 권장.',
+    }
+    detail = desc.get(best, '')
+
+    return {
+        'best': best,
+        'scores': scores,
+        'detail': detail,
+        'sample': samples,
+        'green_start': draws[-1].get('M_t1') if draws else None,  # 최근 작도 녹색 시작 인덱스
+    }
+
 
 def resolve_risk(day, m60):
     """위험 우선순위: ①5개범위안 ②60분에서 끌어옴 ③과거 가장가까운 1개"""
@@ -289,6 +396,12 @@ class handler(BaseHTTPRequestHandler):
             # 60분 자체 위험: 자기 5개작도 범위 안 + 과거1개 (60분끼리)
             if 'draws' in mm:
                 resolve_risk(mm, None)
+            # 패턴 분석 (일봉 과거 작도 기반)
+            if 'draws' in dd and dd['draws'] and dd.get('chart'):
+                dd['pattern'] = analyze_pattern(
+                    [{**r,'c':float(r['c']),'o':float(r.get('o',r['c'])),'h':float(r.get('h',r['c'])),'l':float(r.get('l',r['c']))} for r in dd['chart']],
+                    dd['draws']
+                )
             # all_risks 정리(용량)
             for blk in (dd,mm):
                 if isinstance(blk,dict): blk.pop('all_risks',None)
