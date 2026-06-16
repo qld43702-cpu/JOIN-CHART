@@ -672,8 +672,11 @@ function mkChart(data,pj){
       draw(lastMx,lastMy);return;}
     SCEN=scen;scenFade=0;
     document.querySelectorAll('.scen-btn').forEach(function(b){b.classList.toggle('active',b.getAttribute('data-scen')===scen);});
-    // 미래 영역 보이게 (전체 뷰 아니면 우측 끝으로)
-    if(viewE<TOTAL-1){viewE=TOTAL-1;viewS=Math.max(0,TOTAL-1-Math.max(getSpan(),40));lay();}
+    // 4/1 기준점부터 미래 끝까지 다 보이게 뷰 조정
+    var aI=(pj.anchor_idx!=null)?pj.anchor_idx:(n-1);
+    viewS=Math.max(0, aI-3);
+    viewE=TOTAL-1;
+    lay();
     // 페이드인
     fadeTimer=setInterval(function(){
       scenFade+=0.08;
