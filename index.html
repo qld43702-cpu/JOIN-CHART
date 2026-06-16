@@ -50,11 +50,12 @@ header{display:flex;align-items:center;gap:11px;margin-bottom:18px}
 </head>
 <body>
 <div class="wrap">
-<header><div class="logo">J</div><div><div class="ttl">JOIN CHART</div><div class="sub">종목 작도 자동 표시 · 일봉 · 60분</div></div></header>
+<header><div class="logo" onclick="goHome()" style="cursor:pointer">J</div><div onclick="goHome()" style="cursor:pointer"><div class="ttl">JOIN CHART</div><div class="sub">종목 작도 자동 표시 · 일봉 · 60분</div></div></header>
 <div class="search-box">
   <input type="text" id="codeInput" placeholder="종목명 또는 코드 입력 (예: 클로봇 / 466100)" autocomplete="off">
   <div class="ac" id="acList"></div>
 </div>
+<div id="backbar" style="display:none;margin-bottom:14px"><button onclick="goHome()" style="font-size:14px;font-weight:700;padding:8px 16px;border:1px solid #d5dce4;border-radius:9px;background:#fff;color:var(--navy);cursor:pointer">← 뒤로 (검색으로)</button></div>
 <div class="hint">코스피·코스닥 전체 종목. 이름 일부나 코드를 입력하면 후보가 뜹니다. 마우스를 차트에 올리면 가격·날짜가 크게, 선 위에 올리면 그 선의 가격이 표시됩니다.</div>
 <div id="result"></div>
 <div class="note">
@@ -74,12 +75,22 @@ inp.addEventListener('input',()=>{
   ac.innerHTML=hit.map(s=>`<div class="ac-item" onclick="pick('${s.code}','${(s.name||'').replace(/'/g,'')}')"><span class="an">${s.name}</span><span class="acode">${s.code}</span><span class="amk">${s.market}</span></div>`).join('');
   ac.classList.add('show');
 });
-inp.addEventListener('keydown',e=>{if(e.key==='Enter'){ac.classList.remove('show');const m=inp.value.match(/\d{6}/);if(m)go(m[0]);}});
+inp.addEventListener('keydown',e=>{if(e.key==='Enter'){ac.classList.remove('show');
+  const q=inp.value.trim();
+  const m=q.match(/(\d{6})/);
+  if(m){go(m[1]);return;}
+  // 이름으로 정확/부분 매칭
+  const ql=q.toLowerCase();
+  let hit=STOCKS.find(s=>s.name&&s.name.toLowerCase()===ql) || STOCKS.find(s=>s.name&&s.name.toLowerCase().includes(ql));
+  if(hit){pick(hit.code,hit.name);}
+}});
 document.addEventListener('click',e=>{if(!e.target.closest('.search-box'))ac.classList.remove('show');});
 function pick(code,name){inp.value=name+' ('+code+')';ac.classList.remove('show');go(code);}
+function goHome(){document.getElementById('result').innerHTML='';document.getElementById('backbar').style.display='none';inp.value='';inp.focus();window.scrollTo(0,0);}
 
 async function go(code){
   const box=document.getElementById('result');
+  document.getElementById('backbar').style.display='block';
   box.innerHTML='<div class="loading">일봉·60분 작도 그리는 중...</div>';
   CHARTS={};
   try{
@@ -131,7 +142,6 @@ function mkChart(key,data){
   function lay(){W=cv.clientWidth;H=cv.clientHeight;cv.width=W*DPR;cv.height=H*DPR;cv.getContext('2d').setTransform(DPR,0,0,DPR,0,0);
     const vis=ch.slice(viewS,viewE+1);
     let lo=Math.min(...vis.map(r=>r.l)), hi=Math.max(...vis.map(r=>r.h));
-    draws.forEach(d=>{if(d.alive&&d.target&&d.M_t1>=viewS)hi=Math.max(hi,d.target);});
     risks.forEach(r=>{lo=Math.min(lo,r.yc);});
     lo*=0.99;hi*=1.01; plot={lo,hi,x0:padL,x1:W-padR,y0:padT,y1:H-padB};}
   const span=()=>(viewE-viewS+1);

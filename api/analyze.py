@@ -28,7 +28,8 @@ def get_day(tk,code):
         json={"t8410InBlock":{"shcode":code,"gubun":"2","qrycnt":150,"sdate":"20240101","edate":"20991231","cts_date":"","comp_yn":"N","sujung":"Y"}})
     rows=r.json().get("t8410OutBlock1",[])
     if not rows: return None
-    out=[{'d':x['date'],'o':float(x['open']),'h':float(x['high']),'l':float(x['low']),'c':float(x['close'])} for x in rows]
+    out=[{'d':x['date'],'o':float(x['open']),'h':float(x['high']),'l':float(x['low']),'c':float(x['close']),
+          'v':float(x.get('volume',0) or 0)} for x in rows]
     out.sort(key=lambda z:z['d']); return out
 
 def get_60m(tk,code):
@@ -77,8 +78,36 @@ def last_down_slope(MA2,t0,t1):
     if t1-t0<=1: return (MA2[t1]-MA2[t0])/max(1,t1-t0)
     return MA2[t1]-MA2[t1-1]
 
+def trim_adjust(bars):
+    """권리조정(액면분할/병합/거래정지) 구간 이후부터 시작.
+    ① 거래량 3일 연속 0  ② 전일 대비 가격 갭 40%+ (수정주가로도 안 잡힌 경우)"""
+    if len(bars)<10: return bars
+    has_vol = 'v' in bars[0]
+    cut=0
+    # 거래량 3일 연속 0 → 마지막 그런 구간 다음부터 (거래량 있을 때만)
+    if has_vol:
+        zero=0
+        for i in range(len(bars)):
+            v=bars[i].get('v',0)
+            if v<=0:
+                zero+=1
+                if zero>=3: cut=max(cut,i+1)
+            else:
+                zero=0
+    # 가격 갭: 전일 종가 대비 시가/종가가 40%+ 튀거나 빠짐 → 그 다음부터
+    for i in range(1,len(bars)):
+        p=bars[i-1]['c']
+        if p<=0: continue
+        r=bars[i]['c']/p
+        if r>=1.4 or r<=0.6:  # 40%+ 급변 = 권리조정 의심
+            cut=max(cut,i)
+    if cut>0 and len(bars)-cut>=20:  # 자른 후 20봉 이상 남을 때만
+        return bars[cut:]
+    return bars
+
 def build_drawings(bars):
     """작도 다수: 모든 하락-상승-하락(상승파동1개) 작도. 교차점/녹색선 다."""
+    bars=trim_adjust(bars)  # 권리조정 구간 제거
     c=[b['c'] for b in bars]
     MA2=ma(c,2)
     tn=turns(MA2,2)
