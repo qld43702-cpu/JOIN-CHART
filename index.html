@@ -513,9 +513,9 @@ function mkChart(data,pj){
       var startI=n-1, endI=Math.min(viewE,TOTAL-1);
       var startV=cur;
       var TT2=pj.tech_targets||{};
-      // 천장/바닥 = 현실적 목표
-      var ceil_ = Math.min(TT2.cap||cur*1.3, pj.up_target||cur*1.3);  // 상승 천장(녹색·2σ 중 낮은쪽)
-      var floor_ = pj.dn_target||cur*0.8;                              // 하락 바닥
+      // 천장/바닥 = 현실적 목표 (up_target은 이미 녹색의 35% 현실선)
+      var ceil_ = pj.up_target||cur*1.1;   // 상승 천장 = 현실 목표선
+      var floor_ = pj.dn_target||cur*0.8;  // 하락 바닥
       // 모든 지지/저항 레벨 수집 (60분봉 + 작도 교차점)
       var allLv=srLevels.slice();
       draws.forEach(function(d){if(d.yc>0)allLv.push(d.yc);});

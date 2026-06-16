@@ -286,8 +286,10 @@ def build_projection(bars, draws, risk_level, fut=63, market=''):
         up_slope=gs or 0
     if up_slope<=0:  # 없으면 변동성 기반 완만 상승
         up_slope=cur*max(mu,0.001)
-    up_target=cur+up_slope*fut*0.6  # 차트에 그릴 풀 목표(녹색선 연장 끝) — 작도 그대로, 희망 상한
-    up_reach=cur+up_slope*fut*0.30  # 확률 계산용 현실 목표(녹색선 절반쯤, 검증상 ~49%)
+    green_max=cur+up_slope*fut*0.6   # 녹색 최대치(가상선, 차트에 안 그림 — 내부 계산용)
+    # 현실 상승목표 = 녹색의 35% 지점 (백테스트상 도달률 ~58%로 현실적)
+    up_target=cur+(green_max-cur)*0.35
+    up_reach=cur+(green_max-cur)*0.30  # 확률 계산용
     # ===== 변동성 기반 현실 목표 (기법선용) — 작도 무시, 순수 통계 =====
     sigma3m = sd * math.sqrt(fut)          # 3개월 변동성(비율)
     # 상승 목표 (상한: 변동성 과해도 합리적 범위)
@@ -361,21 +363,20 @@ def build_projection(bars, draws, risk_level, fut=63, market=''):
         'fib':  sim_updnflat(base_drift+aggr*0.55,  23),  # 피보: 중상
     }
     # ===== 변동성 과열 신호 (백테스트 검증됨) =====
-    # 2σ목표 > 작도녹색목표 → 변동성이 작도추세보다 과함 = 과열
-    # 백테스트(2669종목 12528건): 상승27% / 하락28.5% / 횡보44.5% — 상승신호 아님, 코스닥은 하락우위
-    overheat = tgt_2sig > up_target
+    # 2σ목표 > 녹색최대치 → 변동성이 작도추세보다 과함 = 과열
+    overheat = tgt_2sig > green_max
     # 시장별 검증 확률 (market: 코스피/코스닥)
     if market == '코스닥':
         oh_prob = {'up':27, 'dn':32, 'flat':41}  # 코스닥: 하락 우위
     else:
         oh_prob = {'up':28, 'dn':22, 'flat':51}  # 코스피: 약한 상승 우위
-    # 기법 목표를 작도 녹색 상한으로 캡 (녹색 넘지 않게)
-    cap_price = int(up_target)
+    # 기법 목표를 녹색 최대치로 캡 (가상 녹색을 넘지 않게)
+    cap_price = int(green_max)
     ell_capped  = min(int(tgt_15sig), cap_price)
     gann_capped = min(int(tgt_1sig),  cap_price)
     fib_up_cap  = min(int(tgt_2sig),  cap_price)
     mc_capped   = min(mc_target, cap_price) if mc_target>cur else mc_target
-    # 각 기법이 녹색 상한에 캡 걸렸는지(원래 목표가 녹색보다 높았으면 캡) — 개수 카운트
+    # 각 기법이 녹색 최대치에 캡 걸렸는지 — 개수 카운트
     cap_count = 0
     cap_detail = {}
     for nm_,orig in (('ell',int(tgt_15sig)),('gann',int(tgt_1sig)),('fib',int(tgt_2sig)),('mc',mc_target)):
