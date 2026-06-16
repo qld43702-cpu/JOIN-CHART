@@ -79,6 +79,15 @@ header{display:flex;align-items:center;gap:11px;margin-bottom:16px}
 .ring-avg-wrap{display:flex;justify-content:center}
 .track-tab{font-size:15px;font-weight:800;color:var(--navy);margin:8px 0;padding:6px 0}
 .track{}
+#guide{margin-top:18px}
+.guide-title{font-size:18px;font-weight:800;color:var(--navy);margin-bottom:4px}
+.guide-sub{font-size:13px;color:var(--muted);margin-bottom:16px;line-height:1.6}
+.gcard{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:13px 15px;margin-bottom:9px}
+.gcard .gh{font-size:14px;font-weight:700;color:var(--navy);display:flex;align-items:center;gap:8px;margin-bottom:5px}
+.gcard .gdot{width:12px;height:12px;border-radius:3px;display:inline-block;flex-shrink:0}
+.gcard p{font-size:13px;color:#5a6675;line-height:1.65;margin:0}
+.gcard b{color:var(--navy)}
+.guide-foot{margin-top:14px;padding:12px 15px;background:#fff8f3;border:1px solid #f0d4bf;border-radius:10px;font-size:12px;color:#9a6b4a;line-height:1.6}
 .loading,.empty{text-align:center;padding:50px;color:var(--muted)}
 .loading{display:flex;flex-direction:column;align-items:center;gap:18px}
 .spinner{width:54px;height:54px;border:5px solid #e8eef4;border-top-color:var(--orange);border-radius:50%;animation:spin .8s linear infinite}
@@ -104,13 +113,51 @@ header{display:flex;align-items:center;gap:11px;margin-bottom:16px}
   <input type="text" id="codeInput" placeholder="국내: 종목명/코드 (클로봇·466100) · 미국: 티커 (AAPL·TSLA)" autocomplete="off">
   <div class="ac" id="acList"></div>
 </div>
-<div class="hint">코스피·코스닥 전체. 차트 오른쪽 미래 3개월 공간에 작도 목표·위험·삼각수렴이 그려지고, 기법을 체크하면 예측 파동이 겹쳐집니다.</div>
+<div class="hint">코스피·코스닥 전체 + 미국 주식. 차트 오른쪽 미래 공간에 작도 목표·위험·삼각수렴이 그려지고, 기법을 체크하면 예측 파동이 겹쳐집니다.</div>
+<div id="guide">
+  <div class="guide-title">📐 JOIN CHART 지표 안내</div>
+  <div class="guide-sub">차트는 "예측"이 아니라 <b>구조를 보는 도구</b>입니다. 아래 지표로 직접 판단하세요.</div>
+
+  <div class="gcard">
+    <div class="gh"><span class="gdot" style="background:#1d9e75"></span>녹색 — 상승목표 (현실)</div>
+    <p>작도가 가리키는 상승 잠재치의 <b>35% 지점</b>. 과거 4.5만 건 검증상 녹색 끝까지 도달은 28%뿐이라, 현실적으로 도달 가능한(약 58%) 선만 표시합니다.</p>
+  </div>
+  <div class="gcard">
+    <div class="gh"><span class="gdot" style="background:#5a6473"></span>회색 점선 — 상승잠재 (작도 최대)</div>
+    <p>캡을 씌우지 않은 작도 원본 목표. 추세가 강한 종목(폭등주)이 어디까지 갈 수 있는지 보여줍니다. 녹색이 현실, 회색이 최대치.</p>
+  </div>
+  <div class="gcard">
+    <div class="gh"><span class="gdot" style="background:#d4537e"></span>분홍 — 위험선</div>
+    <p>작도 반대(하락) 교차점. "여기까지 빠질 수 있다"는 하방 목표. 검증상 이 선 도달 후 <b>반등 51~57% / 추가하락 37%</b> — 지지 매수 자리로도 통하지만 이탈 시 손절 구간.</p>
+  </div>
+  <div class="gcard">
+    <div class="gh"><span class="gdot" style="background:#8a98a8"></span>회색 — 삼각수렴</div>
+    <p>변동성이 줄며 모이는 수렴 구간. 위아래 폭이 좁아지면 곧 한 방향으로 터질 가능성.</p>
+  </div>
+  <div class="gcard">
+    <div class="gh"><span class="gdot" style="background:#e8743b"></span>주황 — 매물집중 (매물대)</div>
+    <p>거래량이 가장 많이 쌓인 가격대(POC). 이 가격에 물린 사람이 많아 저항·지지로 자주 작용합니다.</p>
+  </div>
+  <div class="gcard">
+    <div class="gh">📈 시나리오 버튼 (상승·횡보·하락)</div>
+    <p>엘리엇 파동 기반으로 <b>지지·저항을 왕복하는 예상 흐름</b>. 확률 숫자는 일부러 뺐습니다 — 검증상 못 믿는 숫자라, 차트 모양으로 직접 보고 판단하시라는 뜻입니다.</p>
+  </div>
+  <div class="gcard">
+    <div class="gh">🔵 기법 4종 (엘리엇·몬테카를로·피보나치·갠)</div>
+    <p>체크박스로 켜고 끄며 겹쳐 볼 수 있습니다. 각 기법이 보는 목표선을 비교하세요. 작도 상한(녹색)을 넘지 않게 캡이 적용됩니다.</p>
+  </div>
+  <div class="gcard">
+    <div class="gh">⚓ 기준점 (분기 04/01 · 주 단위)</div>
+    <p>일봉은 <b>분기 시작(4/1·7/1...)</b>, 10분봉은 <b>최근 1주</b>를 기준으로 시나리오를 그립니다. 기준점부터 실제 봉이 어느 시나리오로 갔는지 비교할 수 있고, 분기가 바뀌면 자동 리셋됩니다.</p>
+  </div>
+  <div class="gcard">
+    <div class="gh">📅 일봉 + ⏱️ 10분봉 (미국 15분봉)</div>
+    <p>일봉(큰 흐름)과 분봉(단기 흐름)을 함께 봅니다. 60분봉은 화면엔 없지만 위험선 계산에 쓰입니다.</p>
+  </div>
+
+  <div class="guide-foot">⚠️ 모든 지표는 통계·작도 기반 <b>참고 자료</b>이며 매수·매도 추천이 아닙니다. 방향 예측은 추세 유지 시에만 맞고 전환점은 잡지 못합니다. 매매 판단과 책임은 본인에게 있습니다.</div>
+</div>
 <div id="result"></div>
-<div class="note">
-  작도 = 2일선 기준 · <span style="color:var(--green);font-weight:700">녹색</span> 상승목표 · <span style="color:var(--pink);font-weight:700">분홍</span> 위험(60분 포함) · <span style="color:var(--gray);font-weight:700">회색</span> 삼각수렴<br>
-  미래 예측·확률은 통계 추정이며 단정이 아닙니다. 매매 판단은 본인 책임입니다.
-</div>
-</div>
 <script>
 var STOCKS=[];
 fetch('stocks.json?t='+Date.now()).then(function(r){return r.json();}).then(function(s){STOCKS=s||[];}).catch(function(){STOCKS=[];});
@@ -118,7 +165,7 @@ var inp=document.getElementById('codeInput'), ac=document.getElementById('acList
 inp.addEventListener('input',function(){
   var q=inp.value.trim().toLowerCase();
   if(!q){ac.classList.remove('show');return;}
-  var hit=STOCKS.filter(function(s){return s.code.includes(q)||(s.name&&s.name.toLowerCase().includes(q));}).slice(0,7);
+  var hit=STOCKS.filter(function(s){return s.code.toLowerCase().includes(q)||(s.name&&s.name.toLowerCase().includes(q));}).slice(0,8);
   if(!hit.length){ac.classList.remove('show');return;}
   ac.innerHTML=hit.map(function(s){return '<div class="ac-item" onclick="pick(\''+s.code+'\',\''+((s.name||'').replace(/\'/g,''))+'\')">'+'<span class="an">'+s.name+'</span><span class="acode">'+s.code+'</span><span class="amk">'+s.market+'</span></div>';}).join('');
   ac.classList.add('show');
@@ -152,12 +199,19 @@ function mkMethodLabel(val,nm,col,methods){
 
 async function go(code){
   var box=document.getElementById('result');
+  var guide=document.getElementById('guide'); if(guide)guide.style.display='none';
   box.innerHTML='<div class="loading"><div class="spinner"></div><div class="ltxt">종목 분석 중입니다</div><div class="lsub">작도 · 지지/저항 · 미래 시나리오 계산 중...</div></div>';
   try{
     var x=await fetch('/api/analyze?code='+code).then(function(r){return r.json();});
     if(x.error){box.innerHTML='<div class="empty">'+x.error+'</div>';return;}
     render(x);
   }catch(e){box.innerHTML='<div class="empty">분석 실패. 잠시 후 다시 시도하세요.</div>';}
+}
+function goHome(){
+  document.getElementById('result').innerHTML='';
+  var guide=document.getElementById('guide'); if(guide)guide.style.display='block';
+  var inp2=document.getElementById('codeInput'); if(inp2){inp2.value='';inp2.focus();}
+  window.scrollTo(0,0);
 }
 
 function render(x){
@@ -167,8 +221,11 @@ function render(x){
   var pj=d.projection||{methods:{}};
   var M=pj.methods||{};
   var src=d.risk_src||'';
+  var IS_US=(x['시장']==='미국');
+  window.__IS_US=IS_US;  // 차트에서 참조
   var html='';
-  html+='<div class="result-head"><span class="rn">'+(x['종목명']||'')+'</span><span class="rc">'+x['종목코드']+' · '+(x['시장']||'')+'</span><span class="rp">'+((d.cur||0).toLocaleString())+'원</span></div>';
+  var priceStr = IS_US ? ('$'+(d.cur||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})) : ((d.cur||0).toLocaleString()+'원');
+  html+='<div class="result-head"><span class="rn">'+(x['종목명']||'')+'</span><span class="rc">'+x['종목코드']+' · '+(x['시장']||'')+'</span><span class="rp">'+priceStr+'</span></div>';
   // ===== 일봉 트랙 =====
   html+='<div class="track-tab">📅 일봉 (분기 기준)</div>';
   html+='<div id="host" class="track">';
@@ -227,6 +284,8 @@ function render(x){
 
 function mkChart(data,pj,sfx){
   sfx=sfx||'';
+  var IS_US=!!window.__IS_US;
+  function fmtP(v){ return IS_US ? ('$'+Number(v).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})) : Math.round(v).toLocaleString(); }
   // ===== v3 모든 데이터 변수 최상단 선언 (TDZ 방지) =====
   var cv=document.getElementById('cv'+sfx), tip=document.getElementById('tip'+sfx);
   var scope=document.getElementById('host'+sfx)||document;
@@ -327,7 +386,7 @@ function mkChart(data,pj,sfx){
     for(var g=0;g<=4;g++){
       var v=plot.lo+(plot.hi-plot.lo)*g/4, y=yOf(v);
       ctx.beginPath();ctx.moveTo(plot.x0,y);ctx.lineTo(plot.x1,y);ctx.stroke();
-      ctx.fillText(Math.round(v).toLocaleString(),plot.x1+6,y+4);
+      ctx.fillText(fmtP(v),plot.x1+6,y+4);
     }
     // X축 날짜
     ctx.fillStyle='#5a6b7d';ctx.textAlign='center';ctx.font='12px '+FF();
@@ -384,7 +443,7 @@ function mkChart(data,pj,sfx){
       ctx.strokeStyle='rgba(232,116,59,.55)';ctx.lineWidth=1;ctx.setLineDash([2,3]);
       ctx.beginPath();ctx.moveTo(plot.x0,pocY);ctx.lineTo(plot.x1,pocY);ctx.stroke();ctx.setLineDash([]);
       ctx.fillStyle='#e8743b';ctx.font='11px '+FF();ctx.textAlign='left';
-      ctx.fillText('매물집중 '+Math.round(pocPrice).toLocaleString(),plot.x0+4,pocY-3);
+      ctx.fillText('매물집중 '+fmtP(pocPrice),plot.x0+4,pocY-3);
     })();
 
     // 캔들
@@ -414,7 +473,7 @@ function mkChart(data,pj,sfx){
       ctx.strokeStyle='rgba(212,83,126,.85)';ctx.lineWidth=1.4;ctx.setLineDash(d.price_only?[6,4]:[]);
       ctx.beginPath();ctx.moveTo(plot.x0,yOf(d.yc));ctx.lineTo(plot.x1,yOf(d.yc));ctx.stroke();ctx.setLineDash([]);
       ctx.fillStyle='#d4537e';ctx.fillRect(plot.x1-2,yOf(d.yc)-9,64,18);
-      ctx.fillStyle='#fff';ctx.font='11px '+FF();ctx.fillText('위험 '+Math.round(d.yc).toLocaleString(),plot.x1+2,yOf(d.yc)+3);
+      ctx.fillStyle='#fff';ctx.font='11px '+FF();ctx.fillText('위험 '+fmtP(d.yc),plot.x1+2,yOf(d.yc)+3);
     });
     // 작도선
     draws.forEach(function(d){
@@ -476,7 +535,7 @@ function mkChart(data,pj,sfx){
           ctx.beginPath();ctx.moveTo(xOf(ANCHOR_I),yOf(lv));ctx.lineTo(xOf(Math.min(viewE,TOTAL-1)),yOf(lv));ctx.stroke();ctx.setLineDash([]);
           ctx.fillStyle=up?'rgba(29,158,117,.85)':'rgba(212,83,126,.85)';
           ctx.font='10px '+FF();ctx.textAlign='left';
-          ctx.fillText(Math.round(lv).toLocaleString(),xOf(ANCHOR_I)+2,yOf(lv)-2);
+          ctx.fillText(fmtP(lv),xOf(ANCHOR_I)+2,yOf(lv)-2);
         }
       }
     }
@@ -600,7 +659,7 @@ function mkChart(data,pj,sfx){
       ctx.beginPath();ctx.moveTo(mx,plot.y0);ctx.lineTo(mx,plot.y1);ctx.stroke();
       ctx.beginPath();ctx.moveTo(plot.x0,my);ctx.lineTo(plot.x1,my);ctx.stroke();ctx.setLineDash([]);
       ctx.fillStyle='#1a3a5c';ctx.fillRect(plot.x1,my-11,padR-2,22);
-      ctx.fillStyle='#fff';ctx.font='13px '+FF();ctx.textAlign='left';ctx.fillText(Math.round(vOf(my)).toLocaleString(),plot.x1+5,my+4);
+      ctx.fillStyle='#fff';ctx.font='13px '+FF();ctx.textAlign='left';ctx.fillText(fmtP(vOf(my)),plot.x1+5,my+4);
       var idx=iOfX(mx), L=lbl(idx);
       if(L){var tw=ctx.measureText(L).width+12;ctx.fillStyle='#1a3a5c';ctx.fillRect(mx-tw/2,plot.y1+2,tw,18);ctx.fillStyle='#fff';ctx.textAlign='center';ctx.fillText(L,mx,plot.y1+14);}
     }
@@ -609,8 +668,8 @@ function mkChart(data,pj,sfx){
   function hover(e){
     var r=cv.getBoundingClientRect();lastMx=e.clientX-r.left;lastMy=e.clientY-r.top;
     draw(lastMx,lastMy);tip.style.display='none';
-    draws.forEach(function(d){if(Math.abs(lastMy-yOf(d.yc))<6){tip.style.display='block';tip.style.background='#7f77dd';tip.textContent='교차점 '+d.yc.toLocaleString();tip.style.left=Math.min(lastMx+12,W-90)+'px';tip.style.top=(yOf(d.yc)-28)+'px';}});
-    risks.forEach(function(d){if(Math.abs(lastMy-yOf(d.yc))<6){tip.style.display='block';tip.style.background='#d4537e';tip.textContent='위험 '+d.yc.toLocaleString();tip.style.left=Math.min(lastMx+12,W-110)+'px';tip.style.top=(yOf(d.yc)-28)+'px';}});
+    draws.forEach(function(d){if(Math.abs(lastMy-yOf(d.yc))<6){tip.style.display='block';tip.style.background='#7f77dd';tip.textContent='교차점 '+fmtP(d.yc);tip.style.left=Math.min(lastMx+12,W-90)+'px';tip.style.top=(yOf(d.yc)-28)+'px';}});
+    risks.forEach(function(d){if(Math.abs(lastMy-yOf(d.yc))<6){tip.style.display='block';tip.style.background='#d4537e';tip.textContent='위험 '+fmtP(d.yc);tip.style.left=Math.min(lastMx+12,W-110)+'px';tip.style.top=(yOf(d.yc)-28)+'px';}});
   }
   cv.addEventListener('mousemove',hover);
   cv.addEventListener('mouseleave',function(){lastMx=lastMy=null;draw(null,null);tip.style.display='none';});

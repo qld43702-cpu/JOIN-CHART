@@ -282,10 +282,10 @@ def build_drawings(bars):
         })
 
     chart=[{'i':i,'d':(bars[i].get('d','')[4:6]+'/'+bars[i].get('d','')[6:8]+(' '+str(bars[i]['t']).zfill(6)[:2]+'시' if 't' in bars[i] else '')),
-            'o':int(bars[i]['o']),'h':int(bars[i]['h']),'l':int(bars[i]['l']),'c':int(bars[i]['c']),
+            'o':round(bars[i]['o'],2),'h':round(bars[i]['h'],2),'l':round(bars[i]['l'],2),'c':round(bars[i]['c'],2),
             'v':int(bars[i].get('v',0) or 0),
-            'm2':round(MA2[i],1) if MA2[i] is not None else None} for i in range(len(bars))]
-    return {'chart':chart,'draws':draws,'all_risks':all_risks,'draws_start':draws_start,'cur':int(c[-1])}
+            'm2':round(MA2[i],2) if MA2[i] is not None else None} for i in range(len(bars))]
+    return {'chart':chart,'draws':draws,'all_risks':all_risks,'draws_start':draws_start,'cur':round(c[-1],2)}
 
 def build_projection(bars, draws, risk_level, fut=63, market='', period='quarter'):
     """미래 예측: 몬테카를로로 양방향 확률 + 각 기법 목표 도달 확률(통일).
@@ -398,7 +398,7 @@ def build_projection(bars, draws, risk_level, fut=63, market='', period='quarter
             ends.append(v)
         ends.sort()
         return ends[len(ends)//2]
-    mc_target=int(sim_median_end())
+    mc_target=round(sim_median_end(),2)
     def prob_reach(level, up=True):
         return sim_prob(level, up, drift_up if up else mu*0.5)
     # ===== 3분류 확률 (상승/하락/횡보 합=100%) — 백테스트와 동일 ±10% 기준 =====
@@ -434,10 +434,10 @@ def build_projection(bars, draws, risk_level, fut=63, market='', period='quarter
     else:
         oh_prob = {'up':28, 'dn':22, 'flat':51}  # 코스피: 약한 상승 우위
     # 기법 목표를 녹색의 35% 현실선(up_target)으로 캡
-    cap_price = int(up_target)
-    ell_capped  = min(int(tgt_15sig), cap_price)
-    gann_capped = min(int(tgt_1sig),  cap_price)
-    fib_up_cap  = min(int(tgt_2sig),  cap_price)
+    cap_price = round(up_target,2)
+    ell_capped  = min(round(tgt_15sig,2), cap_price)
+    gann_capped = min(round(tgt_1sig,2),  cap_price)
+    fib_up_cap  = min(round(tgt_2sig,2),  cap_price)
     mc_capped   = min(mc_target, cap_price) if mc_target>cur else mc_target
     cap_count = 0
     cap_detail = {}
@@ -458,12 +458,12 @@ def build_projection(bars, draws, risk_level, fut=63, market='', period='quarter
                     mi=int(di.split('/')[0]) if '/' in di else 0
                     mp=int(dp.split('/')[0]) if '/' in dp else 0
                     if mi==q_start_month and mp!=q_start_month:
-                        anchor_idx=i; anchor_price=int(c[i]); break
+                        anchor_idx=i; anchor_price=round(c[i],2); break
                 if anchor_idx is None:
                     for i in range(len(bars)):
                         di=bars[i].get('d','')
                         mi=int(di.split('/')[0]) if '/' in di else 0
-                        if mi==q_start_month: anchor_idx=i; anchor_price=int(c[i]); break
+                        if mi==q_start_month: anchor_idx=i; anchor_price=round(c[i],2); break
         elif period=='week':
             # 10분봉: 가장 최근 "주 시작"(날짜가 바뀐 지점들 중 최근 5거래일 전) 기준
             # 분봉 d는 "MM/DD HH시" → 날짜(MM/DD) 바뀌는 지점 = 새 거래일
@@ -477,12 +477,12 @@ def build_projection(bars, draws, risk_level, fut=63, market='', period='quarter
                 anchor_idx=day_starts[-5]
             elif day_starts:
                 anchor_idx=day_starts[0]
-            if anchor_idx is not None: anchor_price=int(c[anchor_idx])
+            if anchor_idx is not None: anchor_price=round(c[anchor_idx],2)
     except: pass
     return {
-        'fut':fut, 'cur':int(cur),
-        'up_slope':round(up_slope,3), 'up_target':int(up_target), 'green_max':int(green_max),
-        'dn_target':int(dn_target),
+        'fut':fut, 'cur':round(cur,2),
+        'up_slope':round(up_slope,3), 'up_target':round(up_target,2), 'green_max':round(green_max,2),
+        'dn_target':round(dn_target,2),
         'volatility':round(sd,4), 'drift':round(mu,5),
         'mc_up':mc_up, 'mc_dn':mc_dn, 'mc_target':mc_target,
         'methods':methods,
@@ -491,7 +491,7 @@ def build_projection(bars, draws, risk_level, fut=63, market='', period='quarter
             'mc':mc_capped,
             'gann':gann_capped,
             'fib_up':fib_up_cap,
-            'fib_dn':int(dn_1sig),
+            'fib_dn':round(dn_1sig,2),
             'cap':cap_price,
         },
         'overheat':overheat, 'overheat_prob':oh_prob,
