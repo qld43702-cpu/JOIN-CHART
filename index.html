@@ -101,7 +101,7 @@ header{display:flex;align-items:center;gap:11px;margin-bottom:16px}
 <div class="wrap">
 <header><div class="logo" onclick="goHome()">J</div><div onclick="goHome()" style="cursor:pointer"><div class="ttl">JOIN CHART</div><div class="sub">종목 작도 + 미래 예측 · 일봉</div></div></header>
 <div class="search-box">
-  <input type="text" id="codeInput" placeholder="종목명 또는 코드 (예: 클로봇 / 466100)" autocomplete="off">
+  <input type="text" id="codeInput" placeholder="국내: 종목명/코드 (클로봇·466100) · 미국: 티커 (AAPL·TSLA)" autocomplete="off">
   <div class="ac" id="acList"></div>
 </div>
 <div class="hint">코스피·코스닥 전체. 차트 오른쪽 미래 3개월 공간에 작도 목표·위험·삼각수렴이 그려지고, 기법을 체크하면 예측 파동이 겹쳐집니다.</div>
@@ -128,15 +128,19 @@ inp.addEventListener('keydown',function(e){
     e.preventDefault();
     var q=inp.value.trim();
     ac.classList.remove('show');
-    // 1) 6자리 숫자 있으면 바로
+    // 1) 6자리 숫자 = 한국
     var m=q.match(/(\d{6})/);
     if(m){go(m[1]);return;}
-    // 2) 이름 정확/부분 일치
+    // 2) 한국 종목명 일치
     var ql=q.toLowerCase();
     var hit=STOCKS.find(function(s){return s.name&&s.name.toLowerCase()===ql;})
-          ||STOCKS.find(function(s){return s.name&&s.name.toLowerCase().includes(ql);})
-          ||STOCKS.find(function(s){return s.code.includes(q);});
+          ||STOCKS.find(function(s){return s.name&&s.name.toLowerCase().includes(ql);});
     if(hit){pick(hit.code,hit.name);return;}
+    // 3) 영문 티커 = 미국주식 (AAPL 등)
+    if(/^[A-Za-z][A-Za-z.\-]{0,6}$/.test(q)){go(q.toUpperCase());return;}
+    // 4) 코드 부분일치
+    var hit2=STOCKS.find(function(s){return s.code.includes(q);});
+    if(hit2){pick(hit2.code,hit2.name);return;}
   }
 });
 document.addEventListener('click',function(e){if(!e.target.closest('.search-box'))ac.classList.remove('show');});

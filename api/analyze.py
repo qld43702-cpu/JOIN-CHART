@@ -8,6 +8,47 @@ from urllib.parse import urlparse, parse_qs
 import os, json, requests
 
 BASE="https://openapi.ls-sec.co.kr:8080"
+YBASE="https://query1.finance.yahoo.com/v8/finance/chart"
+YHEAD={"User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
+
+def is_us(code):
+    """영문 티커면 미국주식 (숫자6자리=한국)"""
+    c=(code or "").strip().upper()
+    return bool(c) and not c.isdigit() and all(ch.isalnum() or ch in '.-' for ch in c)
+
+def _yahoo_fetch(ticker, rng, interval):
+    try:
+        r=requests.get(f"{YBASE}/{ticker}", headers=YHEAD, timeout=10,
+            params={"range":rng,"interval":interval,"includePrePost":"false"})
+        j=r.json()
+        res=j.get("chart",{}).get("result")
+        if not res: return None
+        res=res[0]; ts=res.get("timestamp",[])
+        q=res.get("indicators",{}).get("quote",[{}])[0]
+        o=q.get("open",[]); h=q.get("high",[]); l=q.get("low",[]); c=q.get("close",[]); v=q.get("volume",[])
+        import datetime
+        out=[]
+        for i in range(len(ts)):
+            if i>=len(c) or c[i] is None: continue
+            dt=datetime.datetime.fromtimestamp(ts[i], datetime.timezone.utc)
+            row={'d':dt.strftime("%Y%m%d"),'o':float(o[i] or c[i]),'h':float(h[i] or c[i]),
+                 'l':float(l[i] or c[i]),'c':float(c[i]),'v':float(v[i] or 0)}
+            if interval!="1d": row['t']=dt.strftime("%H%M%S")
+            out.append(row)
+        return out if out else None
+    except Exception:
+        return None
+
+def get_day_us(ticker): return _yahoo_fetch(ticker,"2y","1d")
+def get_min_us(ticker,interval="60m"):
+    return _yahoo_fetch(ticker, "2y" if interval=="60m" else "60d", interval)
+def get_name_us(ticker):
+    try:
+        r=requests.get(f"{YBASE}/{ticker}",headers=YHEAD,timeout=8,params={"range":"5d","interval":"1d"})
+        meta=r.json().get("chart",{}).get("result",[{}])[0].get("meta",{})
+        return meta.get("shortName") or meta.get("longName") or ticker.upper(),"미국"
+    except Exception:
+        return ticker.upper(),"미국"
 
 def token():
     key=os.environ.get("LS_APP_KEY","").strip()
@@ -592,10 +633,21 @@ class handler(BaseHTTPRequestHandler):
         self.send_header('Content-Type','application/json; charset=utf-8')
         self.send_header('Access-Control-Allow-Origin','*'); self.end_headers()
         try:
-            if not code.isdigit() or len(code)!=6:
-                self.wfile.write(json.dumps({'error':'종목코드 6자리'}).encode()); return
-            tk=token(); nm,mk=get_name(tk,code)
-            day=get_day(tk,code); m60=get_60m(tk,code); m10=get_min(tk,code,10)
+            if not code:
+                self.wfile.write(json.dumps({'error':'종목코드를 입력하세요'}).encode()); return
+            if is_us(code):
+                # ===== 미국 주식 (야후) =====
+                tkr=code.upper()
+                nm,mk=get_name_us(tkr)
+                day=get_day_us(tkr); m60=get_min_us(tkr,"60m"); m10=get_min_us(tkr,"10m")
+            else:
+                # ===== 한국 주식 (LS) =====
+                if not code.isdigit() or len(code)!=6:
+                    self.wfile.write(json.dumps({'error':'국내는 6자리 코드, 해외는 영문 티커(AAPL 등)'}).encode()); return
+                tk=token(); nm,mk=get_name(tk,code)
+                day=get_day(tk,code); m60=get_60m(tk,code); m10=get_min(tk,code,10)
+            if not day or len(day)<30:
+                self.wfile.write(json.dumps({'error':'데이터를 찾을 수 없습니다 ('+code+')'}).encode()); return
             dd = build_drawings(day) if day and len(day)>30 else {'error':'데이터 부족'}
             mm = build_drawings(m60) if m60 and len(m60)>30 else {'error':'데이터 부족'}
             tt = build_drawings(m10) if m10 and len(m10)>30 else {'error':'데이터 부족'}
