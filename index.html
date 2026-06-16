@@ -78,6 +78,12 @@ header{display:flex;align-items:center;gap:11px;margin-bottom:16px}
 .ring-avg-title{font-size:16px;font-weight:800;color:var(--navy);margin-bottom:8px}
 .ring-avg-wrap{display:flex;justify-content:center}
 .loading,.empty{text-align:center;padding:50px;color:var(--muted)}
+.loading{display:flex;flex-direction:column;align-items:center;gap:18px}
+.spinner{width:54px;height:54px;border:5px solid #e8eef4;border-top-color:var(--orange);border-radius:50%;animation:spin .8s linear infinite}
+.loading .ltxt{font-size:15px;font-weight:700;color:var(--navy);animation:pulse 1.4s ease-in-out infinite}
+.loading .lsub{font-size:13px;color:var(--muted);margin-top:-8px}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes pulse{0%,100%{opacity:.5}50%{opacity:1}}
 .note{font-size:13px;color:var(--muted);margin-top:16px;line-height:1.9}
 @media(max-width:600px){
   body{padding:12px 10px 50px;font-size:15px}
@@ -97,7 +103,6 @@ header{display:flex;align-items:center;gap:11px;margin-bottom:16px}
   <div class="ac" id="acList"></div>
 </div>
 <div class="hint">코스피·코스닥 전체. 차트 오른쪽 미래 3개월 공간에 작도 목표·위험·삼각수렴이 그려지고, 기법을 체크하면 예측 파동이 겹쳐집니다.</div>
-<div id="backbar"><button onclick="goHome()">← 뒤로 (검색으로)</button></div>
 <div id="result"></div>
 <div class="note">
   작도 = 2일선 기준 · <span style="color:var(--green);font-weight:700">녹색</span> 상승목표 · <span style="color:var(--pink);font-weight:700">분홍</span> 위험(60분 포함) · <span style="color:var(--gray);font-weight:700">회색</span> 삼각수렴<br>
@@ -118,28 +123,30 @@ inp.addEventListener('input',function(){
 });
 inp.addEventListener('keydown',function(e){
   if(e.key==='Enter'){
-    ac.classList.remove('show');
+    e.preventDefault();
     var q=inp.value.trim();
+    ac.classList.remove('show');
+    // 1) 6자리 숫자 있으면 바로
     var m=q.match(/(\d{6})/);
     if(m){go(m[1]);return;}
+    // 2) 이름 정확/부분 일치
     var ql=q.toLowerCase();
-    var hit=STOCKS.find(function(s){return s.name&&s.name.toLowerCase()===ql;})||STOCKS.find(function(s){return s.name&&s.name.toLowerCase().includes(ql);});
-    if(hit)pick(hit.code,hit.name);
+    var hit=STOCKS.find(function(s){return s.name&&s.name.toLowerCase()===ql;})
+          ||STOCKS.find(function(s){return s.name&&s.name.toLowerCase().includes(ql);})
+          ||STOCKS.find(function(s){return s.code.includes(q);});
+    if(hit){pick(hit.code,hit.name);return;}
   }
 });
 document.addEventListener('click',function(e){if(!e.target.closest('.search-box'))ac.classList.remove('show');});
 function pick(code,name){inp.value=name+' ('+code+')';ac.classList.remove('show');go(code);}
-function goHome(){document.getElementById('result').innerHTML='';document.getElementById('backbar').style.display='none';inp.value='';inp.focus();window.scrollTo(0,0);}
 
 function mkMethodLabel(val,nm,col,methods){
-  var m=methods[val]||{up:'-',dn:'-'};
-  return '<label><input type="checkbox" class="mtd" value="'+val+'" checked style="accent-color:'+col+'"> '+nm+' <span class="up">↑'+m.up+'%</span><span class="dn"> ↓'+m.dn+'%</span></label>';
+  return '<label><input type="checkbox" class="mtd" value="'+val+'" checked style="accent-color:'+col+'"> '+nm+'</label>';
 }
 
 async function go(code){
   var box=document.getElementById('result');
-  document.getElementById('backbar').style.display='block';
-  box.innerHTML='<div class="loading">작도·미래 예측 그리는 중...</div>';
+  box.innerHTML='<div class="loading"><div class="spinner"></div><div class="ltxt">종목 분석 중입니다</div><div class="lsub">작도 · 지지/저항 · 미래 시나리오 계산 중...</div></div>';
   try{
     var x=await fetch('/api/analyze?code='+code).then(function(r){return r.json();});
     if(x.error){box.innerHTML='<div class="empty">'+x.error+'</div>';return;}
@@ -156,14 +163,6 @@ function render(x){
   var src=d.risk_src||'';
   var html='';
   html+='<div class="result-head"><span class="rn">'+(x['종목명']||'')+'</span><span class="rc">'+x['종목코드']+' · '+(x['시장']||'')+'</span><span class="rp">'+((d.cur||0).toLocaleString())+'원</span></div>';
-  // 변동성 과열 경고 (백테스트 검증)
-  if(pj.overheat){
-    var op=pj.overheat_prob||{up:27,dn:28,flat:45};
-    html+='<div class="risk-alert" style="background:#fff4e8;border-color:#f0b67a">';
-    html+='<span>🔥</span><span class="rt" style="color:#b35e1a">변동성 과열 — 기대범위가 작도 상한을 넘음. ';
-    html+='과거 검증: 3개월 뒤 상승 '+op.up+'% / 하락 '+op.dn+'% / 횡보 '+op.flat+'% (상승 신호 아님, 주의)</span>';
-    html+='</div>';
-  }
   html+='<div class="methods">';
   html+=mkMethodLabel('ell','엘리엇','#7f77dd',M);
   html+=mkMethodLabel('mc','몬테카를로','#378add',M);
@@ -172,25 +171,18 @@ function render(x){
   html+='</div>';
   html+='<div class="zoombar"><button id="zin">+ 확대</button><button id="zout">− 축소</button><button id="zall">전체</button></div>';
   html+='<div class="chart-host"><canvas id="cv"></canvas><div class="linetip" id="tip"></div></div>';
-  html+='<div class="legend"><span><i style="background:#000"></i>2일선</span><span><i style="background:#1d9e75"></i>상승목표</span><span><i style="background:#d4537e"></i>위험</span><span><i style="background:#8a98a8"></i>삼각수렴</span><span><i style="background:#e8743b"></i>매물집중(물량 많은 가격)</span><span style="color:#a8b3c0">| 점선 우측=미래 3개월</span></div>';
-  // ===== 평균 확률 미리 계산 (버튼용) =====
+  html+='<div class="legend"><span><i style="background:#000"></i>2일선</span><span><i style="background:#1d9e75"></i>상승목표(현실35%)</span><span><i style="background:#5a6473"></i>상승잠재(작도최대)</span><span><i style="background:#d4537e"></i>위험</span><span><i style="background:#8a98a8"></i>삼각수렴</span><span><i style="background:#e8743b"></i>매물집중</span><span style="color:#a8b3c0">| 점선 우측=미래</span></div>';
+  // ===== 기법 메타 =====
   var techNames={ell:'엘리엇',mc:'몬테카를로',fib:'피보나치',gann:'갠'};
   var techCols={ell:'#7f77dd',mc:'#378add',fib:'#1d9e75',gann:'#ba7517'};
   var order=['ell','mc','fib','gann'];
-  var sumUp=0,sumDn=0,cnt=0;
-  for(var oi0=0;oi0<order.length;oi0++){
-    var mm0=M[order[oi0]]; if(!mm0)continue;
-    sumUp+=(typeof mm0.up==='number')?mm0.up:0;
-    sumDn+=(typeof mm0.dn==='number')?mm0.dn:0; cnt++;
-  }
-  var avgUp=cnt?Math.round(sumUp/cnt):50, avgDn=cnt?Math.round(sumDn/cnt):30, avgFlat=Math.max(0,100-avgUp-avgDn);
-  // ===== 시나리오 버튼 3개 (차트 바로 아래) =====
+  // ===== 시나리오 버튼 3개 (확률 표시 없음 — 차트로만 판단) =====
   html+='<div class="scen-btns">';
-  html+='<button class="scen-btn up" data-scen="up">📈 상승 시나리오<b>'+avgUp+'%</b></button>';
-  html+='<button class="scen-btn flat" data-scen="flat">↔️ 횡보 시나리오<b>'+avgFlat+'%</b></button>';
-  html+='<button class="scen-btn dn" data-scen="dn">📉 하락 시나리오<b>'+avgDn+'%</b></button>';
+  html+='<button class="scen-btn up" data-scen="up">📈 상승 시나리오</button>';
+  html+='<button class="scen-btn flat" data-scen="flat">↔️ 횡보 시나리오</button>';
+  html+='<button class="scen-btn dn" data-scen="dn">📉 하락 시나리오</button>';
   html+='</div>';
-  html+='<div class="scen-hint">버튼을 누르면 엘리엇 파동 기반 예상 흐름(지지·저항 왕복)이 미래 영역에 그려집니다</div>';
+  html+='<div class="scen-hint">버튼을 누르면 엘리엇 파동 기반 예상 흐름(지지·저항 왕복)이 그려집니다 — 예측이 아닌 참고용</div>';
   // 현재 파동 위치
   if(pj.wave&&pj.wave.phase&&pj.wave.phase!=='?'){
     var wv=pj.wave;
@@ -199,52 +191,6 @@ function render(x){
     html+='<b>현재 파동 위치: '+wv.phase+'파 추정</b> &nbsp;'+wv.desc;
     html+='</div>';
   }
-  // ===== 캡 요약 + 확률 원형 게이지 =====
-  // 원형 게이지 SVG: 상승(빨강)+하락(파랑)+횡보(회색). 합=100%. 숫자는 원 밖에 표기.
-  function ringDual(up,dn,size){
-    var flat=Math.max(0,100-up-dn);
-    var r=size/2-7, cx=size/2, cy=size/2, circ=2*Math.PI*r;
-    var upLen=circ*up/100, dnLen=circ*dn/100, flatLen=circ*flat/100;
-    var s='<svg width="'+size+'" height="'+size+'" viewBox="0 0 '+size+' '+size+'">';
-    s+='<circle cx="'+cx+'" cy="'+cy+'" r="'+r+'" fill="none" stroke="#eef1f5" stroke-width="7"/>';
-    var rot='rotate(-90 '+cx+' '+cy+')';
-    s+='<circle cx="'+cx+'" cy="'+cy+'" r="'+r+'" fill="none" stroke="#e24b4a" stroke-width="7" stroke-dasharray="'+upLen+' '+(circ-upLen)+'" stroke-dashoffset="0" transform="'+rot+'"/>';
-    s+='<circle cx="'+cx+'" cy="'+cy+'" r="'+r+'" fill="none" stroke="#378add" stroke-width="7" stroke-dasharray="'+dnLen+' '+(circ-dnLen)+'" stroke-dashoffset="'+(-upLen)+'" transform="'+rot+'"/>';
-    if(flat>0){
-      s+='<circle cx="'+cx+'" cy="'+cy+'" r="'+r+'" fill="none" stroke="#c5cdd6" stroke-width="7" stroke-dasharray="'+flatLen+' '+(circ-flatLen)+'" stroke-dashoffset="'+(-(upLen+dnLen))+'" transform="'+rot+'"/>';
-    }
-    s+='</svg>';
-    return s;
-  }
-  function ringBlock(up,dn,size){
-    var flat=Math.max(0,100-up-dn);
-    var h='<div class="ring-block">'+ringDual(up,dn,size);
-    h+='<div class="ring-nums">';
-    h+='<span class="rn-up">상승 '+up+'%</span>';
-    h+='<span class="rn-flat">횡보 '+flat+'%</span>';
-    h+='<span class="rn-dn">하락 '+dn+'%</span>';
-    h+='</div></div>';
-    return h;
-  }
-  html+='<div class="prob-graph"><div class="pg-title">미래 3개월 상승 / 하락 확률</div>';
-  html+='<div class="ring-legend"><span><i style="background:#e24b4a"></i>상승</span><span><i style="background:#c5cdd6"></i>횡보</span><span><i style="background:#378add"></i>하락</span></div>';
-  html+='<div class="ring-grid">';
-  for(var oi=0;oi<order.length;oi++){
-    var k=order[oi]; var mm=M[k]; if(!mm)continue;
-    var up=(typeof mm.up==='number')?mm.up:0, dn=(typeof mm.dn==='number')?mm.dn:0;
-    html+='<div class="ring-card">';
-    html+='<div class="ring-tech" style="color:'+techCols[k]+'">'+techNames[k]+'</div>';
-    html+=ringBlock(up,dn,96);
-    html+='</div>';
-  }
-  html+='</div>'; // ring-grid
-  // 평균 (큰 원 1개)
-  if(cnt>0){
-    html+='<div class="ring-avg"><div class="ring-avg-title">4개 기법 평균</div>';
-    html+='<div class="ring-avg-wrap">'+ringBlock(avgUp,avgDn,140)+'</div>';
-    html+='</div>';
-  }
-  html+='</div>'; // prob-graph
   box.innerHTML=html;
   requestAnimationFrame(function(){requestAnimationFrame(function(){mkChart(d,pj);});});
 }
@@ -455,7 +401,11 @@ function mkChart(data,pj){
     if(viewE>=ANCHOR_I&&pj){
       var us=pj.up_slope||0, upT=pj.up_target, dnT=pj.dn_target, vol=pj.volatility||0.02;
       // 기본 틀: 4/1부터 — 직선 (b=4/1 가격)
-      fwave(ctx,function(t,b){return b+(upT-b)*t;},'rgba(29,158,117,.95)',2.4,[6,4],false);       // 상승목표(녹색)
+      fwave(ctx,function(t,b){return b+(upT-b)*t;},'rgba(29,158,117,.95)',2.4,[6,4],false);       // 상승목표(녹색 35%)
+      // 오리지날 상승 잠재선 (캡 없는 작도 최대치) — 진한 회색
+      if(pj.green_max&&pj.green_max>upT){
+        fwave(ctx,function(t,b){return b+(pj.green_max-b)*t;},'rgba(90,100,115,.8)',2,[2,3],false);
+      }
       fwave(ctx,function(t,b){return b+(dnT-b)*t;},'rgba(212,83,126,.9)',2.4,[6,4],false);         // 위험(분홍)
       fwave(ctx,function(t,b){return b+b*0.10*(1-t);},'rgba(138,152,168,.6)',1.3,[],false);        // 삼각수렴 상단
       fwave(ctx,function(t,b){return b-b*0.10*(1-t);},'rgba(138,152,168,.6)',1.3,[],false);        // 삼각수렴 하단

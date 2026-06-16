@@ -286,8 +286,8 @@ def build_projection(bars, draws, risk_level, fut=63, market=''):
         up_slope=gs or 0
     if up_slope<=0:  # 없으면 변동성 기반 완만 상승
         up_slope=cur*max(mu,0.001)
-    green_max=cur+up_slope*fut*0.6   # 녹색(작도 상승목표) 최대치
-    up_target=green_max               # 캡 해제 — 상승목표선 = 녹색 그대로
+    green_max=cur+up_slope*fut*0.6   # 녹색 최대치(가상선, 내부 계산용)
+    up_target=cur+(green_max-cur)*0.35  # 상승목표선 = 녹색의 35% (도달률 ~58% 현실선)
     up_reach=cur+(green_max-cur)*0.30  # 확률 계산용
     # ===== 변동성 기반 현실 목표 (기법선용) — 작도 무시, 순수 통계 =====
     sigma3m = sd * math.sqrt(fut)          # 3개월 변동성(비율)
@@ -370,12 +370,12 @@ def build_projection(bars, draws, risk_level, fut=63, market=''):
         oh_prob = {'up':27, 'dn':32, 'flat':41}  # 코스닥: 하락 우위
     else:
         oh_prob = {'up':28, 'dn':22, 'flat':51}  # 코스피: 약한 상승 우위
-    # 캡 해제 — 기법 목표를 녹색에 가두지 않음. 변동성 기반 원래 목표 그대로.
-    cap_price = int(green_max)   # 참고용(차트엔 안 씀)
-    ell_capped  = int(tgt_15sig)
-    gann_capped = int(tgt_1sig)
-    fib_up_cap  = int(tgt_2sig)
-    mc_capped   = mc_target
+    # 기법 목표를 녹색의 35% 현실선(up_target)으로 캡
+    cap_price = int(up_target)
+    ell_capped  = min(int(tgt_15sig), cap_price)
+    gann_capped = min(int(tgt_1sig),  cap_price)
+    fib_up_cap  = min(int(tgt_2sig),  cap_price)
+    mc_capped   = min(mc_target, cap_price) if mc_target>cur else mc_target
     cap_count = 0
     cap_detail = {}
     # 최근 살아있는 작도의 녹색 시작 인덱스
@@ -406,7 +406,7 @@ def build_projection(bars, draws, risk_level, fut=63, market=''):
     except: pass
     return {
         'fut':fut, 'cur':int(cur),
-        'up_slope':round(up_slope,3), 'up_target':int(up_target),
+        'up_slope':round(up_slope,3), 'up_target':int(up_target), 'green_max':int(green_max),
         'dn_target':int(dn_target),
         'volatility':round(sd,4), 'drift':round(mu,5),
         'mc_up':mc_up, 'mc_dn':mc_dn, 'mc_target':mc_target,
