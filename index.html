@@ -47,23 +47,19 @@ header{display:flex;align-items:center;gap:11px;margin-bottom:16px}
 .pattern-box .pt-name{font-size:16px;font-weight:800;margin-bottom:5px}
 .pattern-box .pt-desc{font-size:13px;color:#3a4a5a;line-height:1.7}
 .pattern-box .pt-score{font-size:12px;color:#a8b3c0;margin-top:6px}
-.loading,.empty{text-align:center;padding:50px;color:var(--muted)}
 .cap-summary{margin-top:14px;padding:11px 14px;background:#f0f7f3;border-radius:10px;font-size:14px;color:#2a6149;line-height:1.6}
 .cap-summary b{color:#1d9e75;font-size:16px}
-.prob-graph{margin-top:14px;padding:16px;background:#fff;border:1px solid var(--line);border-radius:12px}
-.pg-title{font-size:15px;font-weight:800;color:var(--navy);margin-bottom:14px}
-.pg-row{display:flex;align-items:center;gap:10px;margin-bottom:12px}
-.pg-name{width:74px;flex-shrink:0;font-size:14px;font-weight:700}
-.pg-bars{flex:1;display:flex;flex-direction:column;gap:5px}
-.pg-bar-wrap{position:relative;height:22px;background:#f2f5f8;border-radius:6px;overflow:hidden;display:flex;align-items:center}
-.pg-bar{height:100%;border-radius:6px;transition:width .5s ease}
-.pg-bar.up{background:linear-gradient(90deg,#1d9e75,#27c490)}
-.pg-bar.dn{background:linear-gradient(90deg,#d4537e,#e8769a)}
-.pg-val{position:absolute;right:8px;font-size:12px;font-weight:800}
-.pg-val.up{color:#147a58}.pg-val.dn{color:#a8345b}
-.pg-avg{margin-top:6px;padding-top:12px;border-top:2px solid var(--line)}
-.pg-avg .pg-name{font-weight:800;color:var(--navy);font-size:15px}
-.pg-avg .pg-bar-wrap{height:26px}
+.prob-graph{margin-top:14px;padding:18px 16px;background:#fff;border:1px solid var(--line);border-radius:12px}
+.pg-title{font-size:15px;font-weight:800;color:var(--navy);margin-bottom:10px;text-align:center}
+.ring-legend{display:flex;justify-content:center;gap:16px;margin-bottom:16px;font-size:12px;color:#5a6b7d}
+.ring-legend i{display:inline-block;width:11px;height:11px;border-radius:3px;vertical-align:middle;margin-right:4px}
+.ring-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
+.ring-card{background:#f9fafc;border-radius:12px;padding:12px 8px;display:flex;flex-direction:column;align-items:center}
+.ring-tech{text-align:center;font-size:14px;font-weight:800;margin-bottom:8px}
+.ring-avg{margin-top:16px;padding-top:16px;border-top:2px solid var(--line);text-align:center}
+.ring-avg-title{font-size:16px;font-weight:800;color:var(--navy);margin-bottom:8px}
+.ring-avg-wrap{display:flex;justify-content:center}
+.loading,.empty{text-align:center;padding:50px;color:var(--muted)}
 .note{font-size:13px;color:var(--muted);margin-top:16px;line-height:1.9}
 @media(max-width:600px){
   body{padding:12px 10px 50px;font-size:15px}
@@ -163,7 +159,7 @@ function render(x){
   html+='<div class="zoombar"><button id="zin">+ 확대</button><button id="zout">− 축소</button><button id="zall">전체</button></div>';
   html+='<div class="chart-host"><canvas id="cv"></canvas><div class="linetip" id="tip"></div></div>';
   html+='<div class="legend"><span><i style="background:#000"></i>2일선</span><span><i style="background:#1d9e75"></i>상승목표</span><span><i style="background:#d4537e"></i>위험</span><span><i style="background:#8a98a8"></i>삼각수렴</span><span><i style="background:#e8743b"></i>매물집중(물량 많은 가격)</span><span style="color:#a8b3c0">| 점선 우측=미래 3개월</span></div>';
-  // ===== 캡 요약 + 확률 막대그래프 =====
+  // ===== 캡 요약 + 확률 원형 게이지 =====
   var techNames={ell:'엘리엇',mc:'몬테카를로',fib:'피보나치',gann:'갠'};
   var techCols={ell:'#7f77dd',mc:'#378add',fib:'#1d9e75',gann:'#ba7517'};
   // 캡 요약
@@ -173,29 +169,51 @@ function render(x){
     html+=(cc>=3?'다수 기법이 녹색까지 강하게 봄':cc===0?'기법들이 녹색보다 보수적':'일부만 녹색까지 봄');
     html+='</div>';
   }
-  // 확률 막대그래프
+  // 원형 게이지 SVG: 한 원에 상승(초록)+하락(분홍)+횡보(회색). 합=100%
+  function ringDual(up,dn,size){
+    var flat=Math.max(0,100-up-dn);
+    var r=size/2-7, cx=size/2, cy=size/2, circ=2*Math.PI*r;
+    var upLen=circ*up/100, dnLen=circ*dn/100, flatLen=circ*flat/100;
+    var s='<svg width="'+size+'" height="'+size+'" viewBox="0 0 '+size+' '+size+'">';
+    s+='<circle cx="'+cx+'" cy="'+cy+'" r="'+r+'" fill="none" stroke="#eef1f5" stroke-width="7"/>';
+    var rot='rotate(-90 '+cx+' '+cy+')';
+    // 상승(초록)
+    s+='<circle cx="'+cx+'" cy="'+cy+'" r="'+r+'" fill="none" stroke="#1d9e75" stroke-width="7" stroke-dasharray="'+upLen+' '+(circ-upLen)+'" stroke-dashoffset="0" transform="'+rot+'"/>';
+    // 하락(분홍)
+    s+='<circle cx="'+cx+'" cy="'+cy+'" r="'+r+'" fill="none" stroke="#d4537e" stroke-width="7" stroke-dasharray="'+dnLen+' '+(circ-dnLen)+'" stroke-dashoffset="'+(-upLen)+'" transform="'+rot+'"/>';
+    // 횡보(회색)
+    if(flat>0){
+      s+='<circle cx="'+cx+'" cy="'+cy+'" r="'+r+'" fill="none" stroke="#c5cdd6" stroke-width="7" stroke-dasharray="'+flatLen+' '+(circ-flatLen)+'" stroke-dashoffset="'+(-(upLen+dnLen))+'" transform="'+rot+'"/>';
+    }
+    // 가운데 텍스트: 상승/하락 (횡보는 나머지라 생략, 색으로 보임)
+    s+='<text x="'+cx+'" y="'+(cy-size*0.07)+'" text-anchor="middle" dominant-baseline="central" font-size="'+(size*0.18)+'" font-weight="800" fill="#1d9e75">↑'+up+'%</text>';
+    s+='<text x="'+cx+'" y="'+(cy+size*0.13)+'" text-anchor="middle" dominant-baseline="central" font-size="'+(size*0.18)+'" font-weight="800" fill="#d4537e">↓'+dn+'%</text>';
+    s+='</svg>';
+    return s;
+  }
   var order=['ell','mc','fib','gann'];
   var sumUp=0,sumDn=0,cnt=0;
   html+='<div class="prob-graph"><div class="pg-title">미래 3개월 상승 / 하락 확률</div>';
+  html+='<div class="ring-legend"><span><i style="background:#1d9e75"></i>상승</span><span><i style="background:#d4537e"></i>하락</span><span><i style="background:#c5cdd6"></i>횡보</span></div>';
+  html+='<div class="ring-grid">';
   for(var oi=0;oi<order.length;oi++){
     var k=order[oi]; var mm=M[k]; if(!mm)continue;
     var up=(typeof mm.up==='number')?mm.up:0, dn=(typeof mm.dn==='number')?mm.dn:0;
     sumUp+=up; sumDn+=dn; cnt++;
-    html+='<div class="pg-row"><span class="pg-name" style="color:'+techCols[k]+'">'+techNames[k]+'</span>';
-    html+='<div class="pg-bars">';
-    html+='<div class="pg-bar-wrap"><div class="pg-bar up" style="width:'+up+'%"></div><span class="pg-val up">↑'+up+'%</span></div>';
-    html+='<div class="pg-bar-wrap"><div class="pg-bar dn" style="width:'+dn+'%"></div><span class="pg-val dn">↓'+dn+'%</span></div>';
-    html+='</div></div>';
+    html+='<div class="ring-card">';
+    html+='<div class="ring-tech" style="color:'+techCols[k]+'">'+techNames[k]+'</div>';
+    html+=ringDual(up,dn,96);
+    html+='</div>';
   }
-  // 평균
+  html+='</div>'; // ring-grid
+  // 평균 (큰 원 1개)
   if(cnt>0){
     var avgUp=Math.round(sumUp/cnt), avgDn=Math.round(sumDn/cnt);
-    html+='<div class="pg-row pg-avg"><span class="pg-name">평균</span><div class="pg-bars">';
-    html+='<div class="pg-bar-wrap"><div class="pg-bar up" style="width:'+avgUp+'%"></div><span class="pg-val up">↑'+avgUp+'%</span></div>';
-    html+='<div class="pg-bar-wrap"><div class="pg-bar dn" style="width:'+avgDn+'%"></div><span class="pg-val dn">↓'+avgDn+'%</span></div>';
-    html+='</div></div>';
+    html+='<div class="ring-avg"><div class="ring-avg-title">4개 기법 평균</div>';
+    html+='<div class="ring-avg-wrap">'+ringDual(avgUp,avgDn,140)+'</div>';
+    html+='</div>';
   }
-  html+='</div>';
+  html+='</div>'; // prob-graph
   box.innerHTML=html;
   requestAnimationFrame(function(){requestAnimationFrame(function(){mkChart(d,pj);});});
 }

@@ -297,11 +297,28 @@ def build_projection(bars, draws, risk_level, fut=63, market=''):
     mc_target=int(sim_median_end())
     def prob_reach(level, up=True):
         return sim_prob(level, up, drift_up if up else mu*0.5)
+    # ===== 3분류 확률 (상승/하락/횡보 합=100%) — 백테스트와 동일 ±10% 기준 =====
+    UP_TH=0.10; DN_TH=-0.10
+    def sim_updnflat(drift, seed):
+        u=d=f=0; random.seed(seed)
+        base_d=max(min(drift, 0.006), -0.006)  # 일간 드리프트 상한(복리폭발 방지)
+        for _ in range(N):
+            v=cur
+            for _ in range(fut):
+                v*=math.exp(random.gauss(base_d, sd))
+            chg=v/cur-1
+            if chg>=UP_TH: u+=1
+            elif chg<=DN_TH: d+=1
+            else: f+=1
+        return {'up':round(u/N*100),'dn':round(d/N*100),'flat':round(f/N*100)}
+    # 기법별 드리프트 차등 (공격적일수록 상방 기대 큼)
+    base_drift = max(min(mu, 0.004), -0.004)        # 과거 평균(중립=몬테)
+    aggr = up_slope/cur*0.30 if up_slope>0 else 0.001  # 작도 상방 기대(공격적 기법용)
     methods={
-        'ell':{'up':prob_reach(cur+(up_reach-cur)*1.1,True),'dn':prob_reach(cur+(dn_reach-cur)*1.1,False)},
-        'fib':{'up':prob_reach(cur*1.12,True),'dn':prob_reach(cur*0.90,False)},
-        'gann':{'up':prob_reach(cur+(up_reach-cur)*0.85,True),'dn':prob_reach(cur+(dn_reach-cur)*0.85,False)},
-        'mc':{'up':mc_up,'dn':mc_dn},
+        'mc':   sim_updnflat(base_drift,            13),  # 몬테: 순수 과거추세
+        'ell':  sim_updnflat(base_drift+aggr*0.7,   17),  # 엘리엇: 공격적
+        'gann': sim_updnflat(base_drift+aggr*0.4,   19),  # 갠: 중간
+        'fib':  sim_updnflat(base_drift+aggr*0.55,  23),  # 피보: 중상
     }
     # ===== 변동성 과열 신호 (백테스트 검증됨) =====
     # 2σ목표 > 작도녹색목표 → 변동성이 작도추세보다 과함 = 과열
