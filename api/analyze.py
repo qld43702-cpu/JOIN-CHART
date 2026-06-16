@@ -231,6 +231,46 @@ def build_projection(bars, draws, risk_level, fut=63, market=''):
     c=[b['c'] for b in bars]
     cur=c[-1]
     if cur<=0: return None
+
+    # ===== 엘리엇 파동 카운팅 (근사) =====
+    def count_waves(closes):
+        """ZigZag로 스윙 변곡점 추출 후 현재 파동위치 추정."""
+        if len(closes)<40: return {'phase':'?','next':'mixed','desc':'데이터 부족'}
+        THRESH=0.13
+        # ZigZag: 마지막 피벗 대비 THRESH 이상 반대로 가면 새 피벗 확정
+        piv=[closes[0]]; piv_i=[0]
+        trend=0  # 0=미정, 1=상승, -1=하락
+        ext=closes[0]; ext_i=0  # 현재 진행방향 극값
+        for i in range(1,len(closes)):
+            p=closes[i]
+            if trend>=0:
+                if p>ext: ext=p; ext_i=i           # 상승 극값 갱신
+                if ext>0 and (ext-p)/ext>=THRESH:  # 고점서 THRESH 하락 → 고점 확정
+                    piv.append(ext); piv_i.append(ext_i)
+                    trend=-1; ext=p; ext_i=i
+            if trend<=0:
+                if p<ext: ext=p; ext_i=i            # 하락 극값 갱신
+                if ext>0 and (p-ext)/ext>=THRESH:  # 저점서 THRESH 상승 → 저점 확정
+                    piv.append(ext); piv_i.append(ext_i)
+                    trend=1; ext=p; ext_i=i
+        if piv_i[-1]!=len(closes)-1:
+            piv.append(closes[-1]); piv_i.append(len(closes)-1)  # 마지막
+        if len(piv)<3:
+            return {'phase':'1','next':'up','desc':'추세 초기 — 큰 파동 형성 중, 상승 여력','legs':len(piv)-1}
+        # 다리(leg) 방향 시퀀스
+        legs=['U' if piv[j]>piv[j-1] else 'D' for j in range(1,len(piv))]
+        last_leg=legs[-1]
+        recent=legs[-5:]                          # 최근 5개 큰 다리만
+        up_in_recent=recent.count('U')
+        if last_leg=='U':
+            if up_in_recent<=1: return {'phase':'1','next':'up','desc':'상승 1파 추정 — 초기 국면, 상승 여력 있음','legs':len(legs)}
+            elif up_in_recent==2: return {'phase':'3','next':'up','desc':'상승 3파 추정 — 가장 강한 상승 구간','legs':len(legs)}
+            else: return {'phase':'5','next':'dn','desc':'상승 5파 추정 — 막바지, 조정(하락) 임박 주의','legs':len(legs)}
+        else:
+            if recent.count('D')>=3: return {'phase':'하락','next':'dn','desc':'하락 추세 추정 — 반등 시 매물 주의','legs':len(legs)}
+            return {'phase':'ABC','next':'mixed','desc':'조정(되돌림) 국면 — 2파/4파 가능, 방향 미확정','legs':len(legs)}
+    wave_info = count_waves(c[-150:] if len(c)>150 else c)
+
     # 일간 로그수익률 변동성/드리프트
     rets=[math.log(c[i]/c[i-1]) for i in range(1,len(c)) if c[i-1]>0 and c[i]>0]
     if not rets: return None
@@ -360,6 +400,7 @@ def build_projection(bars, draws, risk_level, fut=63, market=''):
             'cap':cap_price,
         },
         'overheat':overheat, 'overheat_prob':oh_prob,
+        'wave':wave_info,
         'cap_count':cap_count, 'cap_detail':cap_detail,
         'fib_levels':[round(cur*f) for f in (1.236,1.382,1.618,0.786,0.618)],
         'green_start': green_start,

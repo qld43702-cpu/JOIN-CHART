@@ -72,6 +72,8 @@ header{display:flex;align-items:center;gap:11px;margin-bottom:16px}
 .scen-btn.active.flat{background:#f4f6f8;border-color:#8a98a8}
 .scen-btn.active.dn{background:#eaf3fc;border-color:#378add}
 .scen-hint{margin-top:8px;font-size:12px;color:var(--faint);text-align:center}
+.wave-info{margin-top:10px;padding:10px 14px;background:#f7f9fb;border-radius:8px;font-size:13px;color:#3a4a5a;line-height:1.6}
+.wave-info b{color:var(--navy)}
 .ring-avg{margin-top:16px;padding-top:16px;border-top:2px solid var(--line);text-align:center}
 .ring-avg-title{font-size:16px;font-weight:800;color:var(--navy);margin-bottom:8px}
 .ring-avg-wrap{display:flex;justify-content:center}
@@ -193,6 +195,14 @@ function render(x){
   html+='<button class="scen-btn dn" data-scen="dn">📉 하락 시나리오<b>'+avgDn+'%</b></button>';
   html+='</div>';
   html+='<div class="scen-hint">버튼을 누르면 엘리엇 파동 기반 예상 흐름(지지·저항 왕복)이 미래 영역에 그려집니다</div>';
+  // 현재 파동 위치
+  if(pj.wave&&pj.wave.phase&&pj.wave.phase!=='?'){
+    var wv=pj.wave;
+    var wcol=wv.next==='up'?'#e24b4a':wv.next==='dn'?'#378add':'#8a98a8';
+    html+='<div class="wave-info" style="border-left:4px solid '+wcol+'">';
+    html+='<b>현재 파동 위치: '+wv.phase+'파 추정</b> &nbsp;'+wv.desc;
+    html+='</div>';
+  }
   // ===== 캡 요약 + 확률 원형 게이지 =====
   // 캡 요약
   if(pj.cap_count!=null){
@@ -498,96 +508,107 @@ function mkChart(data,pj){
         }
       }
     }
-    // ===== 시나리오 웨이브 (엘리엇 파동 + 지지/저항 왕복) =====
+    // ===== 시나리오 웨이브 (실제 지지/저항 레벨을 변곡점으로 왕복하는 엘리엇) =====
     if(SCEN && viewE>=n && scenFade>0){
       var startI=n-1, endI=Math.min(viewE,TOTAL-1);
       var startV=cur;
       var TT2=pj.tech_targets||{};
-      var target;
-      if(SCEN==='up')   target=(TT2.cap||pj.up_target||cur*1.2);
-      else if(SCEN==='dn') target=(pj.dn_target||cur*0.85);
-      else target=cur;
-      // 지지/저항 레벨: 60분봉 + 작도 교차점 + 매물대 추정
-      var levels=srLevels.slice();
-      draws.forEach(function(d){if(d.yc>0)levels.push(d.yc);});
+      // 천장/바닥 = 현실적 목표
+      var ceil_ = Math.min(TT2.cap||cur*1.3, pj.up_target||cur*1.3);  // 상승 천장(녹색·2σ 중 낮은쪽)
+      var floor_ = pj.dn_target||cur*0.8;                              // 하락 바닥
+      // 모든 지지/저항 레벨 수집 (60분봉 + 작도 교차점)
+      var allLv=srLevels.slice();
+      draws.forEach(function(d){if(d.yc>0)allLv.push(d.yc);});
+      // 중복 근접 제거
+      allLv=allLv.filter(function(v){return v>plot.lo&&v<plot.hi;}).sort(function(a,b){return a-b;});
+      var clean=[]; allLv.forEach(function(v){if(!clean.length||Math.abs(v-clean[clean.length-1])>cur*0.015)clean.push(v);});
+      allLv=clean;
       var color = SCEN==='up'?'rgba(226,75,74,':SCEN==='dn'?'rgba(55,138,221,':'rgba(138,152,168,';
       ctx.save();
       ctx.globalAlpha=scenFade;
-      // 지지/저항 수평선
-      levels.forEach(function(lv){
-        if(lv<plot.lo||lv>plot.hi)return;
+      // 지지/저항 수평선 표시
+      allLv.forEach(function(lv){
         ctx.strokeStyle='rgba(127,119,221,'+(0.22*scenFade)+')';ctx.lineWidth=1;ctx.setLineDash([2,4]);
         ctx.beginPath();ctx.moveTo(xOf(startI),yOf(lv));ctx.lineTo(xOf(endI),yOf(lv));ctx.stroke();ctx.setLineDash([]);
       });
 
-      // 엘리엇 파동 꼭짓점(앵커) 정의 — t(0~1), 가격레벨(0~1 비율)
-      // 상승 5파: 0→1상승→2되돌림(0.5)→3대상승(연장)→4되돌림(0.382)→5마무리
-      var anchors;
-      var span=target-startV;
+      // ── 시나리오별 "목표 레벨 시퀀스" 만들기 (이 레벨들을 변곡점으로 왕복) ──
+      // 각 변곡점 = {price, label}. 파동이 이 가격들을 순서대로 찍으며 진행.
+      var seq=[{price:startV}];
+      var wave=pj.wave||{phase:'?'}; var phase=wave.phase;
       if(SCEN==='up'){
-        anchors=[
-          {t:0.00, v:0.00},  // 시작
-          {t:0.15, v:0.38},  // 1파
-          {t:0.28, v:0.20},  // 2파 되돌림
-          {t:0.58, v:0.85},  // 3파 (최대 연장)
-          {t:0.72, v:0.68},  // 4파 되돌림
-          {t:1.00, v:1.00}   // 5파 마무리(목표)
-        ];
+        // 현재가 위 레벨들 (천장 이하)
+        var ups=allLv.filter(function(v){return v>startV*1.005 && v<=ceil_*1.001;});
+        if(ups.length===0) ups=[ceil_];
+        if(ups[ups.length-1] < ceil_*0.97) ups.push(ceil_);  // 천장 포함
+        // 엘리엇: 레벨 돌파(상승) → 직전 레벨로 눌림(되돌림) → 다음 돌파...
+        var prev=startV;
+        for(var i=0;i<ups.length;i++){
+          seq.push({price:ups[i]});                       // 저항 돌파(상승파)
+          if(i<ups.length-1){
+            // 되돌림: 방금 돌파한 레벨(이전 저항=새 지지) 부근으로 눌림
+            var pull=prev+(ups[i]-prev)*0.45;
+            seq.push({price:pull});                        // 조정파
+          }
+          prev=ups[i];
+        }
+        // 5파 막바지면 천장 찍고 살짝 꺾임 추가
+        if(phase==='5') seq.push({price:ceil_-(ceil_-startV)*0.15});
       } else if(SCEN==='dn'){
-        anchors=[
-          {t:0.00, v:0.00},
-          {t:0.15, v:0.38},  // 1파 하락(v는 하락폭 비율)
-          {t:0.28, v:0.20},  // 2파 반등
-          {t:0.58, v:0.85},  // 3파 큰하락
-          {t:0.72, v:0.68},  // 4파 반등
-          {t:1.00, v:1.00}   // 5파 마무리
-        ];
+        var dns=allLv.filter(function(v){return v<startV*0.995 && v>=floor_*0.999;}).reverse();
+        if(dns.length===0) dns=[floor_];
+        if(dns[dns.length-1] > floor_*1.03) dns.push(floor_);
+        var prevd=startV;
+        for(var i2=0;i2<dns.length;i2++){
+          seq.push({price:dns[i2]});                       // 지지 이탈(하락파)
+          if(i2<dns.length-1){
+            var bounce=prevd+(dns[i2]-prevd)*0.45;          // 반등(데드캣)
+            seq.push({price:bounce});
+          }
+          prevd=dns[i2];
+        }
       } else {
-        // 횡보: 수렴 삼각형 (고점 낮아지고 저점 높아지며 ABCDE)
-        anchors=[
-          {t:0.00, v:0.0},
-          {t:0.18, v:1.0},   // A 위
-          {t:0.36, v:-0.7},  // B 아래
-          {t:0.55, v:0.55},  // C 위(낮아짐)
-          {t:0.74, v:-0.35}, // D 아래(높아짐)
-          {t:1.00, v:0.1}    // E 수렴
-        ];
+        // 횡보: 현재가 위 첫 저항 / 아래 첫 지지 사이를 왕복, 수렴
+        var up1=allLv.filter(function(v){return v>startV;})[0] || startV*1.06;
+        var dn1=allLv.filter(function(v){return v<startV;}).slice(-1)[0] || startV*0.94;
+        // 진폭 줄며 5번 왕복 (수렴 삼각형)
+        var amps=[1.0,0.75,0.55,0.35,0.15];
+        for(var w=0;w<amps.length;w++){
+          var hiP=startV+(up1-startV)*amps[w];
+          var loP=startV+(dn1-startV)*amps[w];
+          seq.push({price: (w%2===0)?hiP:loP});
+        }
+        seq.push({price:startV+(up1-startV)*0.05});  // 수렴 마무리
       }
-      // 앵커를 가격으로 변환
-      function anchorPrice(a){
-        if(SCEN==='flat') return cur + a.v*cur*0.09;       // 횡보 진폭
-        return startV + span*a.v;                            // 상승/하락
-      }
-      // 부드러운 곡선(카드inal spline 느낌) + 지지저항 끌림
+
+      // ── 시퀀스를 시간축에 균등 배치하고 부드럽게 연결 ──
+      var steps=endI-startI;
+      var nSeg=seq.length-1;
+      // 각 변곡점의 t위치 (균등)
+      for(var q=0;q<seq.length;q++) seq[q].t=q/nSeg;
       ctx.strokeStyle=color+'0.95)';ctx.lineWidth=2.6;ctx.setLineDash([]);
       ctx.beginPath();
-      var steps=endI-startI;
       for(var s=0;s<=steps;s++){
         var t=s/steps;
-        // 현재 t가 속한 앵커 구간 찾아 보간(코사인 보간=부드러움)
-        var k=0; while(k<anchors.length-2 && t>anchors[k+1].t) k++;
-        var a0=anchors[k], a1=anchors[k+1];
+        var k=0; while(k<seq.length-2 && t>seq[k+1].t) k++;
+        var a0=seq[k], a1=seq[k+1];
         var segT=(t-a0.t)/((a1.t-a0.t)||1);
-        var ease=(1-Math.cos(segT*Math.PI))/2;             // 코사인 이징
-        var p0=anchorPrice(a0), p1=anchorPrice(a1);
-        var base=p0+(p1-p0)*ease;
-        // 잔결(자잘한 파동) 추가 — 실감
-        base += Math.sin(t*Math.PI*14)*span*0.015*(SCEN==='flat'?0:1);
-        // 지지/저항 끌림(왕복 반응)
-        for(var li=0;li<levels.length;li++){
-          if(Math.abs(base-levels[li])<cur*0.02){ base=base*0.65+levels[li]*0.35; break; }
+        var ease=(1-Math.cos(segT*Math.PI))/2;
+        var base=a0.price+(a1.price-a0.price)*ease;
+        // 레벨 근처 통과 시 자석처럼 끌림(지지/저항 반응 강조)
+        for(var li=0;li<allLv.length;li++){
+          if(Math.abs(base-allLv[li])<cur*0.012){ base=base*0.7+allLv[li]*0.3; break; }
         }
         var xx=xOf(startI+s), yy=yOf(base);
         if(s===0)ctx.moveTo(xx,yy); else ctx.lineTo(xx,yy);
       }
       ctx.stroke();
-      // 파동 번호 표시 (1~5 또는 A~E)
-      var labels = SCEN==='flat'?['A','B','C','D','E']:['1','2','3','4','5'];
+      // 파동 번호 (변곡점마다 1,2,3.. 또는 A,B,C..)
+      var labels = SCEN==='flat'?['A','B','C','D','E','']:['1','2','3','4','5','6','7','8'];
       ctx.fillStyle=color+'0.9)';ctx.font='bold 12px '+FF();ctx.textAlign='center';
-      for(var ai=1;ai<anchors.length;ai++){
-        var a=anchors[ai];
-        var px=startI+a.t*steps, py=anchorPrice(a);
-        if(px<=endI) ctx.fillText(labels[ai-1], xOf(px), yOf(py)-6);
+      for(var ai=1;ai<seq.length;ai++){
+        var px=startI+seq[ai].t*steps;
+        if(px<=endI&&labels[ai-1]) ctx.fillText(labels[ai-1], xOf(px), yOf(seq[ai].price)-6);
       }
       ctx.restore();
     }
