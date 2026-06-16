@@ -190,6 +190,66 @@ def build_drawings(bars):
             'm2':round(MA2[i],1) if MA2[i] is not None else None} for i in range(len(bars))]
     return {'chart':chart,'draws':draws,'all_risks':all_risks,'draws_start':draws_start,'cur':int(c[-1])}
 
+def build_projection(bars, draws, risk_level, fut=63):
+    """미래 예측: 몬테카를로로 양방향 확률 + 각 기법 목표 도달 확률(통일).
+    fut = 미래 영업일 수 (약 3개월)"""
+    import math, random
+    c=[b['c'] for b in bars]
+    cur=c[-1]
+    if cur<=0: return None
+    # 일간 로그수익률 변동성/드리프트
+    rets=[math.log(c[i]/c[i-1]) for i in range(1,len(c)) if c[i-1]>0 and c[i]>0]
+    if not rets: return None
+    mu=sum(rets)/len(rets)
+    var=sum((r-mu)**2 for r in rets)/len(rets)
+    sd=math.sqrt(var) if var>0 else 0.02
+    # 작도 상승목표 기울기 (살아있는 최신 작도의 녹색선)
+    up_slope=0
+    alive=[d for d in draws if d.get('alive')]
+    if alive:
+        d=alive[-1]
+        gs=d.get('M_s2') if (d.get('M_s2') not in (None,0)) else d.get('M_slope',0)
+        up_slope=gs or 0
+    if up_slope<=0:  # 없으면 변동성 기반 완만 상승
+        up_slope=cur*max(mu,0.001)
+    up_target=cur+up_slope*fut*0.6  # 차트에 그릴 풀 목표(녹색선 연장 끝)
+    up_reach=cur+up_slope*fut*0.30  # 확률 계산용 현실 목표(녹색선 절반쯤, 검증상 ~49%)
+    # 하락목표 = 위험선(60분/작도) 또는 변동성 기반
+    dn_target = risk_level if (risk_level and risk_level<cur) else cur*(1-2*sd*math.sqrt(fut))
+    dn_reach = cur+(dn_target-cur)*0.6  # 확률 계산용 현실 하락목표
+    # 몬테카를로 (약한 상방 드리프트 = 작도 추세 반영)
+    N=600
+    drift_up=max(mu*0.5, up_slope/cur*0.35) if up_slope>0 else mu*0.5
+    def sim_prob(level, up, drift):
+        hit=0; random.seed(7 if up else 11)
+        for _ in range(N):
+            v=cur; mx=cur; mn=cur
+            for _ in range(fut):
+                v*=math.exp(random.gauss(drift, sd))
+                if v>mx:mx=v
+                if v<mn:mn=v
+            if (up and mx>=level) or ((not up) and mn<=level): hit+=1
+        return round(hit/N*100)
+    mc_up=sim_prob(up_reach,True,drift_up)
+    mc_dn=sim_prob(dn_reach,False,mu*0.5)
+    def prob_reach(level, up=True):
+        return sim_prob(level, up, drift_up if up else mu*0.5)
+    methods={
+        'ell':{'up':prob_reach(cur+(up_reach-cur)*1.1,True),'dn':prob_reach(cur+(dn_reach-cur)*1.1,False)},
+        'fib':{'up':prob_reach(cur*1.12,True),'dn':prob_reach(cur*0.90,False)},
+        'gann':{'up':prob_reach(cur+(up_reach-cur)*0.85,True),'dn':prob_reach(cur+(dn_reach-cur)*0.85,False)},
+        'mc':{'up':mc_up,'dn':mc_dn},
+    }
+    return {
+        'fut':fut, 'cur':int(cur),
+        'up_slope':round(up_slope,3), 'up_target':int(up_target),
+        'dn_target':int(dn_target),
+        'volatility':round(sd,4), 'drift':round(mu,5),
+        'mc_up':mc_up, 'mc_dn':mc_dn,
+        'methods':methods,
+        'fib_levels':[round(cur*f) for f in (1.236,1.382,1.618,0.786,0.618)],
+    }
+
 def resolve_risk(day, m60):
     """위험 우선순위: ①5개범위안 ②60분에서 끌어옴 ③과거 가장가까운 1개"""
     if not day or 'draws' not in day:
@@ -232,6 +292,13 @@ class handler(BaseHTTPRequestHandler):
             # all_risks 정리(용량)
             for blk in (dd,mm):
                 if isinstance(blk,dict): blk.pop('all_risks',None)
+            # 미래 예측 (일봉만): 위험선 가격을 하락 목표로
+            if 'draws' in dd and dd.get('chart'):
+                risk_level = dd['risks'][0]['yc'] if dd.get('risks') else None
+                try:
+                    dd['projection'] = build_projection(dd['chart'], dd['draws'], risk_level)
+                except Exception as pe:
+                    dd['projection'] = None
             out={'종목코드':code,'종목명':nm,'시장':mk,'일봉':dd,'60분':mm}
             self.wfile.write(json.dumps(out,ensure_ascii=False).encode())
         except Exception as ex:
