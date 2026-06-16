@@ -327,12 +327,15 @@ function mkChart(data,pj){
     ctx.strokeStyle=color;ctx.lineWidth=w;ctx.setLineDash(dash||[]);
     ctx.beginPath();ctx.moveTo(xOf(i0),yOf(y0));ctx.lineTo(xOf(i1),yOf(y1));ctx.stroke();ctx.setLineDash([]);
   }
-  // fwave: fromGreen=true이면 GREEN_START부터, false면 n-1(현재)부터
-  // fn(t, basePrice) → y값 반환
+  // fwave: 기법선·목표선을 4/1 기준점(anchor)부터 미래끝까지 그림
+  // fn(t, basePrice) → y값. t=0(4/1) ~ t=1(미래끝)
+  var ANCHOR_I=(pj.anchor_idx!=null)?pj.anchor_idx:(n-1);
+  var ANCHOR_P=(pj.anchor_price!=null)?pj.anchor_price:cur;
+  var ANCHOR_SPAN=Math.max(1,(TOTAL-1)-ANCHOR_I);
   function fwave(ctx,fn,color,wid,dash,fromGreen){
-    var startI=fromGreen?GREEN_START:n-1;
-    var baseP=fromGreen?green_base:cur;
-    var totalSpan=fromGreen?green_span:FUT;
+    var startI=ANCHOR_I;
+    var baseP=ANCHOR_P;
+    var totalSpan=ANCHOR_SPAN;
     var endI=Math.min(viewE,TOTAL-1);
     if(startI>endI)return;
     ctx.strokeStyle=color;ctx.lineWidth=wid;ctx.setLineDash(dash||[]);
@@ -455,37 +458,33 @@ function mkChart(data,pj){
         ctx.beginPath();ctx.moveTo(ex,ey-6);ctx.lineTo(ex-5,ey+5);ctx.lineTo(ex+5,ey+5);ctx.closePath();ctx.fill();
       }
     });
-    // 미래 예측 (전부 직선)
-    if(viewE>=n&&pj){
+    // 미래 예측 (전부 직선) — 4/1 기준점부터 그림
+    if(viewE>=ANCHOR_I&&pj){
       var us=pj.up_slope||0, upT=pj.up_target, dnT=pj.dn_target, vol=pj.volatility||0.02;
-      // 기본 틀: 현재(n-1)부터 — 직선
+      // 기본 틀: 4/1부터 — 직선 (b=4/1 가격)
       fwave(ctx,function(t,b){return b+(upT-b)*t;},'rgba(29,158,117,.95)',2.4,[6,4],false);       // 상승목표(녹색)
       fwave(ctx,function(t,b){return b+(dnT-b)*t;},'rgba(212,83,126,.9)',2.4,[6,4],false);         // 위험(분홍)
       fwave(ctx,function(t,b){return b+b*0.10*(1-t);},'rgba(138,152,168,.6)',1.3,[],false);        // 삼각수렴 상단
       fwave(ctx,function(t,b){return b-b*0.10*(1-t);},'rgba(138,152,168,.6)',1.3,[],false);        // 삼각수렴 하단
-      // 체크박스 기법: 전부 변동성 기반 현실 목표, 현재(n-1)부터 직선. 작도(녹색)는 위에서 이미 그림.
+      // 체크박스 기법: 전부 4/1부터 직선
       var checked=getChecked();
       var TT=pj.tech_targets||{};
       if(checked.indexOf('ell')>=0){
-        // 엘리엇: 1.5σ 목표
         var ellTarget=(TT.ell&&isFinite(TT.ell))?TT.ell:cur*1.15;
         fwave(ctx,function(t,b){return b+(ellTarget-b)*t;},'rgba(127,119,221,.85)',2,[],false);
       }
       if(checked.indexOf('mc')>=0){
-        // 몬테카를로: 시뮬 중앙값
         var mcTarget=(TT.mc&&isFinite(TT.mc))?TT.mc:(pj.mc_target||cur*1.1);
         fwave(ctx,function(t,b){return b+(mcTarget-b)*t;},'rgba(55,138,221,.85)',2,[],false);
       }
       if(checked.indexOf('gann')>=0){
-        // 갠: 1σ 목표 (보수)
         var gannTarget=(TT.gann&&isFinite(TT.gann))?TT.gann:cur*1.08;
         fwave(ctx,function(t,b){return b+(gannTarget-b)*t;},'rgba(186,117,23,.85)',2,[],false);
       }
       if(checked.indexOf('fib')>=0){
-        // 피보나치: 현재가 기준 ±σ 사이 황금비율 레벨 (수평선)
+        // 피보나치: 수평 레벨선 — 4/1부터 미래끝까지
         var fibUp=(TT.fib_up&&isFinite(TT.fib_up))?TT.fib_up:cur*1.3;
         var fibDn=(TT.fib_dn&&isFinite(TT.fib_dn))?TT.fib_dn:cur*0.8;
-        // 현재가~상단 사이를 황금비율로 분할
         var fibLevels=[
           {r:0.382, p:cur+(fibUp-cur)*0.382},
           {r:0.618, p:cur+(fibUp-cur)*0.618},
@@ -497,10 +496,10 @@ function mkChart(data,pj){
           var lv=fibLevels[fi].p, up=lv>cur;
           ctx.strokeStyle=up?'rgba(29,158,117,.55)':'rgba(212,83,126,.55)';
           ctx.setLineDash([3,3]);ctx.lineWidth=1.2;
-          ctx.beginPath();ctx.moveTo(xOf(n-1),yOf(lv));ctx.lineTo(xOf(Math.min(viewE,TOTAL-1)),yOf(lv));ctx.stroke();ctx.setLineDash([]);
+          ctx.beginPath();ctx.moveTo(xOf(ANCHOR_I),yOf(lv));ctx.lineTo(xOf(Math.min(viewE,TOTAL-1)),yOf(lv));ctx.stroke();ctx.setLineDash([]);
           ctx.fillStyle=up?'rgba(29,158,117,.85)':'rgba(212,83,126,.85)';
           ctx.font='10px '+FF();ctx.textAlign='left';
-          ctx.fillText(Math.round(lv).toLocaleString(),xOf(n-1)+2,yOf(lv)-2);
+          ctx.fillText(Math.round(lv).toLocaleString(),xOf(ANCHOR_I)+2,yOf(lv)-2);
         }
       }
     }
