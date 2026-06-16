@@ -139,26 +139,6 @@ function render(x){
   html+='<div class="zoombar"><button id="zin">+ 확대</button><button id="zout">− 축소</button><button id="zall">전체</button></div>';
   html+='<div class="chart-host"><canvas id="cv"></canvas><div class="linetip" id="tip"></div></div>';
   html+='<div class="legend"><span><i style="background:#000"></i>2일선</span><span><i style="background:#1d9e75"></i>상승목표</span><span><i style="background:#d4537e"></i>위험</span><span><i style="background:#8a98a8"></i>삼각수렴</span><span style="color:#a8b3c0">| 점선 우측=미래 3개월</span></div>';
-  // 작도 목록
-  var info='';
-  (d.draws||[]).forEach(function(dd,i){
-    info+='<div class="di"><span class="'+(dd.alive?'alive':'dead')+'">'+(dd.alive?'● 살아있음':'○ 지남')+'</span> 작도'+(i+1)+' · 매수 <span class="v">'+dd.ep.toLocaleString()+'</span> · 1차 <span class="v">'+dd.yc.toLocaleString()+'</span></div>';
-  });
-  html+='<div class="draws-info">'+info+'</div>';
-  // 패턴 분석 박스
-  var pt=d.pattern;
-  if(pt&&pt.best){
-    var colMap={'엘리엇':'#7f77dd','피보나치':'#1d9e75','갠':'#ba7517','몬테카를로':'#378add'};
-    var ptCol=colMap[pt.best]||'#1a3a5c';
-    var scoreArr=[];
-    Object.keys(pt.scores).forEach(function(k){scoreArr.push(k+' '+pt.scores[k]+'점');});
-    html+='<div class="pattern-box" style="border-left:4px solid '+ptCol+'">';
-    html+='<div class="pt-label">과거 '+pt.sample+'개 작도 녹색 이후 반응 분석</div>';
-    html+='<div class="pt-name" style="color:'+ptCol+'">📊 '+pt.best+' 패턴과 유사</div>';
-    html+='<div class="pt-desc">'+pt.detail+'</div>';
-    html+='<div class="pt-score">'+scoreArr.join(' · ')+'</div>';
-    html+='</div>';
-  }
   box.innerHTML=html;
   requestAnimationFrame(function(){requestAnimationFrame(function(){mkChart(d,pj);});});
 }
@@ -317,54 +297,44 @@ function mkChart(data,pj){
         ctx.beginPath();ctx.moveTo(ex,ey-6);ctx.lineTo(ex-5,ey+5);ctx.lineTo(ex+5,ey+5);ctx.closePath();ctx.fill();
       }
     });
-    // 미래 예측
+    // 미래 예측 (전부 직선)
     if(viewE>=n&&pj){
       var us=pj.up_slope||0, upT=pj.up_target, dnT=pj.dn_target, vol=pj.volatility||0.02;
-      // 기본 틀: 현재(n-1)부터
-      fwave(ctx,function(t,b){return b+(upT-b)*t+Math.sin(t*Math.PI*3)*b*0.03;},'rgba(29,158,117,.95)',2.4,[6,4],false);
-      fwave(ctx,function(t,b){return b+(dnT-b)*t+Math.sin(t*Math.PI*3)*b*0.025;},'rgba(212,83,126,.9)',2.4,[6,4],false);
-      fwave(ctx,function(t,b){return b+b*0.10*(1-t);},'rgba(138,152,168,.6)',1.3,[],false);
-      fwave(ctx,function(t,b){return b-b*0.10*(1-t);},'rgba(138,152,168,.6)',1.3,[],false);
-      fwave(ctx,function(t,b){return b+Math.sin(t*Math.PI*5)*b*0.10*(1-t);},'rgba(138,152,168,.8)',1.4,[],false);
-      // 체크박스 기법: 녹색 시작점(GREEN_START)부터
+      // 기본 틀: 현재(n-1)부터 — 직선
+      fwave(ctx,function(t,b){return b+(upT-b)*t;},'rgba(29,158,117,.95)',2.4,[6,4],false);       // 상승목표(녹색)
+      fwave(ctx,function(t,b){return b+(dnT-b)*t;},'rgba(212,83,126,.9)',2.4,[6,4],false);         // 위험(분홍)
+      fwave(ctx,function(t,b){return b+b*0.10*(1-t);},'rgba(138,152,168,.6)',1.3,[],false);        // 삼각수렴 상단
+      fwave(ctx,function(t,b){return b-b*0.10*(1-t);},'rgba(138,152,168,.6)',1.3,[],false);        // 삼각수렴 하단
+      // 체크박스 기법: 녹색 시작점(GREEN_START)부터 — 전부 직선
       var checked=getChecked();
       if(checked.indexOf('ell')>=0){
-        fwave(ctx,function(t,b){
-          var pts=[0,0.08,0.04,0.20,0.13,0.32];
-          var sg=t*5, k=Math.floor(sg), f=sg-k;
-          var a=pts[Math.min(k,4)], bv=pts[Math.min(k+1,5)];
-          return b*(1+(a+(bv-a)*f));
-        },'rgba(127,119,221,.75)',1.8,[],true);
+        // 엘리엇: 녹색 시작가에서 엘리엇 목표가까지 직선
+        var ellTarget=green_base*1.32;
+        fwave(ctx,function(t,b){return b+(ellTarget-b)*t;},'rgba(127,119,221,.85)',2,[],true);
       }
       if(checked.indexOf('mc')>=0){
-        for(var p=0;p<8;p++){
-          ctx.strokeStyle='rgba(55,138,221,.15)';ctx.lineWidth=1;
-          ctx.beginPath();ctx.moveTo(xOf(GREEN_START),yOf(green_base));
-          var v=green_base;
-          for(var i=GREEN_START+1;i<=Math.min(viewE,TOTAL-1);i++){
-            v*=Math.exp((us/cur*0.4)+(Math.random()-0.5)*vol*2.2);
-            ctx.lineTo(xOf(i),yOf(v));
-          }
-          ctx.stroke();
-        }
+        // 몬테카를로: 평균 경로 직선 (상방 드리프트 반영)
+        var mcTarget=green_base*Math.exp((us/cur*0.4)*green_span);
+        if(!isFinite(mcTarget)||mcTarget<=0)mcTarget=green_base*1.15;
+        fwave(ctx,function(t,b){return b+(mcTarget-b)*t;},'rgba(55,138,221,.85)',2,[],true);
       }
       if(checked.indexOf('fib')>=0){
+        // 피보나치: 수평 레벨선 (직선)
         var fibR=[1.236,1.382,1.618,0.786,0.618];
         for(var fi=0;fi<fibR.length;fi++){
           var lv=green_base*fibR[fi], up=lv>green_base;
-          ctx.strokeStyle=up?'rgba(29,158,117,.45)':'rgba(212,83,126,.45)';
-          ctx.setLineDash([3,3]);ctx.lineWidth=1;
+          ctx.strokeStyle=up?'rgba(29,158,117,.55)':'rgba(212,83,126,.55)';
+          ctx.setLineDash([3,3]);ctx.lineWidth=1.2;
           ctx.beginPath();ctx.moveTo(xOf(GREEN_START),yOf(lv));ctx.lineTo(xOf(Math.min(viewE,TOTAL-1)),yOf(lv));ctx.stroke();ctx.setLineDash([]);
-          ctx.fillStyle=up?'rgba(29,158,117,.7)':'rgba(212,83,126,.7)';
+          ctx.fillStyle=up?'rgba(29,158,117,.85)':'rgba(212,83,126,.85)';
           ctx.font='10px '+FF();ctx.textAlign='right';
           ctx.fillText((fibR[fi]*100).toFixed(0)+'%',xOf(GREEN_START)-2,yOf(lv)+3);
         }
       }
       if(checked.indexOf('gann')>=0){
-        fwave(ctx,function(t,b){
-          var step=Math.floor(t*6)/6;
-          return b+(upT-b)*0.7*step+Math.sin(t*Math.PI*6)*b*0.015;
-        },'rgba(186,117,23,.65)',1.7,[],true);
+        // 갠: 녹색 시작가에서 갠 목표가까지 직선
+        var gannTarget=green_base+(upT-green_base)*0.7;
+        fwave(ctx,function(t,b){return b+(gannTarget-b)*t;},'rgba(186,117,23,.85)',2,[],true);
       }
     }
     // 크로스헤어
