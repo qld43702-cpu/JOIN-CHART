@@ -90,9 +90,13 @@ async function go(code){
 }
 function render(x){
   const box=document.getElementById('result');
-  const anyRisk=(x.일봉&&x.일봉.risk_on)||(x['60분']&&x['60분'].risk_on);
+  const dayRisk=x.일봉&&x.일봉.risk_on, m60Risk=x['60분']&&x['60분'].risk_on;
+  const src=(x.일봉&&x.일봉.risk_src)||'';
   let html=`<div class="result-head"><span class="rn">${x.종목명||''}</span><span class="rc">${x.종목코드} · ${x.시장||''}</span><span class="rp">${(x.일봉&&x.일봉.cur?x.일봉.cur.toLocaleString():'')}원</span></div>`;
-  if(anyRisk) html+=`<div class="risk-alert"><span class="ri">⚠️</span><span class="rt">하락 위험 신호 — 반대 작도 감지됨 (하방 교차점까지 떨어질 가능성)</span></div>`;
+  if(dayRisk||m60Risk){
+    let where = src==='60분'?'60분봉에서 감지':(src==='과거'?'과거 구간에서 감지':'감지됨');
+    html+=`<div class="risk-alert"><span class="ri">⚠️</span><span class="rt">하락 위험 신호 — 반대 작도 ${where} (하방 교차점까지 떨어질 가능성)</span></div>`;
+  }
   html+=track('📅 일봉','스윙','day',x.일봉);
   html+=track('⏱️ 60분','데이트레이딩','m60',x['60분']);
   box.innerHTML=html;
@@ -104,7 +108,7 @@ function track(title,sub,key,data){
   const nd=data.draws.length, alive=data.draws.filter(d=>d.alive).length;
   let info='';
   data.draws.forEach((d,i)=>{
-    info+=`<div class="di"><span class="${d.alive?'alive':'dead'}">${d.alive?'● 살아있음':'○ 지남'}</span> 작도${i+1} · 매수 <span class="v">${d.ep.toLocaleString()}</span> · 1차 <span class="v">${d.yc.toLocaleString()}</span> · 2차목표 <span class="tg">${d.target?d.target.toLocaleString():'-'}</span></div>`;
+    info+=`<div class="di"><span class="${d.alive?'alive':'dead'}">${d.alive?'● 살아있음':'○ 지남'}</span> 작도${i+1} · 매수 <span class="v">${d.ep.toLocaleString()}</span> · 1차 <span class="v">${d.yc.toLocaleString()}</span></div>`;
   });
   return `<div class="track">
     <div class="track-title">${title} <span class="badge">${sub}</span> <span class="badge">작도 ${nd} · 살아있음 ${alive}</span><span class="hoverp" id="hp-${key}">—</span></div>
@@ -118,13 +122,17 @@ function mkChart(key,data){
   const cv=document.getElementById('cv-'+key), tip=document.getElementById('tip-'+key), hp=document.getElementById('hp-'+key);
   const ch=data.chart, n=ch.length, draws=data.draws||[], risks=data.risks||[];
   const c=ch.map(r=>r.c), ma2=ch.map(r=>r.m2);
-  const DPR=window.devicePixelRatio||1; const padR=66,padL=8,padT=12,padB=26;
+  const DPR=window.devicePixelRatio||1; const padR=66,padL=8,padT=12,padB=30;
   let W,H,plot, viewS=0, viewE=n-1;  // 보이는 봉 범위(확대축소)
+  // 초기 뷰: 과거 위험(view_start) 있으면 거기부터, 없으면 최근 5개 작도+위험 구간
+  {let cand=[];draws.forEach(d=>cand.push(d.A_t1));risks.forEach(r=>{if(!r.price_only&&r.A_t1!=null)cand.push(r.A_t1);});
+   if(data.view_start!=null) cand.push(data.view_start);
+   if(cand.length){let mn=Math.min(...cand);viewS=Math.max(0,mn-4);viewE=n-1;if(viewE-viewS<12)viewS=Math.max(0,viewE-12);}}
   function lay(){W=cv.clientWidth;H=cv.clientHeight;cv.width=W*DPR;cv.height=H*DPR;cv.getContext('2d').setTransform(DPR,0,0,DPR,0,0);
     const vis=ch.slice(viewS,viewE+1);
     let lo=Math.min(...vis.map(r=>r.l)), hi=Math.max(...vis.map(r=>r.h));
     draws.forEach(d=>{if(d.alive&&d.target&&d.M_t1>=viewS)hi=Math.max(hi,d.target);});
-    risks.forEach(r=>{if(r.A_t1>=viewS||r.xc>=viewS)lo=Math.min(lo,r.yc);});
+    risks.forEach(r=>{lo=Math.min(lo,r.yc);});
     lo*=0.99;hi*=1.01; plot={lo,hi,x0:padL,x1:W-padR,y0:padT,y1:H-padB};}
   const span=()=>(viewE-viewS+1);
   const xOf=i=>plot.x0+(i-viewS+0.5)/span()*(plot.x1-plot.x0);
@@ -137,6 +145,13 @@ function mkChart(key,data){
     const ctx=cv.getContext('2d');ctx.clearRect(0,0,W,H);ctx.font='12px '+FF();
     ctx.strokeStyle='#eef1f5';ctx.lineWidth=1;ctx.fillStyle='#9aa6b2';ctx.textAlign='left';
     for(let g=0;g<=4;g++){const v=plot.lo+(plot.hi-plot.lo)*g/4,y=yOf(v);ctx.beginPath();ctx.moveTo(plot.x0,y);ctx.lineTo(plot.x1,y);ctx.stroke();ctx.fillText(Math.round(v).toLocaleString(),plot.x1+6,y+4);}
+    // X축 날짜 라벨 (상시)
+    ctx.fillStyle='#5a6b7d';ctx.font='12px '+FF();ctx.textAlign='center';
+    const ticks=6, sp0=span();
+    for(let t=0;t<ticks;t++){const idx=viewS+Math.round((sp0-1)*t/(ticks-1));if(!ch[idx])continue;
+      const x=xOf(idx);ctx.fillText(ch[idx].d, x, plot.y1+15);
+      ctx.strokeStyle='#eef1f5';ctx.beginPath();ctx.moveTo(x,plot.y0);ctx.lineTo(x,plot.y1);ctx.stroke();}
+    ctx.textAlign='left';
     const cw=Math.max(2,(plot.x1-plot.x0)/span()*0.62);
     for(let i=viewS;i<=viewE;i++){const r=ch[i],x=xOf(i),u=r.c>=r.o;
       ctx.strokeStyle=u?'#e24b4a':'#378add';ctx.lineWidth=1;
@@ -147,9 +162,11 @@ function mkChart(key,data){
     ctx.strokeStyle='#111';ctx.lineWidth=1.8;ctx.beginPath();let st=false;
     for(let i=viewS;i<=viewE;i++){if(ma2[i]==null)continue;const x=xOf(i),y=yOf(ma2[i]);st?ctx.lineTo(x,y):ctx.moveTo(x,y);st=true;}ctx.stroke();
     risks.forEach(d=>{
-      seg(ctx,d.A_t1-1,ma2[d.A_t1-1]||d.A_y1,d.A_t1,d.A_y1,'#d4537e',3);
-      seg(ctx,d.B_t1,d.B_y1,Math.round(d.xc),d.yc,'rgba(212,83,126,.6)',1.2,[4,3]);
-      ctx.strokeStyle='rgba(212,83,126,.85)';ctx.lineWidth=1.4;ctx.setLineDash([]);ctx.beginPath();ctx.moveTo(plot.x0,yOf(d.yc));ctx.lineTo(plot.x1,yOf(d.yc));ctx.stroke();
+      if(!d.price_only){
+        seg(ctx,d.A_t1-1,ma2[d.A_t1-1]||d.A_y1,d.A_t1,d.A_y1,'#d4537e',3);
+        seg(ctx,d.B_t1,d.B_y1,Math.round(d.xc),d.yc,'rgba(212,83,126,.6)',1.2,[4,3]);
+      }
+      ctx.strokeStyle='rgba(212,83,126,.85)';ctx.lineWidth=1.4;ctx.setLineDash(d.price_only?[6,4]:[]);ctx.beginPath();ctx.moveTo(plot.x0,yOf(d.yc));ctx.lineTo(plot.x1,yOf(d.yc));ctx.stroke();ctx.setLineDash([]);
       ctx.fillStyle='#d4537e';ctx.fillRect(plot.x1-2,yOf(d.yc)-9,64,18);ctx.fillStyle='#fff';ctx.font='11px '+FF();ctx.fillText('위험 '+Math.round(d.yc).toLocaleString(),plot.x1+2,yOf(d.yc)+3);});
     draws.forEach(d=>{const al=d.alive?1:.32;
       seg(ctx,d.A_t1-1,ma2[d.A_t1-1]||d.A_y1,d.A_t1,d.A_y1,'rgba(226,75,74,'+al+')',3);
@@ -162,7 +179,6 @@ function mkChart(key,data){
       else seg(ctx,d.M_t0,d.M_y0,d.M_t1,d.M_y1,'rgba(29,158,117,'+al+')',3);
       seg(ctx,d.M_t1,d.M_y1,n-1,d.M_y1+gs*(n-1-d.M_t1),'rgba(29,158,117,'+(al*.7)+')',1.6,[5,3]);
       if(d.entry>=viewS&&d.entry<=viewE){ctx.fillStyle=d.alive?'#e8743b':'rgba(232,116,59,.4)';ctx.beginPath();const ex=xOf(d.entry),ey=yOf(c[d.entry]);ctx.moveTo(ex,ey-7);ctx.lineTo(ex-6,ey+5);ctx.lineTo(ex+6,ey+5);ctx.closePath();ctx.fill();}
-      if(d.alive&&d.target){const ty=yOf(d.target);ctx.fillStyle='#1d9e75';ctx.fillRect(plot.x1-2,ty-9,64,18);ctx.fillStyle='#fff';ctx.font='11px '+FF();ctx.fillText('목표 '+Math.round(d.target).toLocaleString(),plot.x1+2,ty+3);}
     });
     if(mx!=null&&mx>=plot.x0&&mx<=plot.x1&&my!=null){
       ctx.strokeStyle='rgba(26,58,92,.5)';ctx.lineWidth=1;ctx.setLineDash([4,4]);

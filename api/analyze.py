@@ -132,9 +132,10 @@ def build_drawings(bars):
         })
     # 최근 5개 작도만
     draws=draws[-5:]
+    draws_start = min([d['A_t1'] for d in draws]) if draws else 0  # 5개 작도 시작 인덱스
 
     # 반대 작도(위험): 상승(A)-하락파동(M)-상승(B) → 하방 교차점
-    risks=[]
+    all_risks=[]
     for i in range(len(segs)-2):
         A,M,B=segs[i],segs[i+1],segs[i+2]
         if not A['up'] or M['up'] or not B['up']: continue  # 상승-하락-상승
@@ -149,17 +150,36 @@ def build_drawings(bars):
         if xc>=min(ta1,tb1) or xc<0: continue
         cur_p=c[-1]
         if yc>=cur_p: continue  # 하방 교차점이 현재가보다 아래여야 위험
-        risks.append({
+        all_risks.append({
             'A_t1':A['t1'],'A_y1':round(MA2[A['t1']],1),
             'B_t1':B['t1'],'B_y1':round(MA2[B['t1']],1),
             'xc':round(xc,2),'yc':round(yc,1)
         })
-    risks=risks[-3:]  # 최근 3개
 
     chart=[{'i':i,'d':(bars[i].get('d','')[4:6]+'/'+bars[i].get('d','')[6:8]+(' '+str(bars[i]['t']).zfill(6)[:2]+'시' if 't' in bars[i] else '')),
             'o':int(bars[i]['o']),'h':int(bars[i]['h']),'l':int(bars[i]['l']),'c':int(bars[i]['c']),
             'm2':round(MA2[i],1) if MA2[i] is not None else None} for i in range(len(bars))]
-    return {'chart':chart,'draws':draws,'risks':risks,'cur':int(c[-1]),'risk_on':len(risks)>0}
+    return {'chart':chart,'draws':draws,'all_risks':all_risks,'draws_start':draws_start,'cur':int(c[-1])}
+
+def resolve_risk(day, m60):
+    """위험 우선순위: ①5개범위안 ②60분에서 끌어옴 ③과거 가장가까운 1개"""
+    if not day or 'draws' not in day:
+        return
+    ds=day.get('draws_start',0)
+    ar=day.get('all_risks',[])
+    in_range=[r for r in ar if r['xc']>=ds]
+    if in_range:
+        day['risks']=in_range[-3:]; day['risk_on']=True; day['risk_src']='범위내'; day['view_start']=None
+    elif m60 and m60.get('all_risks'):
+        # 60분 위험 '가격'만 가로선으로 끌어옴 (위치 안 맞으니 price_only)
+        near=m60['all_risks'][-1]
+        day['risks']=[{'yc':near['yc'],'price_only':True}]; day['risk_on']=True; day['risk_src']='60분'; day['view_start']=None
+    elif ar:
+        # 과거 가장 가까운 위험 1개 → 그 지점부터 차트 시작
+        near=ar[-1]
+        day['risks']=[near]; day['risk_on']=True; day['risk_src']='과거'; day['view_start']=int(min(near['A_t1'], near['xc']))
+    else:
+        day['risks']=[]; day['risk_on']=False; day['risk_src']=None; day['view_start']=None
 
 class handler(BaseHTTPRequestHandler):
     def do_GET(self):
@@ -172,9 +192,18 @@ class handler(BaseHTTPRequestHandler):
                 self.wfile.write(json.dumps({'error':'종목코드 6자리'}).encode()); return
             tk=token(); nm,mk=get_name(tk,code)
             day=get_day(tk,code); m60=get_60m(tk,code)
-            out={'종목코드':code,'종목명':nm,'시장':mk,
-                 '일봉': build_drawings(day) if day and len(day)>30 else {'error':'데이터 부족'},
-                 '60분': build_drawings(m60) if m60 and len(m60)>30 else {'error':'데이터 부족'}}
+            dd = build_drawings(day) if day and len(day)>30 else {'error':'데이터 부족'}
+            mm = build_drawings(m60) if m60 and len(m60)>30 else {'error':'데이터 부족'}
+            # 일봉 위험: ①범위안 ②60분끌어옴 ③과거1개  (60분 all_risks 참조하므로 먼저)
+            if 'draws' in dd:
+                resolve_risk(dd, mm if 'draws' in mm else None)
+            # 60분 자체 위험: 자기 5개작도 범위 안 + 과거1개 (60분끼리)
+            if 'draws' in mm:
+                resolve_risk(mm, None)
+            # all_risks 정리(용량)
+            for blk in (dd,mm):
+                if isinstance(blk,dict): blk.pop('all_risks',None)
+            out={'종목코드':code,'종목명':nm,'시장':mk,'일봉':dd,'60분':mm}
             self.wfile.write(json.dumps(out,ensure_ascii=False).encode())
         except Exception as ex:
             self.wfile.write(json.dumps({'error':'분석 실패: '+str(ex)}).encode())
