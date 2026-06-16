@@ -200,13 +200,6 @@ function render(x){
     html+='</div>';
   }
   // ===== 캡 요약 + 확률 원형 게이지 =====
-  // 캡 요약
-  if(pj.cap_count!=null){
-    var cc=pj.cap_count;
-    html+='<div class="cap-summary">기법 목표 4개 중 <b>'+cc+'개</b>가 작도 상승목표(녹색)에 도달 — ';
-    html+=(cc>=3?'다수 기법이 녹색까지 강하게 봄':cc===0?'기법들이 녹색보다 보수적':'일부만 녹색까지 봄');
-    html+='</div>';
-  }
   // 원형 게이지 SVG: 상승(빨강)+하락(파랑)+횡보(회색). 합=100%. 숫자는 원 밖에 표기.
   function ringDual(up,dn,size){
     var flat=Math.max(0,100-up-dn);
