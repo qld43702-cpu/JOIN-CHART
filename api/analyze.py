@@ -514,6 +514,15 @@ class handler(BaseHTTPRequestHandler):
                     [{**r,'c':float(r['c']),'o':float(r.get('o',r['c'])),'h':float(r.get('h',r['c'])),'l':float(r.get('l',r['c']))} for r in dd['chart']],
                     dd['draws']
                 )
+            # 60분봉 지지/저항 가격 수집 (작도 교차점 yc + 위험선 yc) — all_risks 지우기 전에
+            sr_levels=[]
+            if isinstance(mm,dict) and 'draws' in mm:
+                for d in mm.get('draws',[]):
+                    if d.get('yc') and d['yc']>0: sr_levels.append(round(d['yc']))
+                for rk in mm.get('risks',[]):
+                    if rk.get('yc') and rk['yc']>0: sr_levels.append(round(rk['yc']))
+            # 중복 제거 + 정렬
+            sr_levels=sorted(set(sr_levels))
             # all_risks 정리(용량)
             for blk in (dd,mm):
                 if isinstance(blk,dict): blk.pop('all_risks',None)
@@ -522,6 +531,8 @@ class handler(BaseHTTPRequestHandler):
                 risk_level = dd['risks'][0]['yc'] if dd.get('risks') else None
                 try:
                     dd['projection'] = build_projection(dd['chart'], dd['draws'], risk_level, market=mk)
+                    if dd['projection']:
+                        dd['projection']['sr_levels'] = sr_levels  # 60분봉 지지/저항
                 except Exception as pe:
                     dd['projection'] = None
             out={'종목코드':code,'종목명':nm,'시장':mk,'일봉':dd,'60분':mm}
