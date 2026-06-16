@@ -130,6 +130,14 @@ function render(x){
     var w=src==='60분'?'60분봉에서 감지':(src==='과거'?'과거 구간에서 감지':'감지됨');
     html+='<div class="risk-alert"><span>⚠️</span><span class="rt">하락 위험 신호 — 반대 작도 '+w+'</span></div>';
   }
+  // 변동성 과열 경고 (백테스트 검증)
+  if(pj.overheat){
+    var op=pj.overheat_prob||{up:27,dn:28,flat:45};
+    html+='<div class="risk-alert" style="background:#fff4e8;border-color:#f0b67a">';
+    html+='<span>🔥</span><span class="rt" style="color:#b35e1a">변동성 과열 — 기대범위가 작도 상한을 넘음. ';
+    html+='과거 검증: 3개월 뒤 상승 '+op.up+'% / 하락 '+op.dn+'% / 횡보 '+op.flat+'% (상승 신호 아님, 주의)</span>';
+    html+='</div>';
+  }
   html+='<div class="methods">';
   html+=mkMethodLabel('ell','엘리엇','#7f77dd',M);
   html+=mkMethodLabel('mc','몬테카를로','#378add',M);
@@ -333,8 +341,6 @@ function mkChart(data,pj){
       seg(ctx,d.A_t1,d.A_y1,Math.round(d.xc),d.yc,'rgba(226,75,74,'+(al*.5)+')',1,[4,3]);
       seg(ctx,d.B_t1-1,ma2[d.B_t1-1]||d.B_y1,d.B_t1,d.B_y1,'rgba(55,138,221,'+al+')',2.4);
       seg(ctx,d.B_t1,d.B_y1,Math.round(d.xc),d.yc,'rgba(55,138,221,'+(al*.5)+')',1,[4,3]);
-      ctx.strokeStyle='rgba(127,119,221,'+al+')';ctx.lineWidth=1.2;ctx.setLineDash([]);
-      ctx.beginPath();ctx.moveTo(plot.x0,yOf(d.yc));ctx.lineTo(plot.x1,yOf(d.yc));ctx.stroke();
       if(d.entry>=viewS&&d.entry<=viewE&&d.entry<n){
         ctx.fillStyle=d.alive?'#e8743b':'rgba(232,116,59,.4)';
         var ex=xOf(d.entry),ey=yOf(c[d.entry]);

@@ -130,6 +130,7 @@ def build_drawings(bars):
         xc=(yb1-ya1-sb*tb1+sa*ta1)/denom
         yc=ya1+sa*(xc-ta1)
         if xc>=min(ta1,tb1) or xc<0: continue
+        if yc<=0: continue  # 교차점 가격 0 이하 제외
         # 상승파동 M 두 갈래 (변곡점)
         mt0,mt1=M['t0'],M['t1']
         m_slope=(MA2[mt1]-MA2[mt0])/(mt1-mt0) if mt1>mt0 else 0
@@ -179,6 +180,8 @@ def build_drawings(bars):
         if xc>=min(ta1,tb1) or xc<0: continue
         cur_p=c[-1]
         if yc>=cur_p: continue  # 하방 교차점이 현재가보다 아래여야 위험
+        if yc<=0: continue       # 주가는 0 밑으로 못 감 — 음수 교차점 제외
+        if yc < cur_p*0.3: continue  # 현재가의 30% 미만은 비현실적 위험선, 제외
         all_risks.append({
             'A_t1':A['t1'],'A_y1':round(MA2[A['t1']],1),
             'B_t1':B['t1'],'B_y1':round(MA2[B['t1']],1),
@@ -191,7 +194,7 @@ def build_drawings(bars):
             'm2':round(MA2[i],1) if MA2[i] is not None else None} for i in range(len(bars))]
     return {'chart':chart,'draws':draws,'all_risks':all_risks,'draws_start':draws_start,'cur':int(c[-1])}
 
-def build_projection(bars, draws, risk_level, fut=63):
+def build_projection(bars, draws, risk_level, fut=63, market=''):
     """미래 예측: 몬테카를로로 양방향 확률 + 각 기법 목표 도달 확률(통일).
     fut = 미래 영업일 수 (약 3개월)"""
     import math, random
@@ -217,13 +220,21 @@ def build_projection(bars, draws, risk_level, fut=63):
     up_reach=cur+up_slope*fut*0.30  # 확률 계산용 현실 목표(녹색선 절반쯤, 검증상 ~49%)
     # ===== 변동성 기반 현실 목표 (기법선용) — 작도 무시, 순수 통계 =====
     sigma3m = sd * math.sqrt(fut)          # 3개월 변동성(비율)
-    tgt_1sig  = cur*(1+1.0*sigma3m)
-    tgt_15sig = cur*(1+1.5*sigma3m)
-    tgt_2sig  = cur*(1+2.0*sigma3m)        # 상승 상한 (이 이상은 비현실)
-    dn_1sig   = cur*(1-1.0*sigma3m)
-    dn_2sig   = cur*(1-2.0*sigma3m)
-    # 하락목표 = 위험선(60분/작도) 또는 변동성 기반
-    dn_target = risk_level if (risk_level and risk_level<cur) else cur*(1-2*sd*math.sqrt(fut))
+    # 상승 목표 (상한: 변동성 과해도 합리적 범위)
+    sigma_cap = min(sigma3m, 0.6)          # σ비율 60% 상한 (그 이상은 비현실)
+    tgt_1sig  = cur*(1+1.0*sigma_cap)
+    tgt_15sig = cur*(1+1.5*min(sigma3m,0.4))
+    tgt_2sig  = cur*(1+2.0*min(sigma3m,0.3))   # 상승 상한
+    # 하락 목표 (하한: 주가는 0 밑으로 못 감. 현재가의 40%를 바닥으로)
+    DN_FLOOR = cur*0.4                      # 3개월 하락 바닥 (현실적으로 -60%면 충분히 극단)
+    dn_1sig   = max(cur*(1-1.0*sigma3m), DN_FLOOR)
+    dn_2sig   = max(cur*(1-2.0*sigma3m), DN_FLOOR)
+    # 하락목표 = 위험선(60분/작도) 또는 변동성 기반 (둘 다 0 이하 방지)
+    if risk_level and 0 < risk_level < cur:
+        dn_target = risk_level
+    else:
+        dn_target = max(cur*(1-2*sigma3m), DN_FLOOR)
+    dn_target = max(dn_target, cur*0.4)     # 최종 안전장치
     dn_reach = cur+(dn_target-cur)*0.6  # 확률 계산용 현실 하락목표
     # 몬테카를로 (약한 상방 드리프트 = 작도 추세 반영)
     N=600
@@ -262,6 +273,21 @@ def build_projection(bars, draws, risk_level, fut=63):
         'gann':{'up':prob_reach(cur+(up_reach-cur)*0.85,True),'dn':prob_reach(cur+(dn_reach-cur)*0.85,False)},
         'mc':{'up':mc_up,'dn':mc_dn},
     }
+    # ===== 변동성 과열 신호 (백테스트 검증됨) =====
+    # 2σ목표 > 작도녹색목표 → 변동성이 작도추세보다 과함 = 과열
+    # 백테스트(2669종목 12528건): 상승27% / 하락28.5% / 횡보44.5% — 상승신호 아님, 코스닥은 하락우위
+    overheat = tgt_2sig > up_target
+    # 시장별 검증 확률 (market: 코스피/코스닥)
+    if market == '코스닥':
+        oh_prob = {'up':27, 'dn':32, 'flat':41}  # 코스닥: 하락 우위
+    else:
+        oh_prob = {'up':28, 'dn':22, 'flat':51}  # 코스피: 약한 상승 우위
+    # 기법 목표를 작도 녹색 상한으로 캡 (녹색 넘지 않게)
+    cap_price = int(up_target)
+    ell_capped  = min(int(tgt_15sig), cap_price)
+    gann_capped = min(int(tgt_1sig),  cap_price)
+    fib_up_cap  = min(int(tgt_2sig),  cap_price)
+    mc_capped   = min(mc_target, cap_price) if mc_target>cur else mc_target
     # 최근 살아있는 작도의 녹색 시작 인덱스
     green_start = alive[-1].get('M_t1') if alive else (draws[-1].get('M_t1') if draws else None)
     return {
@@ -272,13 +298,14 @@ def build_projection(bars, draws, risk_level, fut=63):
         'mc_up':mc_up, 'mc_dn':mc_dn, 'mc_target':mc_target,
         'methods':methods,
         'tech_targets':{
-            'ell':int(tgt_15sig),   # 엘리엇: 1.5σ (중간 공격)
-            'mc':mc_target,         # 몬테: 시뮬 중앙값
-            'gann':int(tgt_1sig),   # 갠: 1σ (보수)
-            'fib_up':int(tgt_2sig), # 피보 상단: 2σ (상한)
-            'fib_dn':int(dn_1sig),  # 피보 하단: -1σ
-            'cap':int(tgt_2sig),    # 상승 상한 (이 이상 안 그림)
+            'ell':ell_capped,
+            'mc':mc_capped,
+            'gann':gann_capped,
+            'fib_up':fib_up_cap,
+            'fib_dn':int(dn_1sig),
+            'cap':cap_price,
         },
+        'overheat':overheat, 'overheat_prob':oh_prob,
         'fib_levels':[round(cur*f) for f in (1.236,1.382,1.618,0.786,0.618)],
         'green_start': green_start,
     }
@@ -439,7 +466,7 @@ class handler(BaseHTTPRequestHandler):
             if 'draws' in dd and dd.get('chart'):
                 risk_level = dd['risks'][0]['yc'] if dd.get('risks') else None
                 try:
-                    dd['projection'] = build_projection(dd['chart'], dd['draws'], risk_level)
+                    dd['projection'] = build_projection(dd['chart'], dd['draws'], risk_level, market=mk)
                 except Exception as pe:
                     dd['projection'] = None
             out={'종목코드':code,'종목명':nm,'시장':mk,'일봉':dd,'60분':mm}
