@@ -53,14 +53,44 @@ def get_60m(tk,code):
         out.append({'d':x['date'],'t':x['time'],'o':float(x['open']),'h':float(x['high']),'l':float(x['low']),'c':float(x['close'])})
     out.sort(key=lambda z:(z['d'],z['t'])); return out
 
+_STOCKS_CACHE=None
+def _load_stocks():
+    """stocks.json에서 code→market 매핑 (t8436 기반이라 정확). 1회 캐시."""
+    global _STOCKS_CACHE
+    if _STOCKS_CACHE is not None:
+        return _STOCKS_CACHE
+    _STOCKS_CACHE={}
+    # api/ 상위 디렉토리(프로젝트 루트)의 stocks.json
+    for path in (os.path.join(os.path.dirname(__file__),'..','stocks.json'),
+                 os.path.join(os.path.dirname(__file__),'stocks.json'),
+                 'stocks.json'):
+        try:
+            with open(path,encoding='utf-8') as f:
+                for s in json.load(f):
+                    c=str(s.get('code','')).strip()
+                    if c: _STOCKS_CACHE[c]={'name':s.get('name',''),'market':s.get('market','')}
+            if _STOCKS_CACHE: break
+        except: continue
+    return _STOCKS_CACHE
+
 def get_name(tk,code):
+    # 1순위: stocks.json (t8436 기반 — 시장 구분 정확)
+    sj=_load_stocks().get(code)
+    nm_j = sj['name'] if sj else ''
+    mk_j = sj['market'] if sj else ''
+    # 2순위: t1102 API (이름 보강용, 시장은 stocks.json 우선)
     try:
         r=requests.post(f"{BASE}/stock/market-data",verify=False,
             headers={"Content-Type":"application/json; charset=UTF-8","authorization":f"Bearer {tk}","tr_cd":"t1102","tr_cont":"N"},
             json={"t1102InBlock":{"shcode":code}})
         b=r.json().get("t1102OutBlock",{})
-        return b.get("hname","").strip(), ("코스닥" if b.get("gubun","")=="2" else "코스피")
-    except: return "", ""
+        nm_api=b.get("hname","").strip()
+        nm = nm_j or nm_api
+        # 시장: stocks.json이 있으면 그걸 신뢰, 없으면 API gubun 폴백
+        mk = mk_j if mk_j else ("코스닥" if b.get("gubun","")=="2" else "코스피")
+        return nm, mk
+    except:
+        return nm_j, mk_j
 
 def ma(a,w):
     o=[None]*len(a)
@@ -288,6 +318,13 @@ def build_projection(bars, draws, risk_level, fut=63, market=''):
     gann_capped = min(int(tgt_1sig),  cap_price)
     fib_up_cap  = min(int(tgt_2sig),  cap_price)
     mc_capped   = min(mc_target, cap_price) if mc_target>cur else mc_target
+    # 각 기법이 녹색 상한에 캡 걸렸는지(원래 목표가 녹색보다 높았으면 캡) — 개수 카운트
+    cap_count = 0
+    cap_detail = {}
+    for nm_,orig in (('ell',int(tgt_15sig)),('gann',int(tgt_1sig)),('fib',int(tgt_2sig)),('mc',mc_target)):
+        hit = orig > cap_price
+        cap_detail[nm_] = hit
+        if hit: cap_count += 1
     # 최근 살아있는 작도의 녹색 시작 인덱스
     green_start = alive[-1].get('M_t1') if alive else (draws[-1].get('M_t1') if draws else None)
     return {
@@ -306,6 +343,7 @@ def build_projection(bars, draws, risk_level, fut=63, market=''):
             'cap':cap_price,
         },
         'overheat':overheat, 'overheat_prob':oh_prob,
+        'cap_count':cap_count, 'cap_detail':cap_detail,
         'fib_levels':[round(cur*f) for f in (1.236,1.382,1.618,0.786,0.618)],
         'green_start': green_start,
     }
