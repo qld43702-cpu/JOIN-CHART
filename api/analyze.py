@@ -213,8 +213,15 @@ def build_projection(bars, draws, risk_level, fut=63):
         up_slope=gs or 0
     if up_slope<=0:  # 없으면 변동성 기반 완만 상승
         up_slope=cur*max(mu,0.001)
-    up_target=cur+up_slope*fut*0.6  # 차트에 그릴 풀 목표(녹색선 연장 끝)
+    up_target=cur+up_slope*fut*0.6  # 차트에 그릴 풀 목표(녹색선 연장 끝) — 작도 그대로, 희망 상한
     up_reach=cur+up_slope*fut*0.30  # 확률 계산용 현실 목표(녹색선 절반쯤, 검증상 ~49%)
+    # ===== 변동성 기반 현실 목표 (기법선용) — 작도 무시, 순수 통계 =====
+    sigma3m = sd * math.sqrt(fut)          # 3개월 변동성(비율)
+    tgt_1sig  = cur*(1+1.0*sigma3m)
+    tgt_15sig = cur*(1+1.5*sigma3m)
+    tgt_2sig  = cur*(1+2.0*sigma3m)        # 상승 상한 (이 이상은 비현실)
+    dn_1sig   = cur*(1-1.0*sigma3m)
+    dn_2sig   = cur*(1-2.0*sigma3m)
     # 하락목표 = 위험선(60분/작도) 또는 변동성 기반
     dn_target = risk_level if (risk_level and risk_level<cur) else cur*(1-2*sd*math.sqrt(fut))
     dn_reach = cur+(dn_target-cur)*0.6  # 확률 계산용 현실 하락목표
@@ -233,6 +240,20 @@ def build_projection(bars, draws, risk_level, fut=63):
         return round(hit/N*100)
     mc_up=sim_prob(up_reach,True,drift_up)
     mc_dn=sim_prob(dn_reach,False,mu*0.5)
+    # 몬테카를로 현실 목표가: 시뮬레이션 최종가의 중앙값
+    # ※ 작도추세(drift_up) 쓰지 않음 — 몬테는 순수 과거 변동성/수익률 기반이어야 함
+    def sim_median_end():
+        ends=[]; random.seed(13)
+        # 일간 드리프트 = 과거 평균 로그수익률(mu). 단 ±0.5%/일로 제한(3개월 복리 폭발 방지)
+        d=max(min(mu, 0.005), -0.005)
+        for _ in range(N):
+            v=cur
+            for _ in range(fut):
+                v*=math.exp(random.gauss(d, sd))
+            ends.append(v)
+        ends.sort()
+        return ends[len(ends)//2]
+    mc_target=int(sim_median_end())
     def prob_reach(level, up=True):
         return sim_prob(level, up, drift_up if up else mu*0.5)
     methods={
@@ -248,8 +269,16 @@ def build_projection(bars, draws, risk_level, fut=63):
         'up_slope':round(up_slope,3), 'up_target':int(up_target),
         'dn_target':int(dn_target),
         'volatility':round(sd,4), 'drift':round(mu,5),
-        'mc_up':mc_up, 'mc_dn':mc_dn,
+        'mc_up':mc_up, 'mc_dn':mc_dn, 'mc_target':mc_target,
         'methods':methods,
+        'tech_targets':{
+            'ell':int(tgt_15sig),   # 엘리엇: 1.5σ (중간 공격)
+            'mc':mc_target,         # 몬테: 시뮬 중앙값
+            'gann':int(tgt_1sig),   # 갠: 1σ (보수)
+            'fib_up':int(tgt_2sig), # 피보 상단: 2σ (상한)
+            'fib_dn':int(dn_1sig),  # 피보 하단: -1σ
+            'cap':int(tgt_2sig),    # 상승 상한 (이 이상 안 그림)
+        },
         'fib_levels':[round(cur*f) for f in (1.236,1.382,1.618,0.786,0.618)],
         'green_start': green_start,
     }

@@ -349,36 +349,45 @@ function mkChart(data,pj){
       fwave(ctx,function(t,b){return b+(dnT-b)*t;},'rgba(212,83,126,.9)',2.4,[6,4],false);         // 위험(분홍)
       fwave(ctx,function(t,b){return b+b*0.10*(1-t);},'rgba(138,152,168,.6)',1.3,[],false);        // 삼각수렴 상단
       fwave(ctx,function(t,b){return b-b*0.10*(1-t);},'rgba(138,152,168,.6)',1.3,[],false);        // 삼각수렴 하단
-      // 체크박스 기법: 녹색 시작점(GREEN_START)부터 — 전부 직선
+      // 체크박스 기법: 전부 변동성 기반 현실 목표, 현재(n-1)부터 직선. 작도(녹색)는 위에서 이미 그림.
       var checked=getChecked();
+      var TT=pj.tech_targets||{};
       if(checked.indexOf('ell')>=0){
-        // 엘리엇: 녹색 시작가에서 엘리엇 목표가까지 직선
-        var ellTarget=green_base*1.32;
-        fwave(ctx,function(t,b){return b+(ellTarget-b)*t;},'rgba(127,119,221,.85)',2,[],true);
+        // 엘리엇: 1.5σ 목표
+        var ellTarget=(TT.ell&&isFinite(TT.ell))?TT.ell:cur*1.15;
+        fwave(ctx,function(t,b){return b+(ellTarget-b)*t;},'rgba(127,119,221,.85)',2,[],false);
       }
       if(checked.indexOf('mc')>=0){
-        // 몬테카를로: 평균 경로 직선 (상방 드리프트 반영)
-        var mcTarget=green_base*Math.exp((us/cur*0.4)*green_span);
-        if(!isFinite(mcTarget)||mcTarget<=0)mcTarget=green_base*1.15;
-        fwave(ctx,function(t,b){return b+(mcTarget-b)*t;},'rgba(55,138,221,.85)',2,[],true);
-      }
-      if(checked.indexOf('fib')>=0){
-        // 피보나치: 수평 레벨선 (직선)
-        var fibR=[1.236,1.382,1.618,0.786,0.618];
-        for(var fi=0;fi<fibR.length;fi++){
-          var lv=green_base*fibR[fi], up=lv>green_base;
-          ctx.strokeStyle=up?'rgba(29,158,117,.55)':'rgba(212,83,126,.55)';
-          ctx.setLineDash([3,3]);ctx.lineWidth=1.2;
-          ctx.beginPath();ctx.moveTo(xOf(GREEN_START),yOf(lv));ctx.lineTo(xOf(Math.min(viewE,TOTAL-1)),yOf(lv));ctx.stroke();ctx.setLineDash([]);
-          ctx.fillStyle=up?'rgba(29,158,117,.85)':'rgba(212,83,126,.85)';
-          ctx.font='10px '+FF();ctx.textAlign='right';
-          ctx.fillText((fibR[fi]*100).toFixed(0)+'%',xOf(GREEN_START)-2,yOf(lv)+3);
-        }
+        // 몬테카를로: 시뮬 중앙값
+        var mcTarget=(TT.mc&&isFinite(TT.mc))?TT.mc:(pj.mc_target||cur*1.1);
+        fwave(ctx,function(t,b){return b+(mcTarget-b)*t;},'rgba(55,138,221,.85)',2,[],false);
       }
       if(checked.indexOf('gann')>=0){
-        // 갠: 녹색 시작가에서 갠 목표가까지 직선
-        var gannTarget=green_base+(upT-green_base)*0.7;
-        fwave(ctx,function(t,b){return b+(gannTarget-b)*t;},'rgba(186,117,23,.85)',2,[],true);
+        // 갠: 1σ 목표 (보수)
+        var gannTarget=(TT.gann&&isFinite(TT.gann))?TT.gann:cur*1.08;
+        fwave(ctx,function(t,b){return b+(gannTarget-b)*t;},'rgba(186,117,23,.85)',2,[],false);
+      }
+      if(checked.indexOf('fib')>=0){
+        // 피보나치: 현재가 기준 ±σ 사이 황금비율 레벨 (수평선)
+        var fibUp=(TT.fib_up&&isFinite(TT.fib_up))?TT.fib_up:cur*1.3;
+        var fibDn=(TT.fib_dn&&isFinite(TT.fib_dn))?TT.fib_dn:cur*0.8;
+        // 현재가~상단 사이를 황금비율로 분할
+        var fibLevels=[
+          {r:0.382, p:cur+(fibUp-cur)*0.382},
+          {r:0.618, p:cur+(fibUp-cur)*0.618},
+          {r:1.0,   p:fibUp},
+          {r:-0.382,p:cur+(fibDn-cur)*0.382},
+          {r:-0.618,p:cur+(fibDn-cur)*0.618}
+        ];
+        for(var fi=0;fi<fibLevels.length;fi++){
+          var lv=fibLevels[fi].p, up=lv>cur;
+          ctx.strokeStyle=up?'rgba(29,158,117,.55)':'rgba(212,83,126,.55)';
+          ctx.setLineDash([3,3]);ctx.lineWidth=1.2;
+          ctx.beginPath();ctx.moveTo(xOf(n-1),yOf(lv));ctx.lineTo(xOf(Math.min(viewE,TOTAL-1)),yOf(lv));ctx.stroke();ctx.setLineDash([]);
+          ctx.fillStyle=up?'rgba(29,158,117,.85)':'rgba(212,83,126,.85)';
+          ctx.font='10px '+FF();ctx.textAlign='left';
+          ctx.fillText(Math.round(lv).toLocaleString(),xOf(n-1)+2,yOf(lv)-2);
+        }
       }
     }
     // 크로스헤어
