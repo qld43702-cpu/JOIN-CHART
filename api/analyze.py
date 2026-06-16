@@ -353,14 +353,15 @@ def build_projection(bars, draws, risk_level, fut=63, market=''):
             elif chg<=DN_TH: d+=1
             else: f+=1
         return {'up':round(u/N*100),'dn':round(d/N*100),'flat':round(f/N*100)}
-    # 기법별 드리프트 차등 (공격적일수록 상방 기대 큼)
-    base_drift = max(min(mu, 0.004), -0.004)        # 과거 평균(중립=몬테)
-    aggr = up_slope/cur*0.30 if up_slope>0 else 0.001  # 작도 상방 기대(공격적 기법용)
+    # 기법별 확률 — 작도 상방편향 제거, 순수 과거 추세(mu) 기반으로 정직하게
+    # 종목 실제 추세대로 상승/하락이 갈림 (하락추세면 하락 높게)
+    base_drift = max(min(mu, 0.004), -0.004)   # 과거 평균 로그수익률 (상한 ±0.4%/일)
+    # 기법별로 변동성 해석만 약간 다르게 (편향 아닌 차등)
     methods={
-        'mc':   sim_updnflat(base_drift,            13),  # 몬테: 순수 과거추세
-        'ell':  sim_updnflat(base_drift+aggr*0.7,   17),  # 엘리엇: 공격적
-        'gann': sim_updnflat(base_drift+aggr*0.4,   19),  # 갠: 중간
-        'fib':  sim_updnflat(base_drift+aggr*0.55,  23),  # 피보: 중상
+        'mc':   sim_updnflat(base_drift,         13),  # 몬테: 순수 과거추세
+        'ell':  sim_updnflat(base_drift,         17),  # 엘리엇 (시드만 다름 = 자연 변동)
+        'gann': sim_updnflat(base_drift,         19),  # 갠
+        'fib':  sim_updnflat(base_drift,         23),  # 피보
     }
     # ===== 변동성 과열 신호 (백테스트 검증됨) =====
     # 2σ목표 > 녹색최대치 → 변동성이 작도추세보다 과함 = 과열
@@ -385,6 +386,30 @@ def build_projection(bars, draws, risk_level, fut=63, market=''):
         if hit: cap_count += 1
     # 최근 살아있는 작도의 녹색 시작 인덱스
     green_start = alive[-1].get('M_t1') if alive else (draws[-1].get('M_t1') if draws else None)
+    # ===== 시나리오 기준점: 가장 최근 분기 시작(1,4,7,10월) 이후 첫 거래일 =====
+    # chart의 d는 "MM/DD" 형식 → 월로 분기 판정. 7월 되면 자동 리셋.
+    anchor_idx=None; anchor_price=None
+    try:
+        # 마지막 봉의 월
+        last_d = bars[-1].get('d','')  # "MM/DD" 또는 "MM/DD HH시"
+        lm = int(last_d.split('/')[0]) if '/' in last_d else None
+        if lm:
+            q_start_month = ((lm-1)//3)*3 + 1   # 현재 분기 시작월 1/4/7/10
+            # 뒤에서부터: 그 분기 시작월의 첫 봉(=직전에 다른 월이었던 다음) 찾기
+            # 가장 최근에 q_start_month로 진입한 지점
+            for i in range(len(bars)-1, 0, -1):
+                di=bars[i].get('d',''); dp=bars[i-1].get('d','')
+                mi = int(di.split('/')[0]) if '/' in di else 0
+                mp = int(dp.split('/')[0]) if '/' in dp else 0
+                if mi==q_start_month and mp!=q_start_month:
+                    anchor_idx=i; anchor_price=int(c[i]); break
+            # 못 찾으면(전체가 같은 분기) 그 월 첫 등장
+            if anchor_idx is None:
+                for i in range(len(bars)):
+                    di=bars[i].get('d','')
+                    mi=int(di.split('/')[0]) if '/' in di else 0
+                    if mi==q_start_month: anchor_idx=i; anchor_price=int(c[i]); break
+    except: pass
     return {
         'fut':fut, 'cur':int(cur),
         'up_slope':round(up_slope,3), 'up_target':int(up_target),
@@ -405,6 +430,7 @@ def build_projection(bars, draws, risk_level, fut=63, market=''):
         'cap_count':cap_count, 'cap_detail':cap_detail,
         'fib_levels':[round(cur*f) for f in (1.236,1.382,1.618,0.786,0.618)],
         'green_start': green_start,
+        'anchor_idx':anchor_idx, 'anchor_price':anchor_price,
     }
 
 def analyze_pattern(bars, draws):

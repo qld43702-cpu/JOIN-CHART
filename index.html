@@ -156,10 +156,6 @@ function render(x){
   var src=d.risk_src||'';
   var html='';
   html+='<div class="result-head"><span class="rn">'+(x['종목명']||'')+'</span><span class="rc">'+x['종목코드']+' · '+(x['시장']||'')+'</span><span class="rp">'+((d.cur||0).toLocaleString())+'원</span></div>';
-  if(d.risk_on){
-    var w=src==='60분'?'60분봉에서 감지':(src==='과거'?'과거 구간에서 감지':'감지됨');
-    html+='<div class="risk-alert"><span>⚠️</span><span class="rt">하락 위험 신호 — 반대 작도 '+w+'</span></div>';
-  }
   // 변동성 과열 경고 (백테스트 검증)
   if(pj.overheat){
     var op=pj.overheat_prob||{up:27,dn:28,flat:45};
@@ -508,10 +504,13 @@ function mkChart(data,pj){
         }
       }
     }
-    // ===== 시나리오 웨이브 (실제 지지/저항 레벨을 변곡점으로 왕복하는 엘리엇) =====
-    if(SCEN && viewE>=n && scenFade>0){
-      var startI=n-1, endI=Math.min(viewE,TOTAL-1);
-      var startV=cur;
+    // ===== 시나리오 웨이브 (4/1 기준점부터 — 실제 봉과 비교 가능) =====
+    if(SCEN && scenFade>0){
+      // 기준점: 4/1(분기시작). 없으면 현재
+      var anchorI=(pj.anchor_idx!=null)?pj.anchor_idx:(n-1);
+      var anchorP=(pj.anchor_price!=null)?pj.anchor_price:cur;
+      var startI=anchorI, endI=Math.min(viewE,TOTAL-1);
+      var startV=anchorP;
       var TT2=pj.tech_targets||{};
       // 천장/바닥 = 현실적 목표 (up_target은 이미 녹색의 35% 현실선)
       var ceil_ = pj.up_target||cur*1.1;   // 상승 천장 = 현실 목표선
@@ -526,6 +525,13 @@ function mkChart(data,pj){
       var color = SCEN==='up'?'rgba(226,75,74,':SCEN==='dn'?'rgba(55,138,221,':'rgba(138,152,168,';
       ctx.save();
       ctx.globalAlpha=scenFade;
+      // 기준점(4/1) 세로선
+      if(startI>=viewS&&startI<=viewE){
+        ctx.strokeStyle='rgba(232,116,59,'+(0.6*scenFade)+')';ctx.lineWidth=1.5;ctx.setLineDash([4,3]);
+        ctx.beginPath();ctx.moveTo(xOf(startI),plot.y0);ctx.lineTo(xOf(startI),plot.y1);ctx.stroke();ctx.setLineDash([]);
+        ctx.fillStyle='#e8743b';ctx.font='bold 11px '+FF();ctx.textAlign='left';
+        ctx.fillText('기준 '+(ch[startI]?ch[startI].d:''),xOf(startI)+3,plot.y0+24);
+      }
       // 지지/저항 수평선 표시
       allLv.forEach(function(lv){
         ctx.strokeStyle='rgba(127,119,221,'+(0.22*scenFade)+')';ctx.lineWidth=1;ctx.setLineDash([2,4]);
