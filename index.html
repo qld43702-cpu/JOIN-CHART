@@ -160,20 +160,22 @@ function render(x){
     html+='</div>';
   }
   box.innerHTML=html;
-  setTimeout(function(){mkChart(d,pj);},50);
+  requestAnimationFrame(function(){requestAnimationFrame(function(){mkChart(d,pj);});});
 }
 
 function mkChart(data,pj){
+  // ===== v3 모든 데이터 변수 최상단 선언 (TDZ 방지) =====
   var cv=document.getElementById('cv'), tip=document.getElementById('tip');
   var ch=data.chart, n=ch.length, draws=data.draws||[], risks=data.risks||[];
   var FUT=(pj&&pj.fut)||63, TOTAL=n+FUT, cur=data.cur;
-  var c=ch.map(function(r){return r.c;}), ma2=ch.map(function(r){return r.m2;});
-  // 녹색 시작점 (최근 살아있는 작도 M_t1, 또는 API green_start)
+  var c=[], ma2=[];
+  for(var ci=0;ci<ch.length;ci++){c.push(ch[ci].c);ma2.push(ch[ci].m2);}
   var GREEN_START=0;
   if(pj&&pj.green_start!=null){GREEN_START=pj.green_start;}
   else if(draws.length){GREEN_START=draws[draws.length-1].M_t1||0;}
   else{GREEN_START=n-1;}
-  var green_base=(GREEN_START<n&&GREEN_START>=0)?c[GREEN_START]:cur;
+  if(GREEN_START<0)GREEN_START=0; if(GREEN_START>=n)GREEN_START=n-1;
+  var green_base=(c[GREEN_START]!=null)?c[GREEN_START]:cur;
   var green_span=Math.max(1,TOTAL-1-GREEN_START);
   var DPR=window.devicePixelRatio||1;
   var padR=64,padL=8,padT=14,padB=38;
@@ -205,6 +207,7 @@ function mkChart(data,pj){
   function lbl(i){return i<n?ch[i].d:(fdates[i-n]||'');}
   function lay(){
     W=cv.clientWidth; H=cv.clientHeight;
+    if(!W||!H){W=cv.clientWidth||cv.parentElement.clientWidth-20||900;H=cv.clientHeight||440;}
     cv.width=W*DPR; cv.height=H*DPR;
     cv.getContext('2d').setTransform(DPR,0,0,DPR,0,0);
     var vs=Math.max(0,viewS), ve=Math.min(TOTAL-1,viewE);
@@ -408,7 +411,7 @@ function mkChart(data,pj){
   document.getElementById('zout').onclick=function(){var sp=getSpan(),ns=Math.min(TOTAL,Math.round(sp*1.4)),md=Math.round((viewS+viewE)/2);viewS=Math.max(0,md-Math.round(ns/2));viewE=Math.min(TOTAL-1,viewS+ns-1);lay();draw();};
   document.getElementById('zall').onclick=function(){viewS=0;viewE=TOTAL-1;lay();draw();};
   document.querySelectorAll('.mtd').forEach(function(el){el.addEventListener('change',function(){draw(lastMx,lastMy);});});
-  lay();draw(null,null);
+  try{lay();draw(null,null);}catch(err){console.error('draw error:',err);}
   window.addEventListener('resize',function(){lay();draw(null,null);});
 }
 </script>
