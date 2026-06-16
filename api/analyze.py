@@ -114,6 +114,10 @@ def build_drawings(bars):
                 s2=(MA2[mt1]-MA2[mk])/(mt1-mk) if mt1>mk else 0
         entry=B['t1']+1
         ep=bars[entry]['o'] if entry<len(bars) else c[-1]
+        # 녹색선(상승선) 차트 끝 시점 예상 목표가
+        last_i=len(c)-1
+        green_slope=s2 if (s2 is not None and s2>0) else m_slope
+        target=MA2[mt1]+green_slope*(last_i-mt1)
         draws.append({
             'A_t1':A['t1'],'A_y1':round(MA2[A['t1']],1),'A_slope':round(sa,2),
             'B_t1':B['t1'],'B_y1':round(MA2[B['t1']],1),'B_slope':round(sb,2),
@@ -123,13 +127,39 @@ def build_drawings(bars):
             'M_s1':round(s1,2) if s1 is not None else None,'M_s2':round(s2,2) if s2 is not None else None,
             'M_ky':round(MA2[mk],1) if mk is not None else None,
             'entry':entry,'ep':round(ep,1),
-            'alive': yc>ep  # 교차점이 매수가보다 위 = 살아있는 작도
+            'target':round(target,1),  # 녹색선 예상 목표가
+            'alive': yc>ep
         })
-    # 차트 데이터(2일선 포함)
+    # 최근 5개 작도만
+    draws=draws[-5:]
+
+    # 반대 작도(위험): 상승(A)-하락파동(M)-상승(B) → 하방 교차점
+    risks=[]
+    for i in range(len(segs)-2):
+        A,M,B=segs[i],segs[i+1],segs[i+2]
+        if not A['up'] or M['up'] or not B['up']: continue  # 상승-하락-상승
+        sa=last_down_slope(MA2,A['t0'],A['t1'])  # 상승 마지막 기울기
+        sb=last_down_slope(MA2,B['t0'],B['t1'])
+        if sa<=0 or sb<=0 or sb>=sa: continue  # B가 A보다 완만한 상승
+        ya1=MA2[A['t1']]; ta1=A['t1']; yb1=MA2[B['t1']]; tb1=B['t1']
+        denom=sa-sb
+        if abs(denom)<1e-9: continue
+        xc=(yb1-ya1-sb*tb1+sa*ta1)/denom
+        yc=ya1+sa*(xc-ta1)
+        if xc>=min(ta1,tb1) or xc<0: continue
+        cur_p=c[-1]
+        if yc>=cur_p: continue  # 하방 교차점이 현재가보다 아래여야 위험
+        risks.append({
+            'A_t1':A['t1'],'A_y1':round(MA2[A['t1']],1),
+            'B_t1':B['t1'],'B_y1':round(MA2[B['t1']],1),
+            'xc':round(xc,2),'yc':round(yc,1)
+        })
+    risks=risks[-3:]  # 최근 3개
+
     chart=[{'i':i,'d':(bars[i].get('d','')[4:6]+'/'+bars[i].get('d','')[6:8]+(' '+str(bars[i]['t']).zfill(6)[:2]+'시' if 't' in bars[i] else '')),
             'o':int(bars[i]['o']),'h':int(bars[i]['h']),'l':int(bars[i]['l']),'c':int(bars[i]['c']),
             'm2':round(MA2[i],1) if MA2[i] is not None else None} for i in range(len(bars))]
-    return {'chart':chart,'draws':draws,'cur':int(c[-1])}
+    return {'chart':chart,'draws':draws,'risks':risks,'cur':int(c[-1]),'risk_on':len(risks)>0}
 
 class handler(BaseHTTPRequestHandler):
     def do_GET(self):
