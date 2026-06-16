@@ -70,7 +70,7 @@ def get_day(tk,code):
     rows=r.json().get("t8410OutBlock1",[])
     if not rows: return None
     out=[{'d':x['date'],'o':float(x['open']),'h':float(x['high']),'l':float(x['low']),'c':float(x['close']),
-          'v':float(x.get('volume',0) or 0)} for x in rows]
+          'v':float(x.get('volume') or x.get('value') or x.get('jdiff_vol') or 0)} for x in rows]
     out.sort(key=lambda z:z['d']); return out
 
 def get_60m(tk,code):
@@ -639,7 +639,7 @@ class handler(BaseHTTPRequestHandler):
                 # ===== 미국 주식 (야후) =====
                 tkr=code.upper()
                 nm,mk=get_name_us(tkr)
-                day=get_day_us(tkr); m60=get_min_us(tkr,"60m"); m10=get_min_us(tkr,"10m")
+                day=get_day_us(tkr); m60=get_min_us(tkr,"60m"); m10=get_min_us(tkr,"15m")
             else:
                 # ===== 한국 주식 (LS) =====
                 if not code.isdigit() or len(code)!=6:
