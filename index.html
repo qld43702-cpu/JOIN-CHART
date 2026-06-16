@@ -138,7 +138,7 @@ function render(x){
   html+='</div>';
   html+='<div class="zoombar"><button id="zin">+ 확대</button><button id="zout">− 축소</button><button id="zall">전체</button></div>';
   html+='<div class="chart-host"><canvas id="cv"></canvas><div class="linetip" id="tip"></div></div>';
-  html+='<div class="legend"><span><i style="background:#000"></i>2일선</span><span><i style="background:#1d9e75"></i>상승목표</span><span><i style="background:#d4537e"></i>위험</span><span><i style="background:#8a98a8"></i>삼각수렴</span><span style="color:#a8b3c0">| 점선 우측=미래 3개월</span></div>';
+  html+='<div class="legend"><span><i style="background:#000"></i>2일선</span><span><i style="background:#1d9e75"></i>상승목표</span><span><i style="background:#d4537e"></i>위험</span><span><i style="background:#8a98a8"></i>삼각수렴</span><span><i style="background:#e8743b"></i>매물집중(물량 많은 가격)</span><span style="color:#a8b3c0">| 점선 우측=미래 3개월</span></div>';
   box.innerHTML=html;
   requestAnimationFrame(function(){requestAnimationFrame(function(){mkChart(d,pj);});});
 }
@@ -253,6 +253,50 @@ function mkChart(data,pj){
       ctx.beginPath();ctx.moveTo(nowX,plot.y0);ctx.lineTo(nowX,plot.y1);ctx.stroke();ctx.setLineDash([]);
       ctx.fillStyle='#8a98a8';ctx.fillText('현재',nowX,plot.y0+12);
     }
+    // ===== 매물대 (Volume Profile) — 왼쪽 가로 막대 =====
+    (function(){
+      var BINS=24;
+      var binVol=new Array(BINS).fill(0);
+      var range=plot.hi-plot.lo;
+      if(range<=0)return;
+      // 보이는 구간의 각 봉 거래량을 고가~저가에 고르게 분산
+      for(var i=Math.max(0,viewS);i<=Math.min(viewE,n-1);i++){
+        var r=ch[i];
+        var vol=r.v||0;
+        if(vol<=0)continue;
+        var hi=r.h, lo=r.l;
+        if(hi<lo){var tmp=hi;hi=lo;lo=tmp;}
+        // 이 봉이 걸치는 bin 범위
+        var b0=Math.floor((lo-plot.lo)/range*BINS);
+        var b1=Math.floor((hi-plot.lo)/range*BINS);
+        b0=Math.max(0,Math.min(BINS-1,b0));
+        b1=Math.max(0,Math.min(BINS-1,b1));
+        var nb=b1-b0+1;
+        var per=vol/nb;
+        for(var b=b0;b<=b1;b++){binVol[b]+=per;}
+      }
+      var maxVol=Math.max.apply(null,binVol);
+      if(maxVol<=0)return;
+      var pocBin=binVol.indexOf(maxVol);  // 가장 물량 많은 가격대
+      var maxBarW=(plot.x1-plot.x0)*0.22;  // 막대 최대 길이(차트 폭의 22%)
+      var binH=(plot.y1-plot.y0)/BINS;
+      for(var b=0;b<BINS;b++){
+        if(binVol[b]<=0)continue;
+        var bw=binVol[b]/maxVol*maxBarW;
+        var by=plot.y1-(b+1)*binH;
+        var isPoc=(b===pocBin);
+        ctx.fillStyle=isPoc?'rgba(232,116,59,.45)':'rgba(138,152,168,.20)';
+        ctx.fillRect(plot.x0,by,bw,binH-1);
+      }
+      // POC(매물 집중) 라벨 + 가로 점선
+      var pocPrice=plot.lo+(pocBin+0.5)/BINS*range;
+      var pocY=yOf(pocPrice);
+      ctx.strokeStyle='rgba(232,116,59,.55)';ctx.lineWidth=1;ctx.setLineDash([2,3]);
+      ctx.beginPath();ctx.moveTo(plot.x0,pocY);ctx.lineTo(plot.x1,pocY);ctx.stroke();ctx.setLineDash([]);
+      ctx.fillStyle='#e8743b';ctx.font='11px '+FF();ctx.textAlign='left';
+      ctx.fillText('매물집중 '+Math.round(pocPrice).toLocaleString(),plot.x0+4,pocY-3);
+    })();
+
     // 캔들
     var cw=Math.max(1.5,(plot.x1-plot.x0)/getSpan()*0.6);
     for(var i=Math.max(0,viewS);i<=Math.min(viewE,n-1);i++){
