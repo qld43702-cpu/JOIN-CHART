@@ -56,6 +56,11 @@ header{display:flex;align-items:center;gap:11px;margin-bottom:16px}
 .ring-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
 .ring-card{background:#f9fafc;border-radius:12px;padding:12px 8px;display:flex;flex-direction:column;align-items:center}
 .ring-tech{text-align:center;font-size:14px;font-weight:800;margin-bottom:8px}
+.ring-block{display:flex;flex-direction:column;align-items:center;gap:6px}
+.ring-nums{display:flex;flex-direction:column;gap:2px;align-items:center;font-size:12px;font-weight:700}
+.ring-nums .rn-up{color:#e24b4a}
+.ring-nums .rn-flat{color:#8a98a8}
+.ring-nums .rn-dn{color:#378add}
 .ring-avg{margin-top:16px;padding-top:16px;border-top:2px solid var(--line);text-align:center}
 .ring-avg-title{font-size:16px;font-weight:800;color:var(--navy);margin-bottom:8px}
 .ring-avg-wrap{display:flex;justify-content:center}
@@ -169,7 +174,7 @@ function render(x){
     html+=(cc>=3?'다수 기법이 녹색까지 강하게 봄':cc===0?'기법들이 녹색보다 보수적':'일부만 녹색까지 봄');
     html+='</div>';
   }
-  // 원형 게이지 SVG: 한 원에 상승(초록)+하락(분홍)+횡보(회색). 합=100%
+  // 원형 게이지 SVG: 상승(빨강)+하락(파랑)+횡보(회색). 합=100%. 숫자는 원 밖에 표기.
   function ringDual(up,dn,size){
     var flat=Math.max(0,100-up-dn);
     var r=size/2-7, cx=size/2, cy=size/2, circ=2*Math.PI*r;
@@ -177,24 +182,32 @@ function render(x){
     var s='<svg width="'+size+'" height="'+size+'" viewBox="0 0 '+size+' '+size+'">';
     s+='<circle cx="'+cx+'" cy="'+cy+'" r="'+r+'" fill="none" stroke="#eef1f5" stroke-width="7"/>';
     var rot='rotate(-90 '+cx+' '+cy+')';
-    // 상승(초록)
-    s+='<circle cx="'+cx+'" cy="'+cy+'" r="'+r+'" fill="none" stroke="#1d9e75" stroke-width="7" stroke-dasharray="'+upLen+' '+(circ-upLen)+'" stroke-dashoffset="0" transform="'+rot+'"/>';
-    // 하락(분홍)
-    s+='<circle cx="'+cx+'" cy="'+cy+'" r="'+r+'" fill="none" stroke="#d4537e" stroke-width="7" stroke-dasharray="'+dnLen+' '+(circ-dnLen)+'" stroke-dashoffset="'+(-upLen)+'" transform="'+rot+'"/>';
+    // 상승(빨강)
+    s+='<circle cx="'+cx+'" cy="'+cy+'" r="'+r+'" fill="none" stroke="#e24b4a" stroke-width="7" stroke-dasharray="'+upLen+' '+(circ-upLen)+'" stroke-dashoffset="0" transform="'+rot+'"/>';
+    // 하락(파랑)
+    s+='<circle cx="'+cx+'" cy="'+cy+'" r="'+r+'" fill="none" stroke="#378add" stroke-width="7" stroke-dasharray="'+dnLen+' '+(circ-dnLen)+'" stroke-dashoffset="'+(-upLen)+'" transform="'+rot+'"/>';
     // 횡보(회색)
     if(flat>0){
       s+='<circle cx="'+cx+'" cy="'+cy+'" r="'+r+'" fill="none" stroke="#c5cdd6" stroke-width="7" stroke-dasharray="'+flatLen+' '+(circ-flatLen)+'" stroke-dashoffset="'+(-(upLen+dnLen))+'" transform="'+rot+'"/>';
     }
-    // 가운데 텍스트: 상승/하락 (횡보는 나머지라 생략, 색으로 보임)
-    s+='<text x="'+cx+'" y="'+(cy-size*0.07)+'" text-anchor="middle" dominant-baseline="central" font-size="'+(size*0.18)+'" font-weight="800" fill="#1d9e75">↑'+up+'%</text>';
-    s+='<text x="'+cx+'" y="'+(cy+size*0.13)+'" text-anchor="middle" dominant-baseline="central" font-size="'+(size*0.18)+'" font-weight="800" fill="#d4537e">↓'+dn+'%</text>';
     s+='</svg>';
     return s;
+  }
+  // 원 + 바깥 숫자 묶음
+  function ringBlock(up,dn,size){
+    var flat=Math.max(0,100-up-dn);
+    var h='<div class="ring-block">'+ringDual(up,dn,size);
+    h+='<div class="ring-nums">';
+    h+='<span class="rn-up">상승 '+up+'%</span>';
+    h+='<span class="rn-flat">횡보 '+flat+'%</span>';
+    h+='<span class="rn-dn">하락 '+dn+'%</span>';
+    h+='</div></div>';
+    return h;
   }
   var order=['ell','mc','fib','gann'];
   var sumUp=0,sumDn=0,cnt=0;
   html+='<div class="prob-graph"><div class="pg-title">미래 3개월 상승 / 하락 확률</div>';
-  html+='<div class="ring-legend"><span><i style="background:#1d9e75"></i>상승</span><span><i style="background:#d4537e"></i>하락</span><span><i style="background:#c5cdd6"></i>횡보</span></div>';
+  html+='<div class="ring-legend"><span><i style="background:#e24b4a"></i>상승</span><span><i style="background:#c5cdd6"></i>횡보</span><span><i style="background:#378add"></i>하락</span></div>';
   html+='<div class="ring-grid">';
   for(var oi=0;oi<order.length;oi++){
     var k=order[oi]; var mm=M[k]; if(!mm)continue;
@@ -202,7 +215,7 @@ function render(x){
     sumUp+=up; sumDn+=dn; cnt++;
     html+='<div class="ring-card">';
     html+='<div class="ring-tech" style="color:'+techCols[k]+'">'+techNames[k]+'</div>';
-    html+=ringDual(up,dn,96);
+    html+=ringBlock(up,dn,96);
     html+='</div>';
   }
   html+='</div>'; // ring-grid
@@ -210,7 +223,7 @@ function render(x){
   if(cnt>0){
     var avgUp=Math.round(sumUp/cnt), avgDn=Math.round(sumDn/cnt);
     html+='<div class="ring-avg"><div class="ring-avg-title">4개 기법 평균</div>';
-    html+='<div class="ring-avg-wrap">'+ringDual(avgUp,avgDn,140)+'</div>';
+    html+='<div class="ring-avg-wrap">'+ringBlock(avgUp,avgDn,140)+'</div>';
     html+='</div>';
   }
   html+='</div>'; // prob-graph
