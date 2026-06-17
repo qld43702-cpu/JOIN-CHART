@@ -339,38 +339,27 @@ function render(x){
 }
 
 // ===== 방향 판정 =====
-// 화면 시나리오 파동과 일치: 현재가 위 저항(상승파 변곡점) vs 아래 지지(하락파 변곡점) 개수
-// 파동(레벨) 많은 쪽 = 그 방향으로 출렁이며 강하게 감. 한쪽이 거의 없으면(플랫) 반대쪽.
-function countLevels(pj, d){
-  var cur=pj.cur||0; if(cur<=0) return {up:0,dn:0};
-  var ceil_=pj.up_target||cur*1.1, floor_=pj.dn_target||cur*0.8;
-  // 레벨 수집: sr_levels(60분 지지저항) + 작도 교차점(yc)
-  var lv=[];
-  (pj.sr_levels||[]).forEach(function(v){ if(v>0) lv.push(v); });
-  if(d && d.draws) d.draws.forEach(function(x){ if(x.yc>0) lv.push(x.yc); });
-  // 현재가 위(천장 이하) / 아래(바닥 이상) 개수
-  var up=lv.filter(function(v){return v>cur*1.005 && v<=ceil_*1.001;}).length;
-  var dn=lv.filter(function(v){return v<cur*0.995 && v>=floor_*0.999;}).length;
-  return {up:up, dn:dn};
-}
+// up_slope는 API에서 강제 양수라 못 씀 → drift(과거 평균수익률) 부호로 추세 판단
+// 상승목표 강도 + drift(추세)로 판정. 위험선 거리는 안 봄(멀어도 정상).
 function judgeDir(pj, d){
   if(!pj) return 'flat';
-  var c=countLevels(pj, d);
-  var up=c.up, dn=c.dn;
-  // 한쪽만 파동 있고 반대는 거의 플랫(0~1개) → 그 방향
-  if(up>=2 && dn<=1) return 'up';      // 위로 출렁, 아래 플랫
-  if(dn>=2 && up<=1) return 'dn';      // 아래로 출렁, 위 플랫
-  // 양쪽 다 파동 많음 → 중립 (방향 안 갈림)
-  if(up>=2 && dn>=2){
-    if(up>=dn*2) return 'up';          // 한쪽이 압도적이면 그쪽
-    if(dn>=up*2) return 'dn';
-    return 'flat';
-  }
-  // 둘 다 적음(플랫) → 목표 거리로 보조 판정
-  var cur=pj.cur||0, ut=pj.up_target||cur, dt=pj.dn_target||cur;
-  var upPow=(ut-cur)/cur, dnPow=(cur-dt)/cur;
-  if(upPow>dnPow*1.3 && upPow>0.05) return 'up';
-  if(dnPow>upPow*1.3 && dnPow>0.05) return 'dn';
+  var cur=pj.cur||0; if(cur<=0) return 'flat';
+  var ut=pj.up_target||cur;           // 상승목표(녹색)
+  var gm=pj.green_max||ut;            // 잠재(회색)
+  var drift=pj.drift||0;              // 과거 평균수익률 (추세 부호)
+  var upPow=(ut-cur)/cur;             // 상승 여력
+  var potPow=(gm-cur)/cur;            // 잠재 여력
+  // 하락 추세(drift 음수) + 상승 여력 약함 → 하방
+  if(drift < -0.0005 && upPow < 0.05) return 'dn';
+  // 상승 추세(drift 양수) + 상승 여력 뚜렷 → 상방
+  if(drift > 0.0005 && upPow >= 0.04) return 'up';
+  // 잠재 여력 큰데 추세도 양수 → 상방
+  if(drift > 0 && potPow >= 0.10) return 'up';
+  // 상승 여력 거의 없고 추세도 약 → 중립
+  if(upPow < 0.03 && Math.abs(drift) < 0.0008) return 'flat';
+  // 그 외: 여력 있으면 상방 편, 추세 음수면 하방 편
+  if(upPow >= 0.05) return 'up';
+  if(drift < 0) return 'dn';
   return 'flat';
 }
 
@@ -845,6 +834,40 @@ function mkChart(data,pj,sfx){
     if(s<0)s=0;if(s+sp>TOTAL)s=TOTAL-sp;
     viewS=s;viewE=s+sp-1;lay();draw(lastMx,lastMy);
   });
+  // ===== 모바일 터치 =====
+  // 한 손가락: 가격선(크로스헤어) 표시 + 좌우 스크롤
+  var tStartX=0, tDvs=0, tMoved=false;
+  cv.addEventListener('touchstart',function(e){
+    if(e.touches.length!==1)return;
+    var t=e.touches[0], r=cv.getBoundingClientRect();
+    tStartX=t.clientX; tDvs=viewS; tMoved=false;
+    lastMx=t.clientX-r.left; lastMy=t.clientY-r.top;
+    draw(lastMx,lastMy);
+  },{passive:true});
+  cv.addEventListener('touchmove',function(e){
+    if(e.touches.length!==1)return;
+    e.preventDefault();
+    var t=e.touches[0], r=cv.getBoundingClientRect();
+    lastMx=t.clientX-r.left; lastMy=t.clientY-r.top;
+    var dx=t.clientX-tStartX;
+    // 좌우로 많이 움직이면 스크롤, 그 외엔 가격선만
+    if(Math.abs(dx)>10){
+      tMoved=true;
+      var per=(plot.x1-plot.x0)/getSpan();
+      var sh=Math.round(-dx/per), sp=getSpan(), s=tDvs+sh;
+      if(s<0)s=0;if(s+sp>TOTAL)s=TOTAL-sp;
+      viewS=s;viewE=s+sp-1;lay();
+    }
+    draw(lastMx,lastMy);
+    // 교차점/위험 툴팁
+    tip.style.display='none';
+    draws.forEach(function(d){if(Math.abs(lastMy-yOf(d.yc))<8){tip.style.display='block';tip.style.background='#7f77dd';tip.textContent='교차점 '+fmtP(d.yc);tip.style.left=Math.min(lastMx+12,W-90)+'px';tip.style.top=(yOf(d.yc)-28)+'px';}});
+    risks.forEach(function(d){if(Math.abs(lastMy-yOf(d.yc))<8){tip.style.display='block';tip.style.background='#d4537e';tip.textContent='위험 '+fmtP(d.yc);tip.style.left=Math.min(lastMx+12,W-110)+'px';tip.style.top=(yOf(d.yc)-28)+'px';}});
+  },{passive:false});
+  cv.addEventListener('touchend',function(){
+    // 손 떼면 잠시 후 가격선·툴팁 정리
+    setTimeout(function(){ lastMx=lastMy=null; draw(null,null); tip.style.display='none'; }, 1500);
+  },{passive:true});
   document.getElementById('zin'+sfx).onclick=function(){var sp=getSpan(),ns=Math.max(15,Math.round(sp*0.7)),md=Math.round((viewS+viewE)/2);viewS=Math.max(0,md-Math.round(ns/2));viewE=Math.min(TOTAL-1,viewS+ns-1);lay();draw();};
   document.getElementById('zout'+sfx).onclick=function(){var sp=getSpan(),ns=Math.min(TOTAL,Math.round(sp*1.4)),md=Math.round((viewS+viewE)/2);viewS=Math.max(0,md-Math.round(ns/2));viewE=Math.min(TOTAL-1,viewS+ns-1);lay();draw();};
   document.getElementById('zall'+sfx).onclick=function(){viewS=0;viewE=TOTAL-1;lay();draw();};
