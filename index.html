@@ -223,6 +223,7 @@ inp.addEventListener('input',function(){
 inp.addEventListener('keydown',function(e){
   if(e.key==='Enter'){
     e.preventDefault();
+    inp.blur();  // 모바일 키보드 내리기
     var q=inp.value.trim();
     ac.classList.remove('show');
     // 1) 6자리 숫자 = 한국
@@ -241,7 +242,7 @@ inp.addEventListener('keydown',function(e){
   }
 });
 document.addEventListener('click',function(e){if(!e.target.closest('.search-box'))ac.classList.remove('show');});
-function pick(code,name){inp.value=name+' ('+code+')';ac.classList.remove('show');go(code);}
+function pick(code,name){inp.value=name+' ('+code+')';ac.classList.remove('show');inp.blur();go(code);}
 
 function mkMethodLabel(val,nm,col,methods){
   return '<label><input type="checkbox" class="mtd" value="'+val+'" checked style="accent-color:'+col+'"> '+nm+'</label>';
@@ -339,27 +340,76 @@ function render(x){
 }
 
 // ===== 방향 판정 =====
-// up_slope는 API에서 강제 양수라 못 씀 → drift(과거 평균수익률) 부호로 추세 판단
-// 상승목표 강도 + drift(추세)로 판정. 위험선 거리는 안 봄(멀어도 정상).
-function judgeDir(pj, d){
+// 핵심: 시나리오가 "출렁이면서(파동) + 시작가 대비 그 방향으로 제대로 가는가"
+//  - 상승 파동 인정 = 상승 시나리오가 출렁임 있고 + 끝점이 시작가보다 위
+//  - 하락 파동 인정 = 하락 시나리오가 출렁임 있고 + 끝점이 시작가보다 아래
+//  - 둘 다 인정 → 중립 / 한쪽만 → 그 방향 / 둘 다 미인정 → 중립
+function buildSeq(pj, d, dir){
+  var cur=pj.cur||0;
+  var startV=pj.anchor_price||cur;
+  var ceil_=pj.up_target||cur*1.1, floor_=pj.dn_target||cur*0.8;
+  var allLv=[];
+  (pj.sr_levels||[]).forEach(function(v){ if(v>0) allLv.push(v); });
+  if(d && d.draws) d.draws.forEach(function(x){ if(x.yc>0) allLv.push(x.yc); });
+  allLv.sort(function(a,b){return a-b;});
+  var clean=[]; allLv.forEach(function(v){ if(!clean.length||Math.abs(v-clean[clean.length-1])>cur*0.015) clean.push(v); });
+  allLv=clean;
+  var seq=[startV];
+  if(dir==='up'){
+    var ups=allLv.filter(function(v){return v>startV*1.005 && v<=ceil_*1.001;});
+    if(ups.length===0) ups=[ceil_];
+    if(ups[ups.length-1] < ceil_*0.97) ups.push(ceil_);
+    var prev=startV;
+    for(var i=0;i<ups.length;i++){
+      seq.push(ups[i]);
+      if(i<ups.length-1) seq.push(prev+(ups[i]-prev)*0.45);  // 되돌림(출렁)
+      prev=ups[i];
+    }
+  } else {
+    var dns=allLv.filter(function(v){return v<startV*0.995 && v>=floor_*0.999;}).reverse();
+    if(dns.length===0) dns=[floor_];
+    if(dns[dns.length-1] > floor_*1.03) dns.push(floor_);
+    var prevd=startV;
+    for(var j=0;j<dns.length;j++){
+      seq.push(dns[j]);
+      if(j<dns.length-1) seq.push(prevd+(dns[j]-prevd)*0.45);  // 반등(출렁)
+      prevd=dns[j];
+    }
+  }
+  return {seq:seq, startV:startV};
+}
+function waveShows(pj, d, dir){
+  // 그 방향 파동이 "나타나는가" = 시나리오 앞쪽이 밋밋하지 않고(출렁임) + 그 방향으로 타는가
+  // 끝점·끝 꺾임은 무시. 앞쪽(앞 절반)이 핵심.
+  var r=buildSeq(pj, d, dir);
+  var seq=r.seq, startV=r.startV;
+  if(seq.length<2) return false;
+  // 앞쪽 구간 = 앞 절반(최소 3점)
+  var half=Math.max(3, Math.ceil(seq.length*0.6));
+  var front=seq.slice(0, Math.min(half, seq.length));
+  if(front.length<2) return false;
+  // 1) 앞쪽이 그 방향으로 제대로 가는가 (앞쪽 최대 도달이 시작가 대비 의미있게)
+  var reach;
+  if(dir==='up'){ reach=Math.max.apply(null,front); if(reach <= startV*1.015) return false; }
+  else         { reach=Math.min.apply(null,front); if(reach >= startV*0.985) return false; }
+  // 2) 앞쪽이 밋밋하지 않은가 (출렁임=변곡 또는 충분한 이동폭)
+  var turns=0;
+  for(var i=2;i<front.length;i++){
+    var d1=front[i-1]-front[i-2], d2=front[i]-front[i-1];
+    if(d1*d2<0) turns++;   // 앞쪽에서의 변곡(출렁)
+  }
+  // 앞쪽에 변곡이 있거나, 앞쪽 레벨이 2개 이상(여러 변곡점 경유) → 파동. 밋밋하면(변곡0+점적음) 불인정
+  var movePct=Math.abs(reach-startV)/(startV||1);
+  return turns>=1 || (front.length>=4 && movePct>=0.04);
+}
+function judgeDir(pj, d, isWeek){
   if(!pj) return 'flat';
   var cur=pj.cur||0; if(cur<=0) return 'flat';
-  var ut=pj.up_target||cur;           // 상승목표(녹색)
-  var gm=pj.green_max||ut;            // 잠재(회색)
-  var drift=pj.drift||0;              // 과거 평균수익률 (추세 부호)
-  var upPow=(ut-cur)/cur;             // 상승 여력
-  var potPow=(gm-cur)/cur;            // 잠재 여력
-  // 하락 추세(drift 음수) + 상승 여력 약함 → 하방
-  if(drift < -0.0005 && upPow < 0.05) return 'dn';
-  // 상승 추세(drift 양수) + 상승 여력 뚜렷 → 상방
-  if(drift > 0.0005 && upPow >= 0.04) return 'up';
-  // 잠재 여력 큰데 추세도 양수 → 상방
-  if(drift > 0 && potPow >= 0.10) return 'up';
-  // 상승 여력 거의 없고 추세도 약 → 중립
-  if(upPow < 0.03 && Math.abs(drift) < 0.0008) return 'flat';
-  // 그 외: 여력 있으면 상방 편, 추세 음수면 하방 편
-  if(upPow >= 0.05) return 'up';
-  if(drift < 0) return 'dn';
+  var upWave=waveShows(pj, d, 'up');
+  var dnWave=waveShows(pj, d, 'dn');
+  if(upWave && !dnWave) return 'up';   // 상승만 파동
+  if(dnWave && !upWave) return 'dn';   // 하락만 파동
+  // 둘 다 파동(둘 다 엘리엇) → 중립 / 둘 다 없음 → 중립
   return 'flat';
 }
 
@@ -370,8 +420,8 @@ function buildReport(x, d, pj, t10){
   if(area.innerHTML){ area.innerHTML=''; return; }  // 토글
   var IS_US=(x['시장']==='미국');
   function pf(v){ return IS_US?('$'+Number(v).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})):(Math.round(v).toLocaleString()+'원'); }
-  var qDir=judgeDir(pj, d);
-  var wDir=(t10&&t10.projection)?judgeDir(t10.projection, t10):'flat';
+  var qDir=judgeDir(pj, d, false);
+  var wDir=(t10&&t10.projection)?judgeDir(t10.projection, t10, true):'flat';
   var dirName={up:'상방',dn:'하방',flat:'횡보'};
   var dirCls={up:'d-up',dn:'d-dn',flat:'d-fl'};
   // 종합 멘트 (분기 × 주 조합)
@@ -841,14 +891,14 @@ function mkChart(data,pj,sfx){
     if(e.touches.length!==1)return;
     var t=e.touches[0], r=cv.getBoundingClientRect();
     tStartX=t.clientX; tDvs=viewS; tMoved=false;
-    lastMx=t.clientX-r.left; lastMy=t.clientY-r.top;
+    lastMx=t.clientX-r.left; lastMy=(t.clientY-r.top)-44;
     draw(lastMx,lastMy);
   },{passive:true});
   cv.addEventListener('touchmove',function(e){
     if(e.touches.length!==1)return;
     e.preventDefault();
     var t=e.touches[0], r=cv.getBoundingClientRect();
-    lastMx=t.clientX-r.left; lastMy=t.clientY-r.top;
+    lastMx=t.clientX-r.left; lastMy=(t.clientY-r.top)-44;  // 손가락 가림 방지: 44px 위로
     var dx=t.clientX-tStartX;
     // 좌우로 많이 움직이면 스크롤, 그 외엔 가격선만
     if(Math.abs(dx)>10){
