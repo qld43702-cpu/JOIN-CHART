@@ -50,21 +50,30 @@ def get_name_us(ticker):
     except Exception:
         return ticker.upper(),"미국"
 
+_token_cache={"tk":None,"exp":0}
 def token():
+    import time
+    now=time.time()
+    # 캐시된 토큰이 살아있으면 재사용 (LS 토큰 24h 유효 → 23h 캐싱)
+    if _token_cache["tk"] and now < _token_cache["exp"]:
+        return _token_cache["tk"]
     key=os.environ.get("LS_APP_KEY","").strip()
     secret=os.environ.get("LS_APP_SECRET","").strip()
     if not key or not secret:
         raise RuntimeError("환경변수 미설정 (LS_APP_KEY/LS_APP_SECRET)")
-    r=requests.post(f"{BASE}/oauth2/token",verify=False,
+    r=requests.post(f"{BASE}/oauth2/token",verify=False,timeout=8,
         headers={"Content-Type":"application/x-www-form-urlencoded"},
         params={"grant_type":"client_credentials","appkey":key,"appsecretkey":secret,"scope":"oob"})
     j=r.json()
     if "access_token" not in j:
         raise RuntimeError("토큰 발급 실패: "+str(j.get("error_description") or j.get("error") or j))
-    return j["access_token"]
+    tk=j["access_token"]
+    _token_cache["tk"]=tk
+    _token_cache["exp"]=now + 23*3600  # 23시간 캐싱
+    return tk
 
 def get_day(tk,code):
-    r=requests.post(f"{BASE}/stock/chart",verify=False,
+    r=requests.post(f"{BASE}/stock/chart",verify=False,timeout=8,
         headers={"Content-Type":"application/json; charset=UTF-8","authorization":f"Bearer {tk}","tr_cd":"t8410","tr_cont":"N"},
         json={"t8410InBlock":{"shcode":code,"gubun":"2","qrycnt":150,"sdate":"20240101","edate":"20991231","cts_date":"","comp_yn":"N","sujung":"Y"}})
     rows=r.json().get("t8410OutBlock1",[])
@@ -76,7 +85,7 @@ def get_day(tk,code):
 def get_60m(tk,code):
     rows=[]; cd=""; ct=""
     for _ in range(2):
-        r=requests.post(f"{BASE}/stock/chart",verify=False,
+        r=requests.post(f"{BASE}/stock/chart",verify=False,timeout=8,
             headers={"Content-Type":"application/json; charset=UTF-8","authorization":f"Bearer {tk}","tr_cd":"t8412","tr_cont":"N" if cd=="" else "Y"},
             json={"t8412InBlock":{"shcode":code,"ncnt":60,"qrycnt":500,"nday":"0","sdate":"20250101","edate":"20991231","cts_date":cd,"cts_time":ct,"comp_yn":"N"}})
         j=r.json(); rr=j.get("t8412OutBlock1",[])
@@ -98,7 +107,7 @@ def get_min(tk,code,ncnt):
     """분봉 받기. ncnt=주기(분): 10=10분봉, 60=60분봉"""
     rows=[]; cd=""; ct=""
     for _ in range(2):
-        r=requests.post(f"{BASE}/stock/chart",verify=False,
+        r=requests.post(f"{BASE}/stock/chart",verify=False,timeout=8,
             headers={"Content-Type":"application/json; charset=UTF-8","authorization":f"Bearer {tk}","tr_cd":"t8412","tr_cont":"N" if cd=="" else "Y"},
             json={"t8412InBlock":{"shcode":code,"ncnt":ncnt,"qrycnt":500,"nday":"0","sdate":"20250101","edate":"20991231","cts_date":cd,"cts_time":ct,"comp_yn":"N"}})
         j=r.json(); rr=j.get("t8412OutBlock1",[])
@@ -143,7 +152,7 @@ def get_name(tk,code):
     mk_j = sj['market'] if sj else ''
     # 2순위: t1102 API (이름 보강용, 시장은 stocks.json 우선)
     try:
-        r=requests.post(f"{BASE}/stock/market-data",verify=False,
+        r=requests.post(f"{BASE}/stock/market-data",verify=False,timeout=8,
             headers={"Content-Type":"application/json; charset=UTF-8","authorization":f"Bearer {tk}","tr_cd":"t1102","tr_cont":"N"},
             json={"t1102InBlock":{"shcode":code}})
         b=r.json().get("t1102OutBlock",{})
@@ -639,13 +648,21 @@ class handler(BaseHTTPRequestHandler):
                 # ===== 미국 주식 (야후) =====
                 tkr=code.upper()
                 nm,mk=get_name_us(tkr)
-                day=get_day_us(tkr); m60=get_min_us(tkr,"60m"); m10=get_min_us(tkr,"15m")
+                day=get_day_us(tkr)
+                try: m60=get_min_us(tkr,"60m")
+                except Exception: m60=None
+                try: m10=get_min_us(tkr,"15m")
+                except Exception: m10=None
             else:
                 # ===== 한국 주식 (LS) =====
                 if not code.isdigit() or len(code)!=6:
                     self.wfile.write(json.dumps({'error':'국내는 6자리 코드, 해외는 영문 티커(AAPL 등)'}).encode()); return
                 tk=token(); nm,mk=get_name(tk,code)
-                day=get_day(tk,code); m60=get_60m(tk,code); m10=get_min(tk,code,10)
+                day=get_day(tk,code)
+                try: m60=get_60m(tk,code)
+                except Exception: m60=None
+                try: m10=get_min(tk,code,10)
+                except Exception: m10=None
             if not day or len(day)<30:
                 self.wfile.write(json.dumps({'error':'데이터를 찾을 수 없습니다 ('+code+')'}).encode()); return
             dd = build_drawings(day) if day and len(day)>30 else {'error':'데이터 부족'}
