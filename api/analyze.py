@@ -51,6 +51,7 @@ def get_name_us(ticker):
         return ticker.upper(),"미국"
 
 _token_cache={"tk":None,"exp":0}
+_RESULT_CACHE={}   # 종목별 분석 결과 캐시 (30분)
 def token():
     import time
     now=time.time()
@@ -644,6 +645,12 @@ class handler(BaseHTTPRequestHandler):
         try:
             if not code:
                 self.wfile.write(json.dumps({'error':'종목코드를 입력하세요'}).encode()); return
+            # ===== 결과 캐시 확인 (30분) — 일봉 3개월/10분봉 주 기준이라 자주 안 바뀜 =====
+            import time as _t
+            _ck=code.upper()
+            _hit=_RESULT_CACHE.get(_ck)
+            if _hit and _t.time() < _hit["exp"]:
+                self.wfile.write(_hit["data"]); return
             if is_us(code):
                 # ===== 미국 주식 (야후) =====
                 tkr=code.upper()
@@ -721,6 +728,9 @@ class handler(BaseHTTPRequestHandler):
                 except Exception as pe:
                     tt['projection'] = None
             out={'종목코드':code,'종목명':nm,'시장':mk,'일봉':dd,'60분':mm,'10분':tt}
-            self.wfile.write(json.dumps(out,ensure_ascii=False).encode())
+            _payload=json.dumps(out,ensure_ascii=False).encode()
+            # 캐시 저장 (30분)
+            _RESULT_CACHE[_ck]={"data":_payload,"exp":_t.time()+1800}
+            self.wfile.write(_payload)
         except Exception as ex:
             self.wfile.write(json.dumps({'error':'분석 실패: '+str(ex)}).encode())
