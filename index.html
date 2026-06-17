@@ -5,15 +5,20 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>JOIN CHART</title>
 <style>
-:root{--bg:#f4f6f8;--card:#fff;--navy:#1a3a5c;--orange:#e8743b;--green:#1d9e75;--red:#e24b4a;--blue:#378add;--purple:#7f77dd;--pink:#d4537e;--gray:#8a98a8;--line:#e3e8ee;--muted:#8a98a8;--faint:#a8b3c0}
+:root{--bg:#eef1f5;--card:#fff;--navy:#1b3a5c;--orange:#ed7d31;--orange-soft:#fdeee2;--navy-soft:#eef3f9;--green:#1d9e75;--red:#dd5b54;--blue:#3f7fd0;--blue-soft:#eaf1fb;--purple:#7f77dd;--pink:#d4537e;--gray:#8a98a8;--ink:#23344a;--line:#e7ecf1;--muted:#8a97a6;--faint:#a8b3c0}
 *{margin:0;padding:0;box-sizing:border-box}
-body{background:var(--bg);color:var(--navy);font-family:-apple-system,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;padding:16px 14px 60px;font-size:16px}
-.wrap{max-width:960px;margin:0 auto}
+body{background:var(--bg);color:var(--ink);font-family:-apple-system,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;padding:0 0 60px;font-size:16px}
+.wrap{max-width:960px;margin:0 auto;padding:0}
+.appbar{background:var(--navy);color:#fff;padding:16px 18px;display:flex;align-items:center;gap:11px;position:sticky;top:0;z-index:30}
+.appbar .logo{width:36px;height:36px;border-radius:10px;background:var(--orange);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:18px;cursor:pointer}
+.appbar .ttl{font-size:19px;font-weight:800;letter-spacing:-.2px;color:#fff}
+.appbar .sub{font-size:12px;color:#aebfd2;margin-top:1px}
+.body-pad{padding:0 16px}
 header{display:flex;align-items:center;gap:11px;margin-bottom:16px}
 .logo{width:40px;height:40px;border-radius:10px;background:var(--orange);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:20px;cursor:pointer}
 .ttl{font-size:22px;font-weight:800}.sub{font-size:13px;color:var(--muted);margin-top:2px}
-.search-box{position:relative;margin-bottom:8px}
-.search-box input{width:100%;height:52px;border:2px solid #d5dce4;border-radius:12px;padding:0 18px;font-size:17px;font-weight:600;outline:none}
+.search-box{position:relative;margin-bottom:8px;margin-top:16px}
+.search-box input{width:100%;height:52px;border:2px solid #dde3ea;border-radius:14px;padding:0 18px;font-size:17px;font-weight:600;outline:none}
 .search-box input:focus{border-color:var(--navy)}
 .ac{position:absolute;top:56px;left:0;right:0;background:#fff;border:1px solid var(--line);border-radius:12px;overflow:hidden;z-index:20;box-shadow:0 4px 16px rgba(26,58,92,.12);display:none}
 .ac.show{display:block}
@@ -87,7 +92,30 @@ header{display:flex;align-items:center;gap:11px;margin-bottom:16px}
 .gcard .gdot{width:12px;height:12px;border-radius:3px;display:inline-block;flex-shrink:0}
 .gcard p{font-size:13px;color:#5a6675;line-height:1.65;margin:0}
 .gcard b{color:var(--navy)}
-.guide-foot{margin-top:14px;padding:12px 15px;background:#fff8f3;border:1px solid #f0d4bf;border-radius:10px;font-size:12px;color:#9a6b4a;line-height:1.6}
+.lead2{font-size:14px;color:#7a8694;font-weight:600;margin:14px 2px 12px}
+#guide{margin-bottom:8px}
+.gcard2{background:var(--card);border-radius:16px;margin-bottom:11px;overflow:hidden;border:1px solid #edf1f5;box-shadow:0 1px 4px rgba(27,58,92,.05)}
+.gcard2.ac-navy{border-top:3px solid var(--navy)}
+.gcard2.ac-blue{border-top:3px solid var(--blue)}
+.gcard2.ac-orange{border-top:3px solid var(--orange)}
+.gc2-main{display:flex;align-items:center;gap:13px;padding:15px 16px 12px}
+.gc2-ico{width:42px;height:42px;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.gc2-ico.ico-blue{background:var(--blue-soft)}.gc2-ico.ico-orange{background:var(--orange-soft)}
+.gc2-ico svg{width:22px;height:22px}
+.gc2-tx{flex:1;min-width:0}
+.gc2-t{font-size:16px;font-weight:800;color:var(--ink);letter-spacing:-.2px}
+.gc2-s{font-size:12.5px;color:#7e8b9b;margin-top:2px;font-weight:500}
+.gc2-steps{display:flex;align-items:center;gap:3px;padding:12px 16px;background:#f8fafc;border-top:1px solid #f0f3f7}
+.gstep{flex:1;text-align:center;font-size:12px;font-weight:700;color:#5a6878;padding:5px 0;border-radius:7px}
+.gstep.on{background:var(--orange-soft);color:var(--orange)}
+.gstep.up{color:var(--red)}.gstep.dn{color:var(--blue)}
+.garr{color:#cfd8e2;font-size:13px;flex-shrink:0}
+.gc2-chips{display:flex;gap:7px;flex-wrap:wrap;padding:12px 16px;background:#fafbfd;border-top:1px solid #f0f3f7}
+.gchip{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:#445268;padding:6px 11px;border-radius:9px;background:#fff;border:1px solid #e9eef4}
+.gchip i{width:9px;height:9px;border-radius:3px;display:inline-block}
+.guide-foot2{margin-top:4px;padding:13px 15px;background:#fff8f3;border:1px solid #f3e0cf;border-radius:12px;font-size:12px;color:#9a6b4a;line-height:1.6;display:flex;gap:9px;align-items:flex-start;font-weight:600}
+.guide-foot2 svg{width:16px;height:16px;flex-shrink:0;margin-top:1px}
+.guide-foot2 b{color:#7a5232}
 .loading,.empty{text-align:center;padding:50px;color:var(--muted)}
 .loading{display:flex;flex-direction:column;align-items:center;gap:18px}
 .spinner{width:54px;height:54px;border:5px solid #e8eef4;border-top-color:var(--orange);border-radius:50%;animation:spin .8s linear infinite}
@@ -107,57 +135,46 @@ header{display:flex;align-items:center;gap:11px;margin-bottom:16px}
 </style>
 </head>
 <body>
+<div class="appbar">
+  <div class="logo" onclick="goHome()">J</div>
+  <div onclick="goHome()" style="cursor:pointer">
+    <div class="ttl">JOIN CHART</div>
+    <div class="sub">작도 + 미래 시나리오</div>
+  </div>
+</div>
 <div class="wrap">
-<header><div class="logo" onclick="goHome()">J</div><div onclick="goHome()" style="cursor:pointer"><div class="ttl">JOIN CHART</div><div class="sub">종목 작도 + 미래 예측 · 일봉</div></div></header>
+<div class="body-pad">
 <div class="search-box">
-  <input type="text" id="codeInput" placeholder="국내: 종목명/코드 (클로봇·466100) · 미국: 티커 (AAPL·TSLA)" autocomplete="off">
+  <input type="text" id="codeInput" placeholder="국내: 종목명/코드 · 미국: 티커 (AAPL)" autocomplete="off">
   <div class="ac" id="acList"></div>
 </div>
-<div class="hint">코스피·코스닥 전체 + 미국 주식. 차트 오른쪽 미래 공간에 작도 목표·위험·삼각수렴이 그려지고, 기법을 체크하면 예측 파동이 겹쳐집니다.</div>
+<div class="lead2">차트 구조로 다음 예상 경로를 안내합니다 — 예측이 아닌 참고용</div>
 <div id="guide">
-  <div class="guide-title">📐 JOIN CHART 지표 안내</div>
-  <div class="guide-sub">차트는 "예측"이 아니라 <b>구조를 보는 도구</b>입니다. 아래 지표로 직접 판단하세요.</div>
-
-  <div class="gcard">
-    <div class="gh"><span class="gdot" style="background:#1d9e75"></span>녹색 — 상승목표 (현실)</div>
-    <p>작도가 가리키는 상승 잠재치의 <b>35% 지점</b>. 과거 4.5만 건 검증상 녹색 끝까지 도달은 28%뿐이라, 현실적으로 도달 가능한(약 58%) 선만 표시합니다.</p>
+  <div class="gcard2 ac-navy">
+    <div class="gc2-main">
+      <div class="gc2-ico ico-blue"><svg viewBox="0 0 24 24" fill="none" stroke="#3f7fd0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg></div>
+      <div class="gc2-tx"><div class="gc2-t">분기별 예측 · 일봉</div><div class="gc2-s">1/1·4/1·7/1·10/1 기준, 다음 3개월 예상 경로</div></div>
+    </div>
+    <div class="gc2-steps"><span class="gstep on">1/1</span><span class="garr">›</span><span class="gstep">4/1</span><span class="garr">›</span><span class="gstep">7/1</span><span class="garr">›</span><span class="gstep">10/1</span></div>
   </div>
-  <div class="gcard">
-    <div class="gh"><span class="gdot" style="background:#5a6473"></span>회색 점선 — 상승잠재 (작도 최대)</div>
-    <p>캡을 씌우지 않은 작도 원본 목표. 추세가 강한 종목(폭등주)이 어디까지 갈 수 있는지 보여줍니다. 녹색이 현실, 회색이 최대치.</p>
+  <div class="gcard2 ac-blue">
+    <div class="gc2-main">
+      <div class="gc2-ico ico-blue"><svg viewBox="0 0 24 24" fill="none" stroke="#3f7fd0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l5-5 4 3 6-7"/><path d="M21 8v5h-5"/></svg></div>
+      <div class="gc2-tx"><div class="gc2-t">주 예측 · 10분봉</div><div class="gc2-s">매주 단위, 다음 한 주 상승·하락 시나리오</div></div>
+    </div>
+    <div class="gc2-steps"><span class="gstep up">상승</span><span class="garr">›</span><span class="gstep">횡보</span><span class="garr">›</span><span class="gstep dn">하락</span></div>
   </div>
-  <div class="gcard">
-    <div class="gh"><span class="gdot" style="background:#d4537e"></span>분홍 — 위험선</div>
-    <p>작도 반대(하락) 교차점. "여기까지 빠질 수 있다"는 하방 목표. 검증상 이 선 도달 후 <b>반등 51~57% / 추가하락 37%</b> — 지지 매수 자리로도 통하지만 이탈 시 손절 구간.</p>
+  <div class="gcard2 ac-orange">
+    <div class="gc2-main">
+      <div class="gc2-ico ico-orange"><svg viewBox="0 0 24 24" fill="none" stroke="#ed7d31" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3v6l-5 9a2 2 0 002 3h12a2 2 0 002-3l-5-9V3"/><path d="M7 3h10"/></svg></div>
+      <div class="gc2-tx"><div class="gc2-t">사용된 분석 기법</div><div class="gc2-s">5가지 지표를 겹쳐 경로를 도출합니다</div></div>
+    </div>
+    <div class="gc2-chips"><span class="gchip"><i style="background:#7f77dd"></i>엘리엇</span><span class="gchip"><i style="background:#1d9e75"></i>피보나치</span><span class="gchip"><i style="background:#3f7fd0"></i>몬테카를로</span><span class="gchip"><i style="background:#ba7517"></i>갠</span><span class="gchip"><i style="background:#ed7d31"></i>작도법</span></div>
   </div>
-  <div class="gcard">
-    <div class="gh"><span class="gdot" style="background:#8a98a8"></span>회색 — 삼각수렴</div>
-    <p>변동성이 줄며 모이는 수렴 구간. 위아래 폭이 좁아지면 곧 한 방향으로 터질 가능성.</p>
-  </div>
-  <div class="gcard">
-    <div class="gh"><span class="gdot" style="background:#e8743b"></span>주황 — 매물집중 (매물대)</div>
-    <p>거래량이 가장 많이 쌓인 가격대(POC). 이 가격에 물린 사람이 많아 저항·지지로 자주 작용합니다.</p>
-  </div>
-  <div class="gcard">
-    <div class="gh">📈 시나리오 버튼 (상승·횡보·하락)</div>
-    <p>엘리엇 파동 기반으로 <b>지지·저항을 왕복하는 예상 흐름</b>. 확률 숫자는 일부러 뺐습니다 — 검증상 못 믿는 숫자라, 차트 모양으로 직접 보고 판단하시라는 뜻입니다.</p>
-  </div>
-  <div class="gcard">
-    <div class="gh">🔵 기법 4종 (엘리엇·몬테카를로·피보나치·갠)</div>
-    <p>체크박스로 켜고 끄며 겹쳐 볼 수 있습니다. 각 기법이 보는 목표선을 비교하세요. 작도 상한(녹색)을 넘지 않게 캡이 적용됩니다.</p>
-  </div>
-  <div class="gcard">
-    <div class="gh">⚓ 기준점 (분기 04/01 · 주 단위)</div>
-    <p>일봉은 <b>분기 시작(4/1·7/1...)</b>, 10분봉은 <b>최근 1주</b>를 기준으로 시나리오를 그립니다. 기준점부터 실제 봉이 어느 시나리오로 갔는지 비교할 수 있고, 분기가 바뀌면 자동 리셋됩니다.</p>
-  </div>
-  <div class="gcard">
-    <div class="gh">📅 일봉 + ⏱️ 10분봉 (미국 15분봉)</div>
-    <p>일봉(큰 흐름)과 분봉(단기 흐름)을 함께 봅니다. 60분봉은 화면엔 없지만 위험선 계산에 쓰입니다.</p>
-  </div>
-
-  <div class="guide-foot">⚠️ 모든 지표는 통계·작도 기반 <b>참고 자료</b>이며 매수·매도 추천이 아닙니다. 방향 예측은 추세 유지 시에만 맞고 전환점은 잡지 못합니다. 매매 판단과 책임은 본인에게 있습니다.</div>
+  <div class="guide-foot2"><svg viewBox="0 0 24 24" fill="none" stroke="#9a6b4a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9l-8 14A2 2 0 004 21h16a2 2 0 001.7-3l-8-14a2 2 0 00-3.4 0z"/></svg><span>모든 지표는 통계·작도 기반 <b>참고 자료</b>이며 매수·매도 추천이 아닙니다. 방향 예측은 추세 유지 시에만 맞고 전환점은 잡지 못합니다.</span></div>
 </div>
 <div id="result"></div>
+</div>
 <script>
 var STOCKS=[];
 fetch('stocks.json?t='+Date.now()).then(function(r){return r.json();}).then(function(s){STOCKS=s||[];}).catch(function(){STOCKS=[];});
@@ -726,5 +743,6 @@ function mkChart(data,pj,sfx){
   window.addEventListener('resize',function(){lay();draw(null,null);});
 }
 </script>
+</div>
 </body>
 </html>
