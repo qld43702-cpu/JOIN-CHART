@@ -9,10 +9,12 @@
 *{margin:0;padding:0;box-sizing:border-box}
 body{background:var(--bg);color:var(--ink);font-family:-apple-system,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;padding:0 0 60px;font-size:16px}
 .wrap{max-width:960px;margin:0 auto;padding:0}
-.appbar{background:var(--navy);color:#fff;padding:16px 18px;display:flex;align-items:center;gap:11px;position:sticky;top:0;z-index:30}
-.appbar .logo{width:36px;height:36px;border-radius:10px;background:var(--orange);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:18px;cursor:pointer}
-.appbar .ttl{font-size:19px;font-weight:800;letter-spacing:-.2px;color:#fff}
-.appbar .sub{font-size:12px;color:#aebfd2;margin-top:1px}
+.appbar{background:var(--navy);color:#fff;padding:18px 20px;display:flex;align-items:center;gap:13px;position:sticky;top:0;z-index:30;overflow:hidden}
+.appbar .hbg{position:absolute;right:-10px;bottom:-5px;opacity:.13;width:180px;pointer-events:none}
+.appbar .logo{width:44px;height:44px;border-radius:13px;background:linear-gradient(145deg,#f59a63,#e06c20);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:21px;cursor:pointer;box-shadow:0 6px 16px rgba(0,0,0,.3),inset 0 2px 3px rgba(255,255,255,.45),inset 0 -2px 3px rgba(0,0,0,.2);position:relative;z-index:1}
+.appbar .ttl{font-size:21px;font-weight:800;letter-spacing:-.3px;color:#fff;position:relative;z-index:1}
+.appbar .ttl .accent{color:#f4a06a}
+.appbar .sub{font-size:11px;color:#a8bdd6;margin-top:2px;position:relative;z-index:1}
 .body-pad{padding:0 16px}
 header{display:flex;align-items:center;gap:11px;margin-bottom:16px}
 .logo{width:40px;height:40px;border-radius:10px;background:var(--orange);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:20px;cursor:pointer}
@@ -169,9 +171,10 @@ header{display:flex;align-items:center;gap:11px;margin-bottom:16px}
 </head>
 <body>
 <div class="appbar">
+  <svg class="hbg" viewBox="0 0 200 100"><polyline points="0,80 30,60 60,68 90,40 120,48 150,20 200,10" fill="none" stroke="#fff" stroke-width="3"/></svg>
   <div class="logo" onclick="goHome()">J</div>
   <div onclick="goHome()" style="cursor:pointer">
-    <div class="ttl">JOIN CHART</div>
+    <div class="ttl">JOIN<span class="accent"> CHART</span></div>
     <div class="sub">작도 + 미래 시나리오</div>
   </div>
 </div>
@@ -332,13 +335,44 @@ function render(x){
   box.innerHTML=html;
   // 리포트 버튼 이벤트
   var rb=document.getElementById('repBtn');
-  if(rb) rb.addEventListener('click',function(){ buildReport(x, d, pj, t10); });
+  if(rb) rb.addEventListener('click',function(){ buildReport(x, d, pj, t10, x['60분']); });
   requestAnimationFrame(function(){requestAnimationFrame(function(){
     mkChart(d,pj,'');
     if(has10){ try{ mkChart(t10, t10.projection, '10'); }catch(e){console.error('10분봉 차트 오류:',e);} }
   });});
 }
 
+// ===== 27개 조합 멘트 (분기_월_주) =====
+// 원칙: 주간 상방=이미 올라 매수자리 지남(추격신중) / 분기상방+주눌림=분할매수 / 분기하방+주반등=데드캣
+var verdicts3={
+'up_up_up':{t:'정배열 · 단기 이미 상승',s:'분기·월·주 상방',b:'분기·월·주 <b>모두 위</b>. 추세에 올라탄 정배열이나 단기 이미 상승했습니다.',hl:'보유 유지 구간 — 신규 매수는 <b>다음 눌림 대기</b>, 추격 매수는 신중.',c:'red'},
+'up_up_flat':{t:'정배열 · 단기 숨고르기',s:'분기·월 상방 · 주 횡보',b:'큰추세·중기 <b>위</b>, 단기 <b>횡보</b>. 상승 중 눌림 자리입니다.',hl:'<b>분할매수 유리</b> — 추세 살아있고 단기 쉬어감. 담기 좋은 구간.',c:'red'},
+'up_up_dn':{t:'정배열 · 단기 조정',s:'분기·월 상방 · 주 하방',b:'분기·월 <b>위</b>, 주 <b>조정</b>. 큰 흐름 속 단기 눌림목입니다.',hl:'<b>분할매수 유리</b> — 저점 담는 자리, 단 주간 지지 이탈 시 관망.',c:'red'},
+'up_flat_up':{t:'큰추세 위 · 단기 이미 반등',s:'분기 상방 · 월 횡보 · 주 상방',b:'분기 <b>위</b>, 월 횡보, 주 <b>이미 상승</b>. 단기 반등이 진행됐습니다.',hl:'<b>추격 신중</b> — 매수 자리는 지났음, 월 박스 상단 저항 확인.',c:'orange'},
+'up_flat_flat':{t:'큰추세 위 · 중단기 정체',s:'분기 상방 · 월·주 횡보',b:'분기 <b>위</b>, 월·주 <b>횡보</b>. 큰 그림 살아있고 중단기 숨고르기.',hl:'<b>분할 접근 구간</b> — 추세 신뢰 시 눌림마다 담기, 방향 재개 대기.',c:'orange'},
+'up_flat_dn':{t:'큰추세 위 · 단기 눌림',s:'분기 상방 · 월 횡보 · 주 하방',b:'분기 <b>위</b>, 월 횡보, 주 <b>하락</b>. 추세 속 단기 조정입니다.',hl:'<b>분할매수 관심</b> — 추세 신뢰 시 저점 담기, 조정 깊이 관찰.',c:'red'},
+'up_dn_up':{t:'큰추세 위 · 단기 반등 진입',s:'분기 상방 · 월 하방 · 주 상방',b:'분기 <b>위</b>, 월 <b>조정</b>, 주 <b>반등</b>. 이미 단기 반등 들어갔습니다.',hl:'<b>매수 자리 지났음</b> — 추격 신중, 중기 조정이라 다음 눌림 대기.',c:'orange'},
+'up_dn_flat':{t:'큰추세 위 · 중기 조정',s:'분기 상방 · 월 하방 · 주 횡보',b:'분기 <b>위</b>, 월 <b>하방</b>, 주 횡보. 중기 조정 진행 중 단기 정체.',hl:'<b>관망 우위</b> — 추세 살아있으나 중기 조정 마무리 확인 후 분할.',c:'orange'},
+'up_dn_dn':{t:'큰추세 위 · 중단기 조정',s:'분기 상방 · 월·주 하방',b:'분기 <b>위</b>, 월·주 <b>하방</b>. 큰추세 속 깊은 조정 국면입니다.',hl:'<b>조정 깊이 관건</b> — 추세 신뢰 시 저점 분할, 훼손 시 비중 축소.',c:'orange'},
+'flat_up_up':{t:'중단기 상승 · 단기 이미 올라',s:'분기 횡보 · 월·주 상방',b:'분기 <b>횡보</b>, 월·주 <b>위</b>. 중단기 상승이나 단기 이미 상승.',hl:'<b>추격 신중</b> — 추세 근거 약함, 단기 트레이딩 관점.',c:'blue'},
+'flat_up_flat':{t:'중기 상승 · 단기 정체',s:'분기 횡보 · 월 상방 · 주 횡보',b:'분기 횡보, 월 <b>위</b>, 주 횡보. 중기 상승 속 단기 눌림.',hl:'중기 상승 신뢰 시 <b>분할 관심</b> — 단기 방향 대기.',c:'blue'},
+'flat_up_dn':{t:'중기 상승 · 단기 조정',s:'분기 횡보 · 월 상방 · 주 하방',b:'분기 횡보, 월 <b>위</b>, 주 <b>하락</b>. 중기 위인데 단기 눌림.',hl:'<b>단기 조정 저점 관심</b> — 중기 상방 유지 시 반등 가능.',c:'blue'},
+'flat_flat_up':{t:'정체 · 단기 이미 반등',s:'분기·월 횡보 · 주 상방',b:'분기·월 <b>횡보</b>, 주 <b>상승</b>. 박스권 속 단기 반등 진입.',hl:'<b>추격 신중</b> — 추세 근거 약함, 박스 상단 저항 주의.',c:'blue'},
+'flat_flat_flat':{t:'완전 중립 · 관망',s:'분기·월·주 횡보',b:'분기·월·주 <b>모두 횡보</b>. 방향성 없는 관망 구간입니다.',hl:'<b>관망</b> — 뚜렷한 신호 대기, 박스 상하단 대응 정도.',c:'gray'},
+'flat_flat_dn':{t:'정체 · 단기 하락',s:'분기·월 횡보 · 주 하방',b:'분기·월 횡보, 주 <b>하락</b>. 박스권 하단 이탈 시도.',hl:'<b>섣부른 매수 주의</b> — 주간 바닥 확인 후 접근.',c:'blue'},
+'flat_dn_up':{t:'중기 약화 · 단기 반등',s:'분기 횡보 · 월 하방 · 주 상방',b:'분기 횡보, 월 <b>하방</b>, 주 <b>반등</b>. 중기 조정 속 단기 튐.',hl:'<b>데드캣 경계</b> — 중기 하방이라 반등 지속성 의심.',c:'blue'},
+'flat_dn_flat':{t:'중기 하락 · 단기 정체',s:'분기 횡보 · 월 하방 · 주 횡보',b:'분기 횡보, 월 <b>하방</b>, 주 횡보. 중기 조정 단기 멈춤.',hl:'<b>관망</b> — 중기 하방 진행, 반등 신호 전 진입 자제.',c:'blue'},
+'flat_dn_dn':{t:'중단기 하락',s:'분기 횡보 · 월·주 하방',b:'분기 횡보, 월·주 <b>하방</b>. 중단기 하락 가속.',hl:'<b>하락 우위</b> — 매수보다 관망·손절 관점.',c:'blue'},
+'dn_up_up':{t:'큰추세 하락 · 중단기 반등',s:'분기 하방 · 월·주 상방',b:'분기 <b>하방</b>, 월·주 <b>위</b>. 하락 추세 속 강한 반등.',hl:'<b>기술적 반등</b> — 큰추세 아래라 비중 정리 기회로 보는 시각.',c:'blue'},
+'dn_up_flat':{t:'큰추세 하락 · 중기 반등',s:'분기 하방 · 월 상방 · 주 횡보',b:'분기 <b>하방</b>, 월 <b>위</b>, 주 횡보. 하락 속 중기 반등 시도.',hl:'<b>반등 신뢰 신중</b> — 추세 전환 확인 전 추격 자제.',c:'blue'},
+'dn_up_dn':{t:'하락 · 중기 반등 · 단기 재하락',s:'분기 하방 · 월 상방 · 주 하방',b:'분기 <b>하방</b>, 월 <b>위</b>, 주 <b>하락</b>. 반등 후 단기 재하락.',hl:'<b>데드캣 경계</b> — 중기 반등 꺾이는지 관찰, 추격 금지.',c:'blue'},
+'dn_flat_up':{t:'큰추세 하락 · 단기 반등',s:'분기 하방 · 월 횡보 · 주 상방',b:'분기 <b>하방</b>, 월 횡보, 주 <b>상승</b>. 하락 속 단기 튐.',hl:'<b>데드캣 경계</b> — 큰추세 하방, 매수보다 짧은 대응만.',c:'blue'},
+'dn_flat_flat':{t:'큰추세 하락 · 중단기 정체',s:'분기 하방 · 월·주 횡보',b:'분기 <b>하방</b>, 월·주 횡보. 하락 후 바닥 다지기 국면.',hl:'<b>바닥 확인 전 관망</b> — 추세 전환 신호 대기.',c:'blue'},
+'dn_flat_dn':{t:'큰추세 하락 · 단기 재하락',s:'분기 하방 · 월 횡보 · 주 하방',b:'분기 <b>하방</b>, 월 횡보, 주 <b>하락</b>. 하락 추세 재개.',hl:'<b>관망·손절 우위</b> — 반등 없이 하락 지속 가능.',c:'blue'},
+'dn_dn_up':{t:'하락 추세 · 단기 반등',s:'분기·월 하방 · 주 상방',b:'분기·월 <b>하방</b>, 주 <b>상승</b>. 하락 속 단기 반등.',hl:'<b>데드캣 가능성 높음</b> — 반등 시 비중 정리 관점.',c:'blue'},
+'dn_dn_flat':{t:'하락 추세 · 단기 멈춤',s:'분기·월 하방 · 주 횡보',b:'분기·월 <b>하방</b>, 주 횡보. 하락 후 단기 정체.',hl:'<b>추격 자제</b> — 반등해도 큰추세 거스르기 어려움.',c:'blue'},
+'dn_dn_dn':{t:'완전 역배열',s:'분기·월·주 하방',b:'분기·월·주 <b>모두 하방</b>. 하락 추세가 진행 중입니다.',hl:'<b>관망·손절 관점</b> — 바닥 확인 전 진입은 위험.',c:'blue'}
+};
 // ===== 방향 판정 =====
 // 핵심: 시나리오가 "출렁이면서(파동) + 시작가 대비 그 방향으로 제대로 가는가"
 //  - 상승 파동 인정 = 상승 시나리오가 출렁임 있고 + 끝점이 시작가보다 위
@@ -414,31 +448,22 @@ function judgeDir(pj, d, isWeek){
 }
 
 // ===== 최종 리포트 생성 =====
-function buildReport(x, d, pj, t10){
+function buildReport(x, d, pj, t10, t60){
   var area=document.getElementById('reportArea');
   if(!area) return;
   if(area.innerHTML){ area.innerHTML=''; return; }  // 토글
   var IS_US=(x['시장']==='미국');
   function pf(v){ return IS_US?('$'+Number(v).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})):(Math.round(v).toLocaleString()+'원'); }
-  var qDir=judgeDir(pj, d, false);
-  var wDir=(t10&&t10.projection)?judgeDir(t10.projection, t10, true):'flat';
+  var qDir=judgeDir(pj, d, false);                                   // 분기(일봉)
+  var mDir=(t60&&t60.projection)?judgeDir(t60.projection, t60, false):'flat';  // 월(60분봉)
+  var wDir=(t10&&t10.projection)?judgeDir(t10.projection, t10, true):'flat';   // 주(10분봉)
   var dirName={up:'상방',dn:'하방',flat:'횡보'};
   var dirCls={up:'d-up',dn:'d-dn',flat:'d-fl'};
-  // 종합 멘트 (분기 × 주 조합)
-  var combo=qDir+'_'+wDir;
-  var verdicts={
-    'up_up':{t:'상승을 보고 있습니다',s:'분기 상방 × 주 상방',b:'큰 추세와 단기 흐름이 <b>모두 위쪽</b>. 추세에 올라탄 정배열 구간입니다.',hl:'추세 추종 관점에서 <b>눌림목마다 매수</b>로 접근하는 구간. 단, 과열 시 분할 진입으로 리스크 관리.',c:'orange'},
-    'up_flat':{t:'큰 추세 상방 · 단기 눌림',s:'분기 상방 × 주 횡보',b:'큰 추세는 <b>위쪽 유지</b>, 단기는 <b>숨 고르기</b>. 추세가 살아있는 상태의 단기 눌림 구간입니다.',hl:'주간 흐름이 횡보로 모이는 지금은 <b>분할매수에 유리한 구간</b>. 추세 방향 기다리며 나눠 담는 관점 — 단, 주간 지지 이탈 시 비중 조절.',c:'orange'},
-    'up_dn':{t:'큰 추세 상방 · 단기 조정',s:'분기 상방 × 주 하방',b:'큰 추세는 <b>위</b>인데 단기 <b>조정</b> 중. 추세를 신뢰한다면 저점 매수 자리일 수 있습니다.',hl:'추세 신뢰 시 <b>저점 분할매수</b> 관점, 단 주간 지지 이탈 시 잠시 관망. 조정이 깊어지면 추세 훼손 여부 확인.',c:'orange'},
-    'flat_up':{t:'방향성 약 · 단기 반등',s:'분기 횡보 × 주 상방',b:'큰 그림은 <b>방향성 약함</b>, 단기 <b>반등</b> 시작. 단타 관점은 가능하나 추세 근거는 부족.',hl:'짧게 대응하는 구간. <b>추세 매매보단 단기 트레이딩</b> 관점 — 반등 지속 여부 확인 필요.',c:'blue'},
-    'flat_flat':{t:'중립 · 관망',s:'분기 횡보 × 주 횡보',b:'큰 추세도 단기도 <b>방향 없음</b>. 위아래 팽팽한 관망 구간입니다.',hl:'<b>뚜렷한 신호가 나올 때까지 관망</b>이 유리. 박스권 상·하단 도달 시 단기 대응 정도.',c:'gray'},
-    'flat_dn':{t:'방향성 약 · 단기 하락',s:'분기 횡보 × 주 하방',b:'큰 그림은 <b>중립</b>인데 단기 <b>하락</b>. 섣부른 매수는 주의가 필요합니다.',hl:'<b>주간 바닥 확인 후 접근</b>. 큰 추세가 받쳐주지 않아 반등 시 짧게 대응.',c:'blue'},
-    'dn_up':{t:'기술적 반등 가능성',s:'분기 하방 × 주 상방',b:'큰 추세는 <b>아래</b>인데 단기 <b>반등</b> 중. 기술적 반등(데드캣) 가능성이 있는 구간입니다.',hl:'보유자는 단기 반등 시 <b>비중 정리</b>를 고려할 만한 자리. 신규 매수는 큰 추세가 아래라 신중 — 반등이 추세 전환인지 확인 필요.',c:'blue'},
-    'dn_flat':{t:'하락 추세 · 단기 멈춤',s:'분기 하방 × 주 횡보',b:'큰 추세 <b>하방</b>, 단기 <b>횡보</b>로 멈춤. 데드캣 가능성 있는 구간입니다.',hl:'반등해도 큰 추세 거스르긴 어려움. <b>추격 자제</b>, 추세 전환 확인 전 관망.',c:'blue'},
-    'dn_dn':{t:'하락을 보고 있습니다',s:'분기 하방 × 주 하방',b:'큰 추세와 단기 흐름이 <b>모두 아래쪽</b>. 하락 추세가 진행 중인 역배열 구간입니다.',hl:'매수보다 <b>관망·손절 관점</b>이 우선. 바닥 확인 전 진입은 위험 — 추세 전환 신호부터 기다리는 게 유리.',c:'blue'}
-  };
-  var v=verdicts[combo]||verdicts['flat_flat'];
-  var hlCls={orange:'hl-orange',blue:'hl-blue',gray:'hl-blue'}[v.c];
+  // 종합 멘트 (분기 × 월 × 주 = 27조합)
+  var combo=qDir+'_'+mDir+'_'+wDir;
+  var V=verdicts3[combo]||verdicts3['flat_flat_flat'];
+  var v={t:V.t, s:V.s, b:V.b, hl:V.hl, c:V.c};
+  var hlCls={orange:'hl-orange',blue:'hl-blue',gray:'hl-blue',red:'hl-orange'}[v.c];
   // 미니 차트 path 생성
   function miniSvg(dir){
     var pts = dir==='up'?'6,56 40,50 74,52 108,42 142,30 154,18'
@@ -451,9 +476,12 @@ function buildReport(x, d, pj, t10){
   h+='<div class="rep-title">최종 결과 리포트</div>';
   // 두 축
   h+='<div class="axis-row">';
-  h+='<div class="axis"><div class="axis-top"><span class="axis-nm">분기 (큰추세)</span><span class="axis-dir '+dirCls[qDir]+'">'+dirName[qDir]+'</span></div><div class="mini-chart">'+miniSvg(qDir)+'</div></div>';
+  h+='<div class="axis"><div class="axis-top"><span class="axis-nm">분기</span><span class="axis-dir '+dirCls[qDir]+'">'+dirName[qDir]+'</span></div><div class="mini-chart">'+miniSvg(qDir)+'</div></div>';
+  if(t60&&t60.projection){
+    h+='<div class="axis"><div class="axis-top"><span class="axis-nm">월</span><span class="axis-dir '+dirCls[mDir]+'">'+dirName[mDir]+'</span></div><div class="mini-chart">'+miniSvg(mDir)+'</div></div>';
+  }
   if(t10&&t10.projection){
-    h+='<div class="axis"><div class="axis-top"><span class="axis-nm">주 (단기)</span><span class="axis-dir '+dirCls[wDir]+'">'+dirName[wDir]+'</span></div><div class="mini-chart">'+miniSvg(wDir)+'</div></div>';
+    h+='<div class="axis"><div class="axis-top"><span class="axis-nm">주</span><span class="axis-dir '+dirCls[wDir]+'">'+dirName[wDir]+'</span></div><div class="mini-chart">'+miniSvg(wDir)+'</div></div>';
   }
   h+='</div>';
   // 종합 해석
@@ -463,9 +491,9 @@ function buildReport(x, d, pj, t10){
   var cur=pj.cur||0, dn=pj.dn_target||0;
   var riskDist=cur>0?((dn-cur)/cur*100):0;
   h+='<div class="risk-card2"><div class="risk-hd2">위험선 — 현재가 대비 '+riskDist.toFixed(0)+'% ('+pf(dn)+')</div>';
-  h+='<div class="risk-body2"><div class="rstat"><div class="rs reb"><div class="rsv">51~57%</div><div class="rsl">도달 후 반등</div></div><div class="rs brk"><div class="rsv">37%</div><div class="rsl">추가 하락</div></div></div>';
-  h+='<div class="tv"><b>매수 관점:</b>&nbsp;위험선은 "여기까지 빠진다"는 하방 목표. 도달 시 하락이 어느정도 마무리 — 검증상 반등이 더 잦은 자리.</div>';
-  h+='<div class="tv"><b>손절 관점:</b>&nbsp;단, 37%는 그대로 더 빠짐. 위험선 이탈 시 추가 하락 — 본인 손절선으로 삼아 대응.</div>';
+  h+='<div class="risk-body2">';
+  h+='<div class="tv"><b>매수 관점:</b>&nbsp;위험선은 "여기까지 빠진다"는 하방 목표. 도달 시 하락이 어느정도 마무리되는 경우가 많아, 지지 매수 자리로 보는 시각이 있습니다.</div>';
+  h+='<div class="tv"><b>손절 관점:</b>&nbsp;반대로 위험선을 아래로 이탈하면 추가 하락이 이어질 수 있습니다. 본인 손절선으로 삼아 대응하는 관점입니다.</div>';
   h+='</div></div>';
   h+='<div class="rep-foot">본 리포트는 작도·통계 기반 참고 자료이며 매수·매도 추천이 아닙니다. 모든 판단과 책임은 본인에게 있습니다.</div>';
   h+='</div>';
