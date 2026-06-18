@@ -9,7 +9,8 @@
 *{margin:0;padding:0;box-sizing:border-box}
 body{background:var(--bg);color:var(--ink);font-family:-apple-system,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;padding:0 0 60px;font-size:16px}
 .wrap{max-width:960px;margin:0 auto;padding:0}
-.appbar{background:var(--navy);color:#fff;padding:18px 20px;display:flex;align-items:center;gap:13px;position:sticky;top:0;z-index:30;overflow:hidden}
+.appbar{background:var(--navy);color:#fff;position:sticky;top:0;z-index:30;width:100%}
+.appbar-in{max-width:960px;margin:0 auto;padding:18px 20px;display:flex;align-items:center;gap:13px;position:relative;overflow:hidden}
 .appbar .hbg{position:absolute;right:-10px;bottom:-5px;opacity:.13;width:180px;pointer-events:none}
 .appbar .logo{width:44px;height:44px;border-radius:13px;background:linear-gradient(145deg,#f59a63,#e06c20);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:21px;cursor:pointer;box-shadow:0 6px 16px rgba(0,0,0,.3),inset 0 2px 3px rgba(255,255,255,.45),inset 0 -2px 3px rgba(0,0,0,.2);position:relative;z-index:1}
 .appbar .ttl{font-size:21px;font-weight:800;letter-spacing:-.3px;color:#fff;position:relative;z-index:1}
@@ -253,11 +254,13 @@ header{display:flex;align-items:center;gap:11px;margin-bottom:16px}
 </head>
 <body>
 <div class="appbar">
-  <svg class="hbg" viewBox="0 0 200 100"><polyline points="0,80 30,60 60,68 90,40 120,48 150,20 200,10" fill="none" stroke="#fff" stroke-width="3"/></svg>
-  <div class="logo" onclick="goHome()">J</div>
-  <div onclick="goHome()" style="cursor:pointer">
-    <div class="ttl">JOIN<span class="accent"> CHART</span></div>
-    <div class="sub">작도 + 미래 시나리오</div>
+  <div class="appbar-in">
+    <svg class="hbg" viewBox="0 0 200 100"><polyline points="0,80 30,60 60,68 90,40 120,48 150,20 200,10" fill="none" stroke="#fff" stroke-width="3"/></svg>
+    <div class="logo" onclick="goHome()">J</div>
+    <div onclick="goHome()" style="cursor:pointer">
+      <div class="ttl">JOIN<span class="accent"> CHART</span></div>
+      <div class="sub">작도 + 미래 시나리오</div>
+    </div>
   </div>
 </div>
 <div class="wrap">
@@ -497,26 +500,42 @@ function buildSeq(pj, d, dir){
   return {seq:seq, startV:startV};
 }
 function waveShows(pj, d, dir){
-  // 그 방향 파동이 "나타나는가" = 시나리오 앞쪽이 밋밋하지 않고(출렁임) + 그 방향으로 타는가
-  // 끝점·끝 꺾임은 무시. 앞쪽(앞 절반)이 핵심.
+  // 그 방향 파동이 "나타나는가":
+  //  (1) 앞쪽이 출렁이며 그 방향으로 타거나
+  //  (2) 실제 작도 공방선(yc)이 그 방향에 있고, 끝점이 기준점 대비 ±4% 넘음
+  // dn_target/ceil_(자동 목표)은 늘 있으므로 끝점 판정에서 제외 — 실제 레벨만.
+  var cur=pj.cur||0, startV=pj.anchor_price||cur;
+  // 실제 작도 교차점(yc)만 수집 — 자동 목표 제외
+  var realLv=[];
+  if(d && d.draws) d.draws.forEach(function(x){ if(x.yc>0) realLv.push(x.yc); });
+  (pj.sr_levels||[]).forEach(function(v){ if(v>0) realLv.push(v); });
+  // (2) 실제 레벨이 그 방향에 있고 4% 넘으면 인정
+  if(dir==='up'){
+    var topLv=Math.max.apply(null, realLv.concat([0]));
+    if(topLv>0 && (topLv-startV)/startV >= 0.04) return true;
+  } else {
+    var botLv=realLv.length?Math.min.apply(null, realLv):0;
+    if(botLv>0 && (botLv-startV)/startV <= -0.04) return true;
+  }
+  // (1) 앞쪽 출렁임 판정 (buildSeq 기반)
   var r=buildSeq(pj, d, dir);
-  var seq=r.seq, startV=r.startV;
+  var seq=r.seq;
   if(seq.length<2) return false;
-  // 앞쪽 구간 = 앞 절반(최소 3점)
   var half=Math.max(3, Math.ceil(seq.length*0.6));
   var front=seq.slice(0, Math.min(half, seq.length));
   if(front.length<2) return false;
-  // 1) 앞쪽이 그 방향으로 제대로 가는가 (앞쪽 최대 도달이 시작가 대비 의미있게)
   var reach;
   if(dir==='up'){ reach=Math.max.apply(null,front); if(reach <= startV*1.015) return false; }
   else         { reach=Math.min.apply(null,front); if(reach >= startV*0.985) return false; }
-  // 2) 앞쪽이 밋밋하지 않은가 (출렁임=변곡 또는 충분한 이동폭)
+  // 앞쪽에 실제 레벨이 그 방향에 있어야 (자동 목표만으론 출렁임 불인정)
+  var hasRealDir = dir==='up' ? realLv.some(function(v){return v>startV*1.02;})
+                              : realLv.some(function(v){return v<startV*0.98;});
+  if(!hasRealDir) return false;
   var turns=0;
   for(var i=2;i<front.length;i++){
     var d1=front[i-1]-front[i-2], d2=front[i]-front[i-1];
-    if(d1*d2<0) turns++;   // 앞쪽에서의 변곡(출렁)
+    if(d1*d2<0) turns++;
   }
-  // 앞쪽에 변곡이 있거나, 앞쪽 레벨이 2개 이상(여러 변곡점 경유) → 파동. 밋밋하면(변곡0+점적음) 불인정
   var movePct=Math.abs(reach-startV)/(startV||1);
   return turns>=1 || (front.length>=4 && movePct>=0.04);
 }
@@ -574,18 +593,17 @@ function buildReport(x, d, pj, t10, t60){
 
   // ===== 공방선 (각 기간별) =====
   function gongLines(p, dch){
-    // 현재가 기준 아래 공방선 추출 — 그 기간의 작도 교차점(yc)만 사용
-    // (sr_levels·위험선 제외: 월/분기가 겹치지 않게 각 기간 작도 그대로)
+    // 현재가 기준 아래 공방선 추출 — 그 기간의 작도 교차점(yc) 우선
     var c=p.cur||0; if(c<=0) return [];
     var lv=[];
     if(dch && dch.draws) dch.draws.forEach(function(x){ if(x.yc>0) lv.push(x.yc); });
-    // 작도 교차점이 없으면 위험선으로 폴백
-    if(!lv.length && p.dn_target>0) lv.push(p.dn_target);
     // 중복 제거 (1% 간격)
     lv.sort(function(a,b){return a-b;});
     var clean=[]; lv.forEach(function(v){ if(!clean.length||Math.abs(v-clean[clean.length-1])>c*0.01) clean.push(v); });
     // 아래쪽만, 현재가에서 가까운 순
     var dns=clean.filter(function(v){return v<c*0.997;}).reverse().slice(0,3);
+    // 아래 공방선이 없으면(상승 종목 등) 위험선(dn_target)으로 채움
+    if(!dns.length && p.dn_target>0 && p.dn_target<c*0.997) dns=[p.dn_target];
     var out=[];
     dns.forEach(function(v){ out.push({v:v,above:false}); });
     return out;
