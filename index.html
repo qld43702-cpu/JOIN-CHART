@@ -213,6 +213,18 @@ header{display:flex;align-items:center;gap:11px;margin-bottom:16px}
 .spinner{width:54px;height:54px;border:5px solid #e8eef4;border-top-color:var(--orange);border-radius:50%;animation:spin .8s linear infinite}
 .loading .ltxt{font-size:15px;font-weight:700;color:var(--navy);animation:pulse 1.4s ease-in-out infinite}
 .loading .lsub{font-size:13px;color:var(--muted);margin-top:-8px}
+/* 로딩 RTV 엔진 */
+.rtv-spin{position:relative;width:84px;height:84px;display:flex;align-items:center;justify-content:center}
+.rtv-core{font-size:20px;font-weight:800;color:var(--orange);letter-spacing:.5px;z-index:1;text-shadow:0 2px 8px rgba(237,125,49,.3)}
+.rtv-ring{position:absolute;inset:0;border-radius:50%;border:4px solid transparent;border-top-color:var(--orange);border-right-color:#f4a06a;animation:spin .9s linear infinite}
+.rtv-ring::before{content:'';position:absolute;inset:8px;border-radius:50%;border:3px solid transparent;border-bottom-color:var(--navy);border-left-color:#3f7fd0;animation:spin 1.4s linear infinite reverse}
+.load-chips{display:flex;flex-wrap:wrap;gap:7px;justify-content:center;margin-top:6px;max-width:300px}
+.load-chips .lchip{font-size:11px;font-weight:700;color:var(--c);background:#fff;border:1px solid var(--c);border-radius:20px;padding:4px 11px;opacity:.4;animation:chipPulse 1.8s ease-in-out infinite}
+.load-chips .lchip:nth-child(2){animation-delay:.25s}
+.load-chips .lchip:nth-child(3){animation-delay:.5s}
+.load-chips .lchip:nth-child(4){animation-delay:.75s}
+.load-chips .lchip:nth-child(5){animation-delay:1s}
+@keyframes chipPulse{0%,100%{opacity:.35}50%{opacity:1}}
 @keyframes spin{to{transform:rotate(360deg)}}
 @keyframes pulse{0%,100%{opacity:.5}50%{opacity:1}}
 .note{font-size:13px;color:var(--muted);margin-top:16px;line-height:1.9}
@@ -237,37 +249,25 @@ header{display:flex;align-items:center;gap:11px;margin-bottom:16px}
 </div>
 <div class="wrap">
 <div class="body-pad">
-<div class="search-box">
+<!-- 히어로 맨 위 -->
+<div class="engine-hero" style="margin-top:16px">
+  <div class="eh-tag"><svg viewBox="0 0 24 24" fill="none" stroke="#f4a06a" stroke-width="2.4" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>JOIN 분석 엔진</div>
+  <div class="eh-title">하나의 종목을<br><span class="o">세 개의 시간</span>으로 읽습니다</div>
+  <div class="eh-sub">단기·중기·장기 흐름이 <b>만나는 지점</b>에서 방향을 읽어냅니다. 한 시간축만 보면 놓치는 그림을, 교차해서 봅니다.</div>
+  <div class="eh-axis">
+    <div class="eh-ax"><div class="axn">주</div><div class="axd">단기 10분봉</div></div>
+    <div class="eh-ax"><div class="axn">월</div><div class="axd">중기 60분봉</div></div>
+    <div class="eh-ax"><div class="axn">분기</div><div class="axd">장기 일봉</div></div>
+  </div>
+</div>
+<!-- 검색창 (히어로 아래) -->
+<div class="search-box" style="margin-top:14px">
   <input type="text" id="codeInput" placeholder="국내: 종목명/코드 · 미국: 티커 (AAPL)" autocomplete="off">
   <div class="ac" id="acList"></div>
 </div>
-<div class="lead2">하나의 종목을 세 개의 시간으로 — 매수·매도의 근거를 제시합니다</div>
 <div id="guide">
-  <!-- 시간축 히어로 -->
-  <div class="engine-hero">
-    <div class="eh-tag"><svg viewBox="0 0 24 24" fill="none" stroke="#f4a06a" stroke-width="2.4" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>JOIN 분석 엔진</div>
-    <div class="eh-title">하나의 종목을<br><span class="o">세 개의 시간</span>으로 읽습니다</div>
-    <div class="eh-sub">단기·중기·장기 흐름이 <b>만나는 지점</b>에서 방향을 읽어냅니다. 한 시간축만 보면 놓치는 그림을, 교차해서 봅니다.</div>
-    <div class="eh-axis">
-      <div class="eh-ax"><div class="axn">주</div><div class="axd">단기 10분봉</div></div>
-      <div class="eh-ax"><div class="axn">월</div><div class="axd">중기 60분봉</div></div>
-      <div class="eh-ax"><div class="axn">분기</div><div class="axd">장기 일봉</div></div>
-    </div>
-  </div>
-  <!-- RTV 엔진 + 지표 나열 -->
-  <div class="rtv-card">
-    <div class="rtv-hd"><div class="ric"><svg viewBox="0 0 24 24" fill="none" stroke="#ed7d31" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4M5 5l3 3M16 16l3 3M19 5l-3 3M8 16l-3 3"/></svg></div><div class="rt">JOIN 고유 <span class="o">RTV 엔진</span></div></div>
-    <div class="rtv-desc">우리의 고유 <b>RTV 엔진</b>에 아래 지표들과 함께 흐름을 읽어냅니다.</div>
-    <div class="chips">
-      <span class="chip"><span class="cdot" style="background:#7f77dd"></span>엘리엇 파동</span>
-      <span class="chip"><span class="cdot" style="background:#1d9e75"></span>피보나치</span>
-      <span class="chip"><span class="cdot" style="background:#3f7fd0"></span>몬테카를로</span>
-      <span class="chip"><span class="cdot" style="background:#ba7517"></span>갠(Gann)</span>
-      <span class="chip"><span class="cdot" style="background:#ed7d31"></span>공방선</span>
-    </div>
-  </div>
   <!-- 횡보 경고 -->
-  <div class="warn">
+  <div class="warn" style="margin-top:14px">
     <div class="wq">매수도 매도도 아닌 자리.</div>
     <div class="wa"><b>가장 많은 계좌가 무너지는 곳입니다.</b> JOIN CHART는 상승·하락만이 아니라, 방향 없는 횡보 구간까지 함께 짚어드립니다.</div>
   </div>
@@ -323,7 +323,7 @@ function mkMethodLabel(val,nm,col,methods){
 async function go(code){
   var box=document.getElementById('result');
   var guide=document.getElementById('guide'); if(guide)guide.style.display='none';
-  box.innerHTML='<div class="loading"><div class="spinner"></div><div class="ltxt">종목 분석 중입니다</div><div class="lsub">작도 · 지지/저항 · 미래 시나리오 계산 중...</div></div>';
+  box.innerHTML='<div class="loading"><div class="rtv-spin"><div class="rtv-core">RTV</div><div class="rtv-ring"></div></div><div class="ltxt">JOIN 고유 RTV 엔진 가동 중</div><div class="lsub">엘리엇 · 피보나치 · 몬테카를로 · 갠 · 공방선 교차 분석</div><div class="load-chips"><span class="lchip" style="--c:#7f77dd">엘리엇</span><span class="lchip" style="--c:#1d9e75">피보나치</span><span class="lchip" style="--c:#3f7fd0">몬테카를로</span><span class="lchip" style="--c:#ba7517">갠</span><span class="lchip" style="--c:#ed7d31">공방선</span></div></div>';
   try{
     var x=await fetch('/api/analyze?code='+code).then(function(r){return r.json();});
     if(x.error){box.innerHTML='<div class="empty">'+x.error+'</div>';return;}
@@ -333,7 +333,7 @@ async function go(code){
 function goHome(){
   document.getElementById('result').innerHTML='';
   var guide=document.getElementById('guide'); if(guide)guide.style.display='block';
-  var inp2=document.getElementById('codeInput'); if(inp2){inp2.value='';inp2.focus();}
+  var inp2=document.getElementById('codeInput'); if(inp2){inp2.value='';inp2.blur();}
   window.scrollTo(0,0);
 }
 
@@ -376,15 +376,15 @@ function render(x){
 
   // ===== 탭 =====
   html+='<div class="trk-tabs">';
-  html+='<button class="trk-tab'+(has10?'':' on')+(has10?'':'')+'" data-trk="10"'+(has10?'':' style="display:none"')+'>주간<span>'+minName+'</span></button>';
-  html+='<button class="trk-tab" data-trk="60"'+(has60?'':' style="display:none"')+'>월간<span>60분봉</span></button>';
-  html+='<button class="trk-tab on" data-trk="" >분기<span>일봉</span></button>';
+  html+='<button class="trk-tab" data-trk="10"'+(has10?'':' style="display:none"')+'>주간<span>'+minName+'</span></button>';
+  html+='<button class="trk-tab'+(has60?' on':'')+'" data-trk="60"'+(has60?'':' style="display:none"')+'>월간<span>60분봉</span></button>';
+  html+='<button class="trk-tab'+(has60?'':' on')+'" data-trk="" >분기<span>일봉</span></button>';
   html+='</div>';
 
-  // 패널들 (기본 분기 보임)
+  // 패널들 (기본: 월간 보임, 60분봉 없으면 분기)
   html+='<div class="trk-panel" data-pnl="10" style="display:none">'+trackHtml('10', minName, minName+' — 최근 1주 기준', IS_US)+'</div>';
-  html+='<div class="trk-panel" data-pnl="60" style="display:none">'+trackHtml('60', '60분봉', '60분봉 — 최근 1개월 기준', IS_US)+'</div>';
-  html+='<div class="trk-panel" data-pnl="" >'+trackHtml('', '일봉', '일봉 — 분기 기준, 다음 경로 참고용', IS_US)+'</div>';
+  html+='<div class="trk-panel" data-pnl="60" style="display:'+(has60?'block':'none')+'">'+trackHtml('60', '60분봉', '60분봉 — 최근 1개월 기준', IS_US)+'</div>';
+  html+='<div class="trk-panel" data-pnl="" style="display:'+(has60?'none':'block')+'">'+trackHtml('', '일봉', '일봉 — 분기 기준, 다음 경로 참고용', IS_US)+'</div>';
 
   // 최종 리포트
   html+='<button id="repBtn" class="report-btn"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>최종 결과 리포트 보기</button>';
@@ -408,9 +408,10 @@ function render(x){
   var rb=document.getElementById('repBtn');
   if(rb) rb.addEventListener('click',function(){ buildReport(x, d, pj, t10, t60); });
 
-  // 최초: 보이는 분기 트랙만 그림 (숨은 건 탭 누를 때 그림)
+  // 최초: 보이는 디폴트 트랙만 그림 (월간 우선, 없으면 분기)
   requestAnimationFrame(function(){requestAnimationFrame(function(){
-    mkChart(d,pj,'');
+    if(has60){ try{ mkChart(t60, t60.projection, '60'); }catch(e){console.error('60분봉:',e); mkChart(d,pj,'');} }
+    else { mkChart(d,pj,''); }
   });});
 }
 
