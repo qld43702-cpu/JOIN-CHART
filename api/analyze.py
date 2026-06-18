@@ -727,6 +727,19 @@ class handler(BaseHTTPRequestHandler):
                         tt['projection']['sr_levels'] = sr10
                 except Exception as pe:
                     tt['projection'] = None
+            # 미래 예측 (60분봉): 월 단위 기준
+            if 'draws' in mm and mm.get('chart'):
+                risk60 = mm['risks'][0]['yc'] if mm.get('risks') else None
+                try:
+                    mm['projection'] = build_projection(mm['chart'], mm['draws'], risk60, fut=52, market=mk, period='quarter')
+                    if mm['projection']:
+                        # 60분봉 자체 작도 교차점을 sr로
+                        sr60=[]
+                        for dr in mm.get('draws',[]):
+                            if dr.get('yc') and dr['yc']>0: sr60.append(round(dr['yc'],2))
+                        mm['projection']['sr_levels'] = sorted(set(sr60))
+                except Exception as pe:
+                    mm['projection'] = None
             out={'종목코드':code,'종목명':nm,'시장':mk,'일봉':dd,'60분':mm,'10분':tt}
             _payload=json.dumps(out,ensure_ascii=False).encode()
             # 캐시 저장 (30분)

@@ -328,23 +328,26 @@ function render(x){
   html+='<div id="reportArea"></div>';
   box.innerHTML=html;
 
-  // 탭 전환
+  // 탭 전환 — 보일 때 차트 다시 그림 (display:none 상태에선 캔버스 0이라 깨짐)
+  var trackData={ '':{d:d,pj:pj}, '60':has60?{d:t60,pj:t60.projection}:null, '10':has10?{d:t10,pj:t10.projection}:null };
   var tabs=box.querySelectorAll('.trk-tab'), pnls=box.querySelectorAll('.trk-panel');
   tabs.forEach(function(tb){
     tb.addEventListener('click',function(){
       var key=tb.getAttribute('data-trk');
       tabs.forEach(function(t){t.classList.toggle('on',t===tb);});
       pnls.forEach(function(p){p.style.display = (p.getAttribute('data-pnl')===key)?'block':'none';});
+      // 보이게 된 트랙 차트 다시 그림
+      var td=trackData[key];
+      if(td){ requestAnimationFrame(function(){ try{ mkChart(td.d, td.pj, key); }catch(e){console.error('차트 재렌더:',e);} }); }
     });
   });
 
   var rb=document.getElementById('repBtn');
   if(rb) rb.addEventListener('click',function(){ buildReport(x, d, pj, t10, t60); });
 
+  // 최초: 보이는 분기 트랙만 그림 (숨은 건 탭 누를 때 그림)
   requestAnimationFrame(function(){requestAnimationFrame(function(){
     mkChart(d,pj,'');
-    if(has60){ try{ mkChart(t60, t60.projection, '60'); }catch(e){console.error('60분봉 차트 오류:',e);} }
-    if(has10){ try{ mkChart(t10, t10.projection, '10'); }catch(e){console.error('10분봉 차트 오류:',e);} }
   });});
 }
 
