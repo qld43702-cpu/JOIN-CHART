@@ -353,7 +353,7 @@ function goHome(){
 
 function trackHtml(sfx, label, hint, isUS){
   // 한 트랙(차트+기법+줌+시나리오)의 HTML 생성. sfx로 ID 분리.
-  var minName = isUS?'15분봉':'10분봉';
+  var minName = isUS?'60분봉':'60분봉';
   var h='<div id="host'+sfx+'" class="track">';
   h+='<div class="methods">';
   h+='<label><input type="checkbox" class="mtd" value="ell" checked style="accent-color:#7f77dd"> 엘리엇</label>';
@@ -383,7 +383,7 @@ function render(x){
   window.__IS_US=IS_US;
   var t60=x['60분']; var has60 = t60 && !t60.error && t60.chart && t60.projection;
   var t10=x['10분']; var has10 = t10 && !t10.error && t10.chart && t10.projection;
-  var minName=IS_US?'15분봉':'10분봉';
+  var minName=IS_US?'60분봉':'60분봉';
   var html='';
   var priceStr = IS_US ? ('$'+(d.cur||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})) : ((d.cur||0).toLocaleString()+'원');
   html+='<div class="result-head"><span class="rn">'+(x['종목명']||'')+'</span><span class="rc">'+x['종목코드']+' · '+(x['시장']||'')+'</span><span class="rp">'+priceStr+'</span></div>';
@@ -391,14 +391,14 @@ function render(x){
   // ===== 탭 =====
   html+='<div class="trk-tabs">';
   html+='<button class="trk-tab" data-trk="10"'+(has10?'':' style="display:none"')+'>주간<span>'+minName+'</span></button>';
-  html+='<button class="trk-tab'+(has60?' on':'')+'" data-trk="60"'+(has60?'':' style="display:none"')+'>월간<span>60분봉</span></button>';
-  html+='<button class="trk-tab'+(has60?'':' on')+'" data-trk="" >분기<span>일봉</span></button>';
+  html+='<button class="trk-tab'+(has60?' on':'')+'" data-trk="60"'+(has60?'':' style="display:none"')+'>월간<span>일봉</span></button>';
+  html+='<button class="trk-tab'+(has60?'':' on')+'" data-trk="" >분기<span>주봉</span></button>';
   html+='</div>';
 
-  // 패널들 (기본: 월간 보임, 60분봉 없으면 분기)
+  // 패널들 (기본: 월간 보임, 없으면 분기)
   html+='<div class="trk-panel" data-pnl="10" style="display:none">'+trackHtml('10', minName, minName+' — 최근 1주 기준', IS_US)+'</div>';
-  html+='<div class="trk-panel" data-pnl="60" style="display:'+(has60?'block':'none')+'">'+trackHtml('60', '60분봉', '60분봉 — 최근 1개월 기준', IS_US)+'</div>';
-  html+='<div class="trk-panel" data-pnl="" style="display:'+(has60?'none':'block')+'">'+trackHtml('', '일봉', '일봉 — 분기 기준, 다음 경로 참고용', IS_US)+'</div>';
+  html+='<div class="trk-panel" data-pnl="60" style="display:'+(has60?'block':'none')+'">'+trackHtml('60', '일봉', '일봉 — 최근 1개월 기준', IS_US)+'</div>';
+  html+='<div class="trk-panel" data-pnl="" style="display:'+(has60?'none':'block')+'">'+trackHtml('', '주봉', '주봉 — 분기 기준, 다음 경로 참고용', IS_US)+'</div>';
 
   // 최종 리포트
   html+='<button id="repBtn" class="report-btn"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>최종 결과 리포트 보기</button>';

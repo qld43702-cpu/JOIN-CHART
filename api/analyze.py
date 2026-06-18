@@ -40,6 +40,7 @@ def _yahoo_fetch(ticker, rng, interval):
         return None
 
 def get_day_us(ticker): return _yahoo_fetch(ticker,"2y","1d")
+def get_week_us(ticker): return _yahoo_fetch(ticker,"5y","1wk")
 def get_min_us(ticker,interval="60m"):
     return _yahoo_fetch(ticker, "2y" if interval=="60m" else "60d", interval)
 def get_name_us(ticker):
@@ -77,6 +78,17 @@ def get_day(tk,code):
     r=requests.post(f"{BASE}/stock/chart",verify=False,timeout=8,
         headers={"Content-Type":"application/json; charset=UTF-8","authorization":f"Bearer {tk}","tr_cd":"t8410","tr_cont":"N"},
         json={"t8410InBlock":{"shcode":code,"gubun":"2","qrycnt":150,"sdate":"20240101","edate":"20991231","cts_date":"","comp_yn":"N","sujung":"Y"}})
+    rows=r.json().get("t8410OutBlock1",[])
+    if not rows: return None
+    out=[{'d':x['date'],'o':float(x['open']),'h':float(x['high']),'l':float(x['low']),'c':float(x['close']),
+          'v':float(x.get('volume') or x.get('value') or x.get('jdiff_vol') or 0)} for x in rows]
+    out.sort(key=lambda z:z['d']); return out
+
+def get_week(tk,code):
+    # 주봉 (t8410 gubun=3). 2년치 약 100주.
+    r=requests.post(f"{BASE}/stock/chart",verify=False,timeout=8,
+        headers={"Content-Type":"application/json; charset=UTF-8","authorization":f"Bearer {tk}","tr_cd":"t8410","tr_cont":"N"},
+        json={"t8410InBlock":{"shcode":code,"gubun":"3","qrycnt":200,"sdate":"20220101","edate":"20991231","cts_date":"","comp_yn":"N","sujung":"Y"}})
     rows=r.json().get("t8410OutBlock1",[])
     if not rows: return None
     out=[{'d':x['date'],'o':float(x['open']),'h':float(x['high']),'l':float(x['low']),'c':float(x['close']),
@@ -668,6 +680,8 @@ class handler(BaseHTTPRequestHandler):
                 tkr=code.upper()
                 nm,mk=get_name_us(tkr)
                 day=get_day_us(tkr)
+                try: wk=get_week_us(tkr)
+                except Exception: wk=None
                 try: m60=get_min_us(tkr,"60m")
                 except Exception: m60=None
                 try: m10=get_min_us(tkr,"15m")
@@ -678,15 +692,18 @@ class handler(BaseHTTPRequestHandler):
                     self.wfile.write(json.dumps({'error':'국내는 6자리 코드, 해외는 영문 티커(AAPL 등)'}).encode()); return
                 tk=token(); nm,mk=get_name(tk,code)
                 day=get_day(tk,code)
+                try: wk=get_week(tk,code)
+                except Exception: wk=None
                 try: m60=get_60m(tk,code)
                 except Exception: m60=None
                 try: m10=get_min(tk,code,10)
                 except Exception: m10=None
             if not day or len(day)<30:
                 self.wfile.write(json.dumps({'error':'데이터를 찾을 수 없습니다 ('+code+')'}).encode()); return
-            dd = build_drawings(day) if day and len(day)>30 else {'error':'데이터 부족'}
-            mm = build_drawings(m60) if m60 and len(m60)>30 else {'error':'데이터 부족'}
-            tt = build_drawings(m10) if m10 and len(m10)>30 else {'error':'데이터 부족'}
+            # 새 체계: 주간=60분봉(tt) / 월간=일봉(mm) / 분기=주봉(dd)
+            dd = build_drawings(wk) if wk and len(wk)>30 else {'error':'데이터 부족'}
+            mm = build_drawings(day) if day and len(day)>30 else {'error':'데이터 부족'}
+            tt = build_drawings(m60) if m60 and len(m60)>30 else {'error':'데이터 부족'}
             # 일봉 위험: ①범위안 ②60분끌어옴 ③과거1개  (60분 all_risks 참조하므로 먼저)
             if 'draws' in dd:
                 resolve_risk(dd, mm if 'draws' in mm else None)
@@ -725,7 +742,7 @@ class handler(BaseHTTPRequestHandler):
             if 'draws' in dd and dd.get('chart'):
                 risk_level = dd['risks'][0]['yc'] if dd.get('risks') else None
                 try:
-                    dd['projection'] = build_projection(dd['chart'], dd['draws'], risk_level, market=mk, period='quarter')
+                    dd['projection'] = build_projection(dd['chart'], dd['draws'], risk_level, fut=13, market=mk, period='quarter')
                     if dd['projection']:
                         dd['projection']['sr_levels'] = sr_levels
                 except Exception as pe:
@@ -734,7 +751,7 @@ class handler(BaseHTTPRequestHandler):
             if 'draws' in tt and tt.get('chart'):
                 risk10 = tt['risks'][0]['yc'] if tt.get('risks') else None
                 try:
-                    tt['projection'] = build_projection(tt['chart'], tt['draws'], risk10, fut=39, market=mk, period='week')
+                    tt['projection'] = build_projection(tt['chart'], tt['draws'], risk10, fut=33, market=mk, period='week')
                     if tt['projection']:
                         tt['projection']['sr_levels'] = sr10
                 except Exception as pe:
@@ -743,7 +760,7 @@ class handler(BaseHTTPRequestHandler):
             if 'draws' in mm and mm.get('chart'):
                 risk60 = mm['risks'][0]['yc'] if mm.get('risks') else None
                 try:
-                    mm['projection'] = build_projection(mm['chart'], mm['draws'], risk60, fut=52, market=mk, period='month')
+                    mm['projection'] = build_projection(mm['chart'], mm['draws'], risk60, fut=20, market=mk, period='month')
                     if mm['projection']:
                         # 60분봉 자체 작도 교차점을 sr로
                         sr60=[]
