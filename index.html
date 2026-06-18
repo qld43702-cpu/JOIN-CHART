@@ -499,7 +499,7 @@ function buildSeq(pj, d, dir){
   }
   return {seq:seq, startV:startV};
 }
-function waveShows(pj, d, dir){
+function waveShows(pj, d, dir, isWeekScope){
   // 그 방향 파동이 "나타나는가":
   //  (1) 앞쪽이 출렁이며 그 방향으로 타거나
   //  (2) 실제 작도 공방선(yc)이 그 방향에 있고, 끝점이 기준점 대비 ±4% 넘음
@@ -516,6 +516,14 @@ function waveShows(pj, d, dir){
   } else {
     var botLv=realLv.length?Math.min.apply(null, realLv):0;
     if(botLv>0 && (botLv-startV)/startV <= -0.04) return true;
+    // 가까운 위험선(공방선)도 하락 신호로 인정 — 진짜 가까울 때만
+    //   주간 -10% 이내 / 월·분기 -8% 이내 (분기 위험선은 보통 -15~30%라 그건 정상범위로 제외)
+    var nearMax = isWeekScope ? 0.10 : 0.08;
+    var dnt=pj.dn_target||0;
+    if(dnt>0){
+      var dntPct=(startV-dnt)/startV;
+      if(dntPct>=0.04 && dntPct<=nearMax) return true;
+    }
   }
   // (1) 앞쪽 출렁임 판정 (buildSeq 기반)
   var r=buildSeq(pj, d, dir);
@@ -542,8 +550,8 @@ function waveShows(pj, d, dir){
 function judgeDir(pj, d, isWeek){
   if(!pj) return 'flat';
   var cur=pj.cur||0; if(cur<=0) return 'flat';
-  var upWave=waveShows(pj, d, 'up');
-  var dnWave=waveShows(pj, d, 'dn');
+  var upWave=waveShows(pj, d, 'up', isWeek);
+  var dnWave=waveShows(pj, d, 'dn', isWeek);
   if(upWave && !dnWave) return 'up';   // 상승만 파동
   if(dnWave && !upWave) return 'dn';   // 하락만 파동
   // 둘 다 파동(둘 다 엘리엇) → 중립 / 둘 다 없음 → 중립
@@ -825,8 +833,10 @@ function mkChart(data,pj,sfx){
       }
       ctx.strokeStyle='rgba(212,83,126,.85)';ctx.lineWidth=1.4;ctx.setLineDash(d.price_only?[6,4]:[]);
       ctx.beginPath();ctx.moveTo(plot.x0,yOf(d.yc));ctx.lineTo(plot.x1,yOf(d.yc));ctx.stroke();ctx.setLineDash([]);
-      ctx.fillStyle='#d4537e';ctx.fillRect(plot.x1-2,yOf(d.yc)-9,64,18);
-      ctx.fillStyle='#fff';ctx.font='11px '+FF();ctx.fillText('공방선 '+fmtP(d.yc),plot.x1+2,yOf(d.yc)+3);
+      var glbl='공방선 '+fmtP(d.yc); ctx.font='11px '+FF();
+      var glw=ctx.measureText(glbl).width+10;
+      ctx.fillStyle='#d4537e';ctx.fillRect(plot.x0+4,yOf(d.yc)-9,glw,18);
+      ctx.fillStyle='#fff';ctx.fillText(glbl,plot.x0+9,yOf(d.yc)+3);
     });
     // 작도선
     draws.forEach(function(d){
