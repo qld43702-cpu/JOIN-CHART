@@ -173,7 +173,7 @@ header{display:flex;align-items:center;gap:11px;margin-bottom:16px}
 .gchip i{width:9px;height:9px;border-radius:3px;display:inline-block}
 .guide-foot2{margin-top:4px;padding:13px 15px;background:#fff8f3;border:1px solid #f3e0cf;border-radius:12px;font-size:12px;color:#9a6b4a;line-height:1.6;display:flex;gap:9px;align-items:flex-start;font-weight:600}
 /* 첫화면 소개 */
-.engine-hero{background:linear-gradient(140deg,#16314e,#1b3a5c 55%,#274d77);border-radius:20px;padding:24px 22px;margin-bottom:12px;color:#fff;position:relative;overflow:hidden;box-shadow:0 8px 28px rgba(27,58,92,.25)}
+.engine-hero{background:linear-gradient(140deg,#16314e,#1b3a5c 55%,#274d77);border-radius:20px;padding:24px 22px;margin-bottom:12px;color:#fff;position:relative;box-shadow:0 8px 28px rgba(27,58,92,.25)}
 .engine-hero::after{content:'';position:absolute;right:-40px;top:-40px;width:180px;height:180px;background:radial-gradient(circle,rgba(237,125,49,.25),transparent 70%)}
 .eh-tag{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:800;color:#f4a06a;letter-spacing:.5px;margin-bottom:12px;background:rgba(237,125,49,.13);padding:5px 11px;border-radius:8px;position:relative;z-index:1}
 .eh-tag svg{width:13px;height:13px}
@@ -181,6 +181,19 @@ header{display:flex;align-items:center;gap:11px;margin-bottom:16px}
 .eh-title .o{color:#f4a06a}
 .eh-sub{font-size:13px;color:#bcd0e6;margin-top:12px;line-height:1.65;position:relative;z-index:1}
 .eh-sub b{color:#fff;font-weight:700}
+/* 히어로 내 검색 */
+.eh-subline{font-size:13px;color:#bcd0e6;line-height:1.6;position:relative;z-index:1;margin:12px 0 18px}
+.eh-subline b{color:#fff;font-weight:700}
+.hero-search{position:relative;z-index:5}
+.hero-search input{width:100%;height:56px;border:2px solid #fff;border-radius:14px;padding:0 50px 0 18px;font-size:16px;font-weight:600;outline:none;color:var(--ink);background:#fff;box-shadow:0 8px 22px rgba(0,0,0,.28)}
+.hero-search input::placeholder{color:#9aa7b5;font-weight:500}
+.hero-search .hs-ic{position:absolute;right:16px;top:28px;transform:translateY(-50%);width:24px;height:24px;pointer-events:none}
+.hero-tf{margin-top:15px;position:relative;z-index:1;display:flex;flex-direction:column;gap:8px}
+.hero-tf .tfr{display:flex;align-items:baseline;gap:9px;font-size:12px;color:#cdddee;line-height:1.5}
+.hero-tf .tfr .k{font-size:12px;font-weight:800;color:#f4a06a;flex-shrink:0;width:30px}
+.hero-tf .tfr b{color:#fff;font-weight:700}
+.hero-once{text-align:center;font-size:12px;color:#bcd0e6;margin-top:16px;font-weight:600;position:relative;z-index:1;padding-top:14px;border-top:1px solid rgba(255,255,255,.1)}
+.hero-once b{color:#fff;font-weight:800}
 .eh-axis{display:flex;gap:8px;margin-top:18px;position:relative;z-index:1}
 .eh-ax{flex:1;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.13);border-radius:11px;padding:11px 8px;text-align:center}
 .eh-ax .axn{font-size:13px;font-weight:800}
@@ -249,32 +262,28 @@ header{display:flex;align-items:center;gap:11px;margin-bottom:16px}
 </div>
 <div class="wrap">
 <div class="body-pad">
-<!-- 히어로 맨 위 -->
-<div class="engine-hero" style="margin-top:16px">
+<!-- 히어로: 문구 + 검색창 + 주월분기 설명 -->
+<div class="engine-hero" id="heroIntro" style="margin-top:16px">
   <div class="eh-tag"><svg viewBox="0 0 24 24" fill="none" stroke="#f4a06a" stroke-width="2.4" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>JOIN 분석 엔진</div>
   <div class="eh-title">하나의 종목을<br><span class="o">세 개의 시간</span>으로 읽습니다</div>
-  <div class="eh-sub">단기·중기·장기 흐름이 <b>만나는 지점</b>에서 방향을 읽어냅니다. 한 시간축만 보면 놓치는 그림을, 교차해서 봅니다.</div>
-  <div class="eh-axis">
-    <div class="eh-ax"><div class="axn">주</div><div class="axd">단기 10분봉</div></div>
-    <div class="eh-ax"><div class="axn">월</div><div class="axd">중기 60분봉</div></div>
-    <div class="eh-ax"><div class="axn">분기</div><div class="axd">장기 일봉</div></div>
+  <div class="eh-subline">단기·중기·장기 흐름이 <b>만나는 지점</b>에서 방향을 읽어냅니다.</div>
+  <div class="hero-search">
+    <input type="text" id="codeInput" placeholder="삼성전자 · 005930 · AAPL · TSLA" autocomplete="off">
+    <svg class="hs-ic" viewBox="0 0 24 24" fill="none" stroke="#ed7d31" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg>
+    <div class="ac" id="acList"></div>
   </div>
-</div>
-<!-- 검색창 (히어로 아래) -->
-<div class="search-box" style="margin-top:14px">
-  <input type="text" id="codeInput" placeholder="국내: 종목명/코드 · 미국: 티커 (AAPL)" autocomplete="off">
-  <div class="ac" id="acList"></div>
+  <div class="hero-tf">
+    <div class="tfr"><span class="k">주</span><span>매주 <b>월요일</b> 방향성 초기화 — 다음 한 주를 읽습니다</span></div>
+    <div class="tfr"><span class="k">월</span><span>매월 <b>초</b> 초기화 — 한 달 중기 흐름</span></div>
+    <div class="tfr"><span class="k">분기</span><span>분기 <b>시작</b> 초기화 — 3개월 큰 추세</span></div>
+  </div>
+  <div class="hero-once">국내·미국 어떤 종목이든 <b>한 번에</b></div>
 </div>
 <div id="guide">
   <!-- 횡보 경고 -->
   <div class="warn" style="margin-top:14px">
     <div class="wq">매수도 매도도 아닌 자리.</div>
     <div class="wa"><b>가장 많은 계좌가 무너지는 곳입니다.</b> JOIN CHART는 상승·하락만이 아니라, 방향 없는 횡보 구간까지 함께 짚어드립니다.</div>
-  </div>
-  <!-- 국내+미국 -->
-  <div class="markets">
-    <div class="mk"><div class="mflag">🇰🇷</div><div class="mt">국내</div><div class="md">코스피·코스닥 전체</div></div>
-    <div class="mk"><div class="mflag">🇺🇸</div><div class="mt">미국</div><div class="md">티커로 바로 조회</div></div>
   </div>
   <div class="guide-foot2"><svg viewBox="0 0 24 24" fill="none" stroke="#9a6b4a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9l-8 14A2 2 0 004 21h16a2 2 0 001.7-3l-8-14a2 2 0 00-3.4 0z"/></svg><span>모든 분석은 통계·작도 기반 <b>참고 자료</b>이며 매수·매도 추천이 아닙니다. 방향 판단은 추세 유지 시에만 유효하며 전환점은 잡지 못합니다.</span></div>
 </div>
@@ -323,6 +332,7 @@ function mkMethodLabel(val,nm,col,methods){
 async function go(code){
   var box=document.getElementById('result');
   var guide=document.getElementById('guide'); if(guide)guide.style.display='none';
+  var hero=document.getElementById('heroIntro'); if(hero)hero.style.display='none';
   box.innerHTML='<div class="loading"><div class="rtv-spin"><div class="rtv-core">RTV</div><div class="rtv-ring"></div></div><div class="ltxt">JOIN 고유 RTV 엔진 가동 중</div><div class="lsub">엘리엇 · 피보나치 · 몬테카를로 · 갠 · 공방선 교차 분석</div><div class="load-chips"><span class="lchip" style="--c:#7f77dd">엘리엇</span><span class="lchip" style="--c:#1d9e75">피보나치</span><span class="lchip" style="--c:#3f7fd0">몬테카를로</span><span class="lchip" style="--c:#ba7517">갠</span><span class="lchip" style="--c:#ed7d31">공방선</span></div></div>';
   try{
     var x=await fetch('/api/analyze?code='+code).then(function(r){return r.json();});
@@ -333,6 +343,7 @@ async function go(code){
 function goHome(){
   document.getElementById('result').innerHTML='';
   var guide=document.getElementById('guide'); if(guide)guide.style.display='block';
+  var hero=document.getElementById('heroIntro'); if(hero)hero.style.display='block';
   var inp2=document.getElementById('codeInput'); if(inp2){inp2.value='';inp2.blur();}
   window.scrollTo(0,0);
 }
