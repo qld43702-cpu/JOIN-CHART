@@ -627,9 +627,7 @@ function mkChart(data,pj,sfx){
   var cv=document.getElementById('cv'+sfx), tip=document.getElementById('tip'+sfx);
   var scope=document.getElementById('host'+sfx)||document;
   var ch=data.chart, n=ch.length, draws=data.draws||[], risks=data.risks||[];
-  var CALC_FUT=(pj&&pj.fut)||63;       // 계산용(목표·시나리오 비율) — 길게(195 등)
-  var FUT=Math.min(CALC_FUT, 50);      // 차트에 그리는 미래 — 짧게(보기 좋게). 예전 느낌.
-  var TOTAL=n+FUT, cur=data.cur;
+  var FUT=(pj&&pj.fut)||63, TOTAL=n+FUT, cur=data.cur;
   var c=[], ma2=[];
   for(var ci=0;ci<ch.length;ci++){c.push(ch[ci].c);ma2.push(ch[ci].m2);}
   var GREEN_START=0;
