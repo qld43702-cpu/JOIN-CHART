@@ -292,6 +292,7 @@ def build_drawings(bars):
         })
 
     chart=[{'i':i,'d':(bars[i].get('d','')[4:6]+'/'+bars[i].get('d','')[6:8]+(' '+str(bars[i]['t']).zfill(6)[:2]+'시' if 't' in bars[i] else '')),
+            'rawd':bars[i].get('d',''),
             'o':round(bars[i]['o'],2),'h':round(bars[i]['h'],2),'l':round(bars[i]['l'],2),'c':round(bars[i]['c'],2),
             'v':int(bars[i].get('v',0) or 0),
             'm2':round(MA2[i],2) if MA2[i] is not None else None} for i in range(len(bars))]
@@ -457,37 +458,48 @@ def build_projection(bars, draws, risk_level, fut=63, market='', period='quarter
     # chart의 d는 "MM/DD" 형식 → 월로 분기 판정. 7월 되면 자동 리셋.
     anchor_idx=None; anchor_price=None
     try:
-        if period=='quarter':
-            # 일봉: 분기 시작월(1/4/7/10) 첫 봉
-            last_d = bars[-1].get('d','')  # "MM/DD"
-            lm = int(last_d.split('/')[0]) if '/' in last_d else None
-            if lm:
-                q_start_month = ((lm-1)//3)*3 + 1
-                for i in range(len(bars)-1, 0, -1):
-                    di=bars[i].get('d',''); dp=bars[i-1].get('d','')
-                    mi=int(di.split('/')[0]) if '/' in di else 0
-                    mp=int(dp.split('/')[0]) if '/' in dp else 0
-                    if mi==q_start_month and mp!=q_start_month:
-                        anchor_idx=i; anchor_price=round(c[i],2); break
-                if anchor_idx is None:
-                    for i in range(len(bars)):
-                        di=bars[i].get('d','')
-                        mi=int(di.split('/')[0]) if '/' in di else 0
-                        if mi==q_start_month: anchor_idx=i; anchor_price=round(c[i],2); break
-        elif period=='week':
-            # 10분봉: 가장 최근 "주 시작"(날짜가 바뀐 지점들 중 최근 5거래일 전) 기준
-            # 분봉 d는 "MM/DD HH시" → 날짜(MM/DD) 바뀌는 지점 = 새 거래일
-            day_starts=[]
-            prev=None
-            for i in range(len(bars)):
-                di=bars[i].get('d','').split(' ')[0]  # MM/DD
-                if di!=prev: day_starts.append(i); prev=di
-            # 최근 5거래일 전(약 1주) 시작점
-            if len(day_starts)>=5:
-                anchor_idx=day_starts[-5]
-            elif day_starts:
-                anchor_idx=day_starts[0]
-            if anchor_idx is not None: anchor_price=round(c[anchor_idx],2)
+        import datetime
+        # 각 봉의 원본 날짜(YYYYMMDD) → date 객체. rawd 우선, 없으면 d(MM/DD)는 연도없어 폴백.
+        def bar_date(b):
+            rd=b.get('rawd','')
+            if len(rd)>=8:
+                try: return datetime.date(int(rd[0:4]),int(rd[4:6]),int(rd[6:8]))
+                except: return None
+            return None
+        dates=[bar_date(bars[i]) for i in range(len(bars))]
+        last=None
+        for dd in reversed(dates):
+            if dd: last=dd; break
+        if last is not None:
+            if period=='week':
+                # 이번 주 월요일 (last가 속한 주의 월요일). 그 날짜 이상인 첫 봉.
+                monday=last - datetime.timedelta(days=last.weekday())
+                for i in range(len(bars)):
+                    if dates[i] and dates[i]>=monday:
+                        anchor_idx=i; anchor_price=round(bars[i]["o"],2); break
+            elif period=='month':
+                # 이번 달 1일 이후 첫 봉
+                first=datetime.date(last.year,last.month,1)
+                for i in range(len(bars)):
+                    if dates[i] and dates[i]>=first:
+                        anchor_idx=i; anchor_price=round(bars[i]["o"],2); break
+            else:  # quarter
+                # 분기 시작월(1/4/7/10) 1일 이후 첫 봉
+                qm=((last.month-1)//3)*3+1
+                first=datetime.date(last.year,qm,1)
+                for i in range(len(bars)):
+                    if dates[i] and dates[i]>=first:
+                        anchor_idx=i; anchor_price=round(bars[i]["o"],2); break
+        # 폴백: 날짜 계산 실패 시 기존 방식
+        if anchor_idx is None:
+            if period=='week':
+                day_starts=[]; prev=None
+                for i in range(len(bars)):
+                    di=bars[i].get('d','').split(' ')[0]
+                    if di!=prev: day_starts.append(i); prev=di
+                if len(day_starts)>=5: anchor_idx=day_starts[-5]
+                elif day_starts: anchor_idx=day_starts[0]
+                if anchor_idx is not None: anchor_price=round(bars[anchor_idx]["o"],2)
     except: pass
     return {
         'fut':fut, 'cur':round(cur,2),
@@ -731,7 +743,7 @@ class handler(BaseHTTPRequestHandler):
             if 'draws' in mm and mm.get('chart'):
                 risk60 = mm['risks'][0]['yc'] if mm.get('risks') else None
                 try:
-                    mm['projection'] = build_projection(mm['chart'], mm['draws'], risk60, fut=52, market=mk, period='quarter')
+                    mm['projection'] = build_projection(mm['chart'], mm['draws'], risk60, fut=52, market=mk, period='month')
                     if mm['projection']:
                         # 60분봉 자체 작도 교차점을 sr로
                         sr60=[]

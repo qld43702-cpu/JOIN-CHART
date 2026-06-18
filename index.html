@@ -27,7 +27,7 @@ header{display:flex;align-items:center;gap:11px;margin-bottom:16px}
 .ac.show{display:block}
 .ac-item{padding:12px 16px;display:flex;align-items:center;gap:10px;cursor:pointer;border-top:1px solid var(--line)}
 .ac-item:first-child{border-top:none}.ac-item:hover{background:var(--bg)}
-.ac-item .an{font-weight:800;font-size:16px}.ac-item .acode{font-size:14px;color:var(--faint);font-weight:600}
+.ac-item .an{font-weight:800;font-size:16px;color:var(--ink)}.ac-item .acode{font-size:14px;color:var(--faint);font-weight:600}
 .ac-item .amk{margin-left:auto;font-size:12px;padding:3px 9px;border-radius:7px;background:#fff3e8;color:var(--orange);font-weight:700}
 .hint{font-size:13px;color:var(--faint);margin-bottom:16px}
 #backbar{display:none;margin-bottom:12px}
@@ -499,62 +499,38 @@ function buildSeq(pj, d, dir){
   }
   return {seq:seq, startV:startV};
 }
-function waveShows(pj, d, dir, isWeekScope){
-  // 그 방향 파동이 "나타나는가":
-  //  (1) 앞쪽이 출렁이며 그 방향으로 타거나
-  //  (2) 실제 작도 공방선(yc)이 그 방향에 있고, 끝점이 기준점 대비 ±4% 넘음
-  // dn_target/ceil_(자동 목표)은 늘 있으므로 끝점 판정에서 제외 — 실제 레벨만.
-  var cur=pj.cur||0, startV=pj.anchor_price||cur;
-  // 실제 작도 교차점(yc)만 수집 — 자동 목표 제외
-  var realLv=[];
-  if(d && d.draws) d.draws.forEach(function(x){ if(x.yc>0) realLv.push(x.yc); });
-  (pj.sr_levels||[]).forEach(function(v){ if(v>0) realLv.push(v); });
-  // (2) 실제 레벨이 그 방향에 있고 4% 넘으면 인정
-  if(dir==='up'){
-    var topLv=Math.max.apply(null, realLv.concat([0]));
-    if(topLv>0 && (topLv-startV)/startV >= 0.04) return true;
-  } else {
-    var botLv=realLv.length?Math.min.apply(null, realLv):0;
-    if(botLv>0 && (botLv-startV)/startV <= -0.04) return true;
-    // 가까운 위험선(공방선)도 하락 신호로 인정 — 진짜 가까울 때만
-    //   주간 -10% 이내 / 월·분기 -8% 이내 (분기 위험선은 보통 -15~30%라 그건 정상범위로 제외)
-    var nearMax = isWeekScope ? 0.10 : 0.08;
-    var dnt=pj.dn_target||0;
-    if(dnt>0){
-      var dntPct=(startV-dnt)/startV;
-      if(dntPct>=0.04 && dntPct<=nearMax) return true;
-    }
-  }
-  // (1) 앞쪽 출렁임 판정 (buildSeq 기반)
+function waveShows(pj, d, dir){
+  // 그 방향 파동이 "나타나는가" = 시나리오 앞쪽이 밋밋하지 않고(출렁임) + 그 방향으로 타는가
+  // 끝점·끝 꺾임은 무시. 앞쪽(앞 절반)이 핵심.
   var r=buildSeq(pj, d, dir);
-  var seq=r.seq;
+  var seq=r.seq, startV=r.startV;
   if(seq.length<2) return false;
+  // 앞쪽 구간 = 앞 절반(최소 3점)
   var half=Math.max(3, Math.ceil(seq.length*0.6));
   var front=seq.slice(0, Math.min(half, seq.length));
   if(front.length<2) return false;
+  // 1) 앞쪽이 그 방향으로 제대로 가는가 (앞쪽 최대 도달이 시작가 대비 의미있게)
   var reach;
   if(dir==='up'){ reach=Math.max.apply(null,front); if(reach <= startV*1.015) return false; }
   else         { reach=Math.min.apply(null,front); if(reach >= startV*0.985) return false; }
-  // 앞쪽에 실제 레벨이 그 방향에 있어야 (자동 목표만으론 출렁임 불인정)
-  var hasRealDir = dir==='up' ? realLv.some(function(v){return v>startV*1.02;})
-                              : realLv.some(function(v){return v<startV*0.98;});
-  if(!hasRealDir) return false;
+  // 2) 앞쪽이 밋밋하지 않은가 (출렁임=변곡 또는 충분한 이동폭)
   var turns=0;
   for(var i=2;i<front.length;i++){
     var d1=front[i-1]-front[i-2], d2=front[i]-front[i-1];
-    if(d1*d2<0) turns++;
+    if(d1*d2<0) turns++;   // 앞쪽에서의 변곡(출렁)
   }
+  // 앞쪽에 변곡이 있거나, 앞쪽 레벨이 2개 이상(여러 변곡점 경유) → 파동. 밋밋하면(변곡0+점적음) 불인정
   var movePct=Math.abs(reach-startV)/(startV||1);
   return turns>=1 || (front.length>=4 && movePct>=0.04);
 }
 function judgeDir(pj, d, isWeek){
   if(!pj) return 'flat';
   var cur=pj.cur||0; if(cur<=0) return 'flat';
-  var upWave=waveShows(pj, d, 'up', isWeek);
-  var dnWave=waveShows(pj, d, 'dn', isWeek);
+  var upWave=waveShows(pj, d, 'up');
+  var dnWave=waveShows(pj, d, 'dn');
   if(upWave && !dnWave) return 'up';   // 상승만 파동
   if(dnWave && !upWave) return 'dn';   // 하락만 파동
-  // 둘 다 파동(둘 다 엘리엇) → 중립 / 둘 다 없음 → 중립
+  // 둘 다 파동 → 중립 / 둘 다 없음 → 중립
   return 'flat';
 }
 
