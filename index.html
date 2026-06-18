@@ -171,6 +171,40 @@ header{display:flex;align-items:center;gap:11px;margin-bottom:16px}
 .gchip{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:#445268;padding:6px 11px;border-radius:9px;background:#fff;border:1px solid #e9eef4}
 .gchip i{width:9px;height:9px;border-radius:3px;display:inline-block}
 .guide-foot2{margin-top:4px;padding:13px 15px;background:#fff8f3;border:1px solid #f3e0cf;border-radius:12px;font-size:12px;color:#9a6b4a;line-height:1.6;display:flex;gap:9px;align-items:flex-start;font-weight:600}
+/* 첫화면 소개 */
+.engine-hero{background:linear-gradient(140deg,#16314e,#1b3a5c 55%,#274d77);border-radius:20px;padding:24px 22px;margin-bottom:12px;color:#fff;position:relative;overflow:hidden;box-shadow:0 8px 28px rgba(27,58,92,.25)}
+.engine-hero::after{content:'';position:absolute;right:-40px;top:-40px;width:180px;height:180px;background:radial-gradient(circle,rgba(237,125,49,.25),transparent 70%)}
+.eh-tag{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:800;color:#f4a06a;letter-spacing:.5px;margin-bottom:12px;background:rgba(237,125,49,.13);padding:5px 11px;border-radius:8px;position:relative;z-index:1}
+.eh-tag svg{width:13px;height:13px}
+.eh-title{font-size:23px;font-weight:800;line-height:1.35;letter-spacing:-.5px;position:relative;z-index:1}
+.eh-title .o{color:#f4a06a}
+.eh-sub{font-size:13px;color:#bcd0e6;margin-top:12px;line-height:1.65;position:relative;z-index:1}
+.eh-sub b{color:#fff;font-weight:700}
+.eh-axis{display:flex;gap:8px;margin-top:18px;position:relative;z-index:1}
+.eh-ax{flex:1;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.13);border-radius:11px;padding:11px 8px;text-align:center}
+.eh-ax .axn{font-size:13px;font-weight:800}
+.eh-ax .axd{font-size:10px;color:#a8bdd6;margin-top:2px;font-weight:600}
+.rtv-card{background:#fff;border-radius:16px;padding:18px;margin-bottom:12px;border:1px solid #edf1f5;box-shadow:0 1px 4px rgba(27,58,92,.05)}
+.rtv-hd{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.rtv-hd .ric{width:36px;height:36px;border-radius:11px;background:var(--orange-soft);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.rtv-hd .ric svg{width:19px;height:19px}
+.rtv-hd .rt{font-size:15px;font-weight:800}
+.rtv-hd .rt .o{color:var(--orange)}
+.rtv-desc{font-size:13px;color:#5a6675;line-height:1.6;font-weight:500;margin-bottom:14px}
+.rtv-desc b{color:var(--ink);font-weight:800}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{display:flex;align-items:center;gap:6px;font-size:12.5px;font-weight:700;color:#46566a;background:#f5f7fa;border:1px solid #e7ecf1;border-radius:9px;padding:7px 12px}
+.chip .cdot{width:9px;height:9px;border-radius:3px}
+.warn{background:#fff;border-radius:16px;padding:20px;margin-bottom:12px;border:1px solid #edf1f5;box-shadow:0 1px 4px rgba(27,58,92,.05);position:relative;overflow:hidden}
+.warn::before{content:'';position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--orange)}
+.warn .wq{font-size:16px;font-weight:800;color:var(--ink);line-height:1.5;letter-spacing:-.3px}
+.warn .wa{font-size:13px;color:#5a6675;margin-top:8px;line-height:1.6;font-weight:500}
+.warn .wa b{color:var(--orange);font-weight:800}
+.markets{display:flex;gap:10px;margin-bottom:12px}
+.mk{flex:1;background:#fff;border-radius:14px;padding:15px;border:1px solid #edf1f5;box-shadow:0 1px 4px rgba(27,58,92,.05);text-align:center}
+.mk .mflag{font-size:22px;margin-bottom:5px}
+.mk .mt{font-size:13px;font-weight:800}
+.mk .md{font-size:11px;color:var(--muted);margin-top:2px;font-weight:600}
 .guide-foot2 svg{width:16px;height:16px;flex-shrink:0;margin-top:1px}
 .guide-foot2 b{color:#7a5232}
 .loading,.empty{text-align:center;padding:50px;color:var(--muted)}
@@ -206,30 +240,42 @@ header{display:flex;align-items:center;gap:11px;margin-bottom:16px}
   <input type="text" id="codeInput" placeholder="국내: 종목명/코드 · 미국: 티커 (AAPL)" autocomplete="off">
   <div class="ac" id="acList"></div>
 </div>
-<div class="lead2">차트 구조로 다음 예상 경로를 안내합니다 — 예측이 아닌 참고용</div>
+<div class="lead2">하나의 종목을 세 개의 시간으로 — 매수·매도의 근거를 제시합니다</div>
 <div id="guide">
-  <div class="gcard2 ac-navy">
-    <div class="gc2-main">
-      <div class="gc2-ico ico-blue"><svg viewBox="0 0 24 24" fill="none" stroke="#3f7fd0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg></div>
-      <div class="gc2-tx"><div class="gc2-t">분기별 예측 · 일봉</div><div class="gc2-s">1/1·4/1·7/1·10/1 기준, 다음 3개월 예상 경로</div></div>
+  <!-- 시간축 히어로 -->
+  <div class="engine-hero">
+    <div class="eh-tag"><svg viewBox="0 0 24 24" fill="none" stroke="#f4a06a" stroke-width="2.4" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>JOIN 분석 엔진</div>
+    <div class="eh-title">하나의 종목을<br><span class="o">세 개의 시간</span>으로 읽습니다</div>
+    <div class="eh-sub">단기·중기·장기 흐름이 <b>만나는 지점</b>에서 방향을 읽어냅니다. 한 시간축만 보면 놓치는 그림을, 교차해서 봅니다.</div>
+    <div class="eh-axis">
+      <div class="eh-ax"><div class="axn">주</div><div class="axd">단기 10분봉</div></div>
+      <div class="eh-ax"><div class="axn">월</div><div class="axd">중기 60분봉</div></div>
+      <div class="eh-ax"><div class="axn">분기</div><div class="axd">장기 일봉</div></div>
     </div>
-    <div class="gc2-steps"><span class="gstep on">1/1</span><span class="garr">›</span><span class="gstep">4/1</span><span class="garr">›</span><span class="gstep">7/1</span><span class="garr">›</span><span class="gstep">10/1</span></div>
   </div>
-  <div class="gcard2 ac-blue">
-    <div class="gc2-main">
-      <div class="gc2-ico ico-blue"><svg viewBox="0 0 24 24" fill="none" stroke="#3f7fd0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l5-5 4 3 6-7"/><path d="M21 8v5h-5"/></svg></div>
-      <div class="gc2-tx"><div class="gc2-t">주 예측 · 10분봉</div><div class="gc2-s">매주 단위, 다음 한 주 상승·하락 시나리오</div></div>
+  <!-- RTV 엔진 + 지표 나열 -->
+  <div class="rtv-card">
+    <div class="rtv-hd"><div class="ric"><svg viewBox="0 0 24 24" fill="none" stroke="#ed7d31" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4M5 5l3 3M16 16l3 3M19 5l-3 3M8 16l-3 3"/></svg></div><div class="rt">JOIN 고유 <span class="o">RTV 엔진</span></div></div>
+    <div class="rtv-desc">우리의 고유 <b>RTV 엔진</b>에 아래 지표들과 함께 흐름을 읽어냅니다.</div>
+    <div class="chips">
+      <span class="chip"><span class="cdot" style="background:#7f77dd"></span>엘리엇 파동</span>
+      <span class="chip"><span class="cdot" style="background:#1d9e75"></span>피보나치</span>
+      <span class="chip"><span class="cdot" style="background:#3f7fd0"></span>몬테카를로</span>
+      <span class="chip"><span class="cdot" style="background:#ba7517"></span>갠(Gann)</span>
+      <span class="chip"><span class="cdot" style="background:#ed7d31"></span>공방선</span>
     </div>
-    <div class="gc2-steps"><span class="gstep up">상승</span><span class="garr">›</span><span class="gstep">횡보</span><span class="garr">›</span><span class="gstep dn">하락</span></div>
   </div>
-  <div class="gcard2 ac-orange">
-    <div class="gc2-main">
-      <div class="gc2-ico ico-orange"><svg viewBox="0 0 24 24" fill="none" stroke="#ed7d31" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3v6l-5 9a2 2 0 002 3h12a2 2 0 002-3l-5-9V3"/><path d="M7 3h10"/></svg></div>
-      <div class="gc2-tx"><div class="gc2-t">사용된 분석 기법</div><div class="gc2-s">5가지 지표를 겹쳐 경로를 도출합니다</div></div>
-    </div>
-    <div class="gc2-chips"><span class="gchip"><i style="background:#7f77dd"></i>엘리엇</span><span class="gchip"><i style="background:#1d9e75"></i>피보나치</span><span class="gchip"><i style="background:#3f7fd0"></i>몬테카를로</span><span class="gchip"><i style="background:#ba7517"></i>갠</span><span class="gchip"><i style="background:#ed7d31"></i>작도법</span></div>
+  <!-- 횡보 경고 -->
+  <div class="warn">
+    <div class="wq">매수도 매도도 아닌 자리.</div>
+    <div class="wa"><b>가장 많은 계좌가 무너지는 곳입니다.</b> JOIN CHART는 상승·하락만이 아니라, 방향 없는 횡보 구간까지 함께 짚어드립니다.</div>
   </div>
-  <div class="guide-foot2"><svg viewBox="0 0 24 24" fill="none" stroke="#9a6b4a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9l-8 14A2 2 0 004 21h16a2 2 0 001.7-3l-8-14a2 2 0 00-3.4 0z"/></svg><span>모든 지표는 통계·작도 기반 <b>참고 자료</b>이며 매수·매도 추천이 아닙니다. 방향 예측은 추세 유지 시에만 맞고 전환점은 잡지 못합니다.</span></div>
+  <!-- 국내+미국 -->
+  <div class="markets">
+    <div class="mk"><div class="mflag">🇰🇷</div><div class="mt">국내</div><div class="md">코스피·코스닥 전체</div></div>
+    <div class="mk"><div class="mflag">🇺🇸</div><div class="mt">미국</div><div class="md">티커로 바로 조회</div></div>
+  </div>
+  <div class="guide-foot2"><svg viewBox="0 0 24 24" fill="none" stroke="#9a6b4a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9l-8 14A2 2 0 004 21h16a2 2 0 001.7-3l-8-14a2 2 0 00-3.4 0z"/></svg><span>모든 분석은 통계·작도 기반 <b>참고 자료</b>이며 매수·매도 추천이 아닙니다. 방향 판단은 추세 유지 시에만 유효하며 전환점은 잡지 못합니다.</span></div>
 </div>
 <div id="result"></div>
 </div>
