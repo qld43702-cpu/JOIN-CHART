@@ -138,6 +138,7 @@ header{display:flex;align-items:center;gap:11px;margin-bottom:16px}
 .gl{display:flex;align-items:center;gap:9px;font-size:13px;padding:7px 11px;border-radius:9px;background:#f7f9fb}
 .gl .gl-tag{font-size:10px;font-weight:800;padding:2px 7px;border-radius:5px;flex-shrink:0}
 .gl .above{background:#fde7e5;color:var(--red)}.gl .below{background:#e4eefa;color:var(--blue)}
+.gl .num{background:var(--navy);color:#fff;min-width:20px;text-align:center}
 .gl .gl-price{font-weight:800;color:var(--ink)}
 .gl .gl-gap{margin-left:auto;font-size:11px;font-weight:700;color:var(--muted)}
 .risk-hd2{padding:13px 16px;background:var(--orange-soft);font-size:14px;font-weight:800;color:#bd6526}
@@ -561,21 +562,19 @@ function buildReport(x, d, pj, t10, t60){
 
   // ===== 공방선 (각 기간별) =====
   function gongLines(p, dch){
-    // 현재가 기준 위/아래 공방선 추출 (sr_levels + 작도 교차점)
+    // 현재가 기준 아래 공방선 추출 — 그 기간의 작도 교차점(yc)만 사용
+    // (sr_levels·위험선 제외: 월/분기가 겹치지 않게 각 기간 작도 그대로)
     var c=p.cur||0; if(c<=0) return [];
     var lv=[];
-    (p.sr_levels||[]).forEach(function(v){ if(v>0) lv.push(v); });
     if(dch && dch.draws) dch.draws.forEach(function(x){ if(x.yc>0) lv.push(x.yc); });
-    // 위험선(dn_target)도 아래 공방선으로
-    if(p.dn_target>0) lv.push(p.dn_target);
+    // 작도 교차점이 없으면 위험선으로 폴백
+    if(!lv.length && p.dn_target>0) lv.push(p.dn_target);
     // 중복 제거 (1% 간격)
     lv.sort(function(a,b){return a-b;});
     var clean=[]; lv.forEach(function(v){ if(!clean.length||Math.abs(v-clean[clean.length-1])>c*0.01) clean.push(v); });
-    // 위/아래 분류, 현재가에서 가까운 순
-    var ups=clean.filter(function(v){return v>c*1.003;}).slice(0,2);
-    var dns=clean.filter(function(v){return v<c*0.997;}).reverse().slice(0,2);
+    // 아래쪽만, 현재가에서 가까운 순
+    var dns=clean.filter(function(v){return v<c*0.997;}).reverse().slice(0,3);
     var out=[];
-    ups.reverse().forEach(function(v){ out.push({v:v,above:true}); });
     dns.forEach(function(v){ out.push({v:v,above:false}); });
     return out;
   }
@@ -585,9 +584,9 @@ function buildReport(x, d, pj, t10, t60){
     if(!lines.length) return '';
     var cur=p.cur||0;
     var s='<div class="gong-sec"><div class="gs-label"><span class="dot"></span>'+label+' 공방선</div><div class="gs-lines">';
-    lines.forEach(function(L){
+    lines.forEach(function(L,i){
       var gap=cur>0?((L.v-cur)/cur*100):0;
-      s+='<div class="gl"><span class="gl-tag '+(L.above?'above':'below')+'">'+(L.above?'위':'아래')+'</span><span class="gl-price">'+pf(L.v)+'</span><span class="gl-gap">'+(gap>=0?'+':'')+gap.toFixed(1)+'%</span></div>';
+      s+='<div class="gl"><span class="gl-tag num">'+(i+1)+'</span><span class="gl-price">'+pf(L.v)+'</span><span class="gl-gap">'+(gap>=0?'+':'')+gap.toFixed(1)+'%</span></div>';
     });
     s+='</div></div>';
     return s;
