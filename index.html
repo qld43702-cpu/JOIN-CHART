@@ -397,7 +397,8 @@ function render(x){
   var minName='15분봉';
   var html='';
   var priceStr = IS_US ? ('$'+(d.cur||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})) : ((d.cur||0).toLocaleString()+'원');
-  html+='<div class="result-sbar"><div class="rs-wrap"><input type="text" id="resultSearchInput" value="'+(x['종목명']||'')+' ('+(x['종목코드'])+')'" autocomplete="off"><svg class="rs-ic" viewBox="0 0 24 24" fill="none" stroke="#ed7d31" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg><div class="ac" id="acList2"></div></div><span class="rs-price">'+priceStr+'</span></div>';
+  var _sbarVal=(x['종목명']||'')+' ('+(x['종목코드'])+')';
+  html+='<div class="result-sbar"><div class="rs-wrap"><input type="text" id="resultSearchInput" autocomplete="off"><svg class="rs-ic" viewBox="0 0 24 24" fill="none" stroke="#ed7d31" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg><div class="ac" id="acList2"></div></div><span class="rs-price">'+priceStr+'</span></div>';
 
   // ===== 탭 =====
   html+='<div class="trk-tabs">';
@@ -416,6 +417,7 @@ function render(x){
   // 결과 검색창 이벤트 연결
   var inp2=document.getElementById('resultSearchInput'), ac2=document.getElementById('acList2');
   if(inp2){
+    inp2.value=_sbarVal;
     inp2.addEventListener('focus',function(){inp2.select();});
     inp2.addEventListener('input',function(){
       var q=inp2.value.trim().toLowerCase();
