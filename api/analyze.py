@@ -702,28 +702,30 @@ class handler(BaseHTTPRequestHandler):
             _hit=_RESULT_CACHE.get(_ck)
             if _hit and _t.time() < _hit["exp"]:
                 self.wfile.write(_hit["data"]); return
+            import threading
+            def _pf(tasks):
+                res=[None]*len(tasks)
+                def _r(i,fn,a):
+                    try: res[i]=fn(*a)
+                    except: res[i]=None
+                ts=[threading.Thread(target=_r,args=(i,f,a)) for i,(f,a) in enumerate(tasks)]
+                for t in ts: t.start()
+                for t in ts: t.join()
+                return res
             if is_us(code):
-                # ===== 미국 주식 (야후) =====
+                # ===== 미국 주식 (야후 병렬) =====
                 tkr=code.upper()
                 nm,mk=get_name_us(tkr)
-                day=get_day_us(tkr)
-                try: m60=get_min_us(tkr,"60m")
-                except Exception: m60=None
-                try: m10=get_min_us(tkr,"15m")
-                except Exception: m10=None
+                r=_pf([(get_day_us,(tkr,)),(get_min_us,(tkr,'60m')),(get_min_us,(tkr,'15m'))])
+                day,m60,m10=r[0],r[1],r[2]
             else:
-                # ===== 한국 주식 (야후 데이터 + LS 현재가) =====
+                # ===== 한국 주식 (야후 병렬 + LS 현재가) =====
                 if not code.isdigit() or len(code)!=6:
                     self.wfile.write(json.dumps({'error':'국내는 6자리 코드, 해외는 영문 티커(AAPL 등)'}).encode()); return
-                # 종목명/시장 — LS 또는 stocks.json
                 try: tk=token(); nm,mk=get_name(tk,code)
                 except Exception: tk=None; sj=_load_stocks().get(code,{}); nm=sj.get('name',code); mk=sj.get('market','코스피')
-                # 야후에서 데이터
-                day=get_day_kr(code,mk)
-                try: m60=get_60m_kr(code,mk)
-                except Exception: m60=None
-                try: m10=get_15m_kr(code,mk)
-                except Exception: m10=None
+                r=_pf([(get_day_kr,(code,mk)),(get_60m_kr,(code,mk)),(get_15m_kr,(code,mk))])
+                day,m60,m10=r[0],r[1],r[2]
                 # 장중 현재가 LS로 덮어씌우기
                 if tk and day:
                     cur_ls=get_cur_ls(tk,code)
