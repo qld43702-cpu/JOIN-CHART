@@ -488,6 +488,7 @@ function mkChart(data,pj,sfx){
   var W,H,plot,viewS=0,viewE=TOTAL-1;
   var SCEN=null;        // 현재 시나리오 'up'/'flat'/'dn'/null
   var scenFade=0;       // 페이드 0~1
+  var isDragging=false; // 줌/드래그 중 시나리오 숨김
   var srLevels=(pj&&pj.sr_levels)||[];  // 60분봉 지지/저항 가격들
   // 초기 뷰: 타임프레임별 표시 봉 수 제한
   (function(){
@@ -783,7 +784,7 @@ function mkChart(data,pj,sfx){
       }
     }
     // ===== 시나리오 웨이브 (교차점 기준점부터 — 실제 봉과 비교 가능) =====
-    if(SCEN && scenFade>0){
+    if(SCEN && scenFade>0 && !isDragging){
       // 기준점: 최근 교차점 직후. 없으면 현재
       var anchorI=(pj.anchor_idx!=null)?pj.anchor_idx:(n-1);
       var anchorP=(pj.anchor_price!=null)?pj.anchor_price:cur;
@@ -924,8 +925,9 @@ function mkChart(data,pj,sfx){
     // viewS(시작점) 고정, viewE(오른쪽/미래)만 늘어남
     var en=viewS+ns-1;
     if(en>TOTAL-1){en=TOTAL-1;}
-    SCEN=null;scenFade=0;scope.querySelectorAll(".scen-btn").forEach(function(b){b.classList.remove("active");});
+    isDragging=true;
     viewE=en;lay();draw(lastMx,lastMy);
+    isDragging=false;
   },{passive:false});
   var drag=false, dx0=0, dvs=0;
   cv.addEventListener('mousedown',function(e){drag=true;dx0=e.clientX;dvs=viewS;});
@@ -935,8 +937,9 @@ function mkChart(data,pj,sfx){
     var dx=e.clientX-dx0, per=(plot.x1-plot.x0)/getSpan();
     var sh=Math.round(-dx/per), sp=getSpan(), s=dvs+sh;
     if(s<0)s=0;if(s+sp>TOTAL)s=TOTAL-sp;
-    SCEN=null;scenFade=0;scope.querySelectorAll(".scen-btn").forEach(function(b){b.classList.remove("active");});
+    isDragging=true;
     viewS=s;viewE=s+sp-1;lay();draw(lastMx,lastMy);
+    isDragging=false;
   });
   // ===== 모바일 터치 =====
   // 한 손가락: 가격선(크로스헤어) 표시 + 좌우 스크롤
@@ -957,7 +960,7 @@ function mkChart(data,pj,sfx){
     // 좌우로 많이 움직이면 스크롤, 그 외엔 가격선만
     if(Math.abs(dx)>10){
       tMoved=true;
-      SCEN=null;scenFade=0;scope.querySelectorAll(".scen-btn").forEach(function(b){b.classList.remove("active");});
+      isDragging=true;
       var per=(plot.x1-plot.x0)/getSpan();
       var sh=Math.round(-dx/per), sp=getSpan(), s=tDvs+sh;
       if(s<0)s=0;if(s+sp>TOTAL)s=TOTAL-sp;
@@ -970,11 +973,11 @@ function mkChart(data,pj,sfx){
     risks.forEach(function(d){if(Math.abs(lastMy-yOf(d.yc))<8){tip.style.display='block';tip.style.background='#d4537e';tip.textContent='공방선 '+fmtP(d.yc);tip.style.left=Math.min(lastMx+12,W-110)+'px';tip.style.top=(yOf(d.yc)-28)+'px';}});
   },{passive:false});
   cv.addEventListener('touchend',function(){
-    // 손 떼면 잠시 후 가격선·툴팁 정리
+    isDragging=false;
     setTimeout(function(){ lastMx=lastMy=null; draw(null,null); tip.style.display='none'; }, 1500);
   },{passive:true});
-  document.getElementById('zin'+sfx).onclick=function(){SCEN=null;scenFade=0;scope.querySelectorAll(".scen-btn").forEach(function(b){b.classList.remove("active");});var sp=getSpan(),ns=Math.max(15,Math.round(sp*0.7)),md=Math.round((viewS+viewE)/2);viewS=Math.max(0,md-Math.round(ns/2));viewE=Math.min(TOTAL-1,viewS+ns-1);lay();draw();};
-  document.getElementById('zout'+sfx).onclick=function(){SCEN=null;scenFade=0;scope.querySelectorAll(".scen-btn").forEach(function(b){b.classList.remove("active");});var sp=getSpan(),ns=Math.min(TOTAL,Math.round(sp*1.4)),md=Math.round((viewS+viewE)/2);viewS=Math.max(0,md-Math.round(ns/2));viewE=Math.min(TOTAL-1,viewS+ns-1);lay();draw();};
+  document.getElementById('zin'+sfx).onclick=function(){isDragging=true;var sp=getSpan(),ns=Math.max(15,Math.round(sp*0.7)),md=Math.round((viewS+viewE)/2);viewS=Math.max(0,md-Math.round(ns/2));viewE=Math.min(TOTAL-1,viewS+ns-1);lay();draw();isDragging=false;};
+  document.getElementById('zout'+sfx).onclick=function(){isDragging=true;var sp=getSpan(),ns=Math.min(TOTAL,Math.round(sp*1.4)),md=Math.round((viewS+viewE)/2);viewS=Math.max(0,md-Math.round(ns/2));viewE=Math.min(TOTAL-1,viewS+ns-1);lay();draw();isDragging=false;};
   document.getElementById('zall'+sfx).onclick=function(){viewS=0;viewE=TOTAL-1;lay();draw();};
   scope.querySelectorAll('.mtd').forEach(function(el){el.addEventListener('change',function(){draw(lastMx,lastMy);});});
   // 시나리오 버튼 이벤트 + 페이드 애니메이션
@@ -1003,7 +1006,7 @@ function mkChart(data,pj,sfx){
     b.addEventListener('click',function(){playScenario(b.getAttribute('data-scen'));});
   });
   try{lay();draw(null,null);}catch(err){console.error('draw error:',err);}
-  window.addEventListener('resize',function(){lay();draw(null,null);});
+  window.addEventListener('resize',function(){isDragging=true;lay();draw(null,null);isDragging=false;});
 }
 </script>
 </div>

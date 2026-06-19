@@ -677,14 +677,15 @@ class handler(BaseHTTPRequestHandler):
                 self.wfile.write(_hit["data"]); return
             import threading
             def _parallel_fetch(tasks):
-                res={}
-                def _run(key,fn,args):
-                    try: res[key]=fn(*args)
-                    except: res[key]=None
-                ts=[threading.Thread(target=_run,args=(k,f,a)) for k,f,a in tasks]
+                import threading as _th
+                results=[None]*len(tasks)
+                def _run(i,fn,args):
+                    try: results[i]=fn(*args)
+                    except: results[i]=None
+                ts=[_th.Thread(target=_run,args=(i,f,a)) for i,(k,f,a) in enumerate(tasks)]
                 for t in ts: t.start()
                 for t in ts: t.join()
-                return res
+                return {tasks[i][0]:results[i] for i in range(len(tasks))}
             if is_us(code):
                 # ===== 미국 주식 (야후) — 병렬 호출 =====
                 tkr=code.upper()
