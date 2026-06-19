@@ -643,12 +643,13 @@ function mkChart(data,pj,sfx){
   var SCEN=null;        // 현재 시나리오 'up'/'flat'/'dn'/null
   var scenFade=0;       // 페이드 0~1
   var srLevels=(pj&&pj.sr_levels)||[];  // 60분봉 지지/저항 가격들
-  // 초기 뷰: 작도 시작부터
+  // 초기 뷰: 시작점(anchor) 약간 앞부터 미래 끝까지 — 보기 편하게(사진1처럼)
   (function(){
-    var cand=[];
-    draws.forEach(function(d){cand.push(d.A_t1);});
-    if(data.view_start!=null)cand.push(data.view_start);
-    if(cand.length){var mn=Math.min.apply(null,cand);viewS=Math.max(0,mn-4);}
+    var aI=(pj&&pj.anchor_idx!=null)?pj.anchor_idx:(n-1);
+    // 시작점 앞쪽으로 약간의 맥락(전체 보이는 구간의 15%)만 남기고 그 앞 과거는 자름
+    var futLen=TOTAL-1-aI;            // 시작점부터 미래끝까지 길이
+    var pad=Math.round(futLen*0.25);  // 시작점 앞 여유(맥락)
+    viewS=Math.max(0, aI-pad);
     viewE=TOTAL-1;
   })();
   function futDates(){
