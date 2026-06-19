@@ -526,11 +526,9 @@ function waveShows(pj, d, dir){
 function judgeDir(pj, d, isWeek){
   if(!pj) return 'flat';
   var cur=pj.cur||0; if(cur<=0) return 'flat';
-  var upWave=waveShows(pj, d, 'up');
-  var dnWave=waveShows(pj, d, 'dn');
-  if(upWave && !dnWave) return 'up';   // 상승만 파동
-  if(dnWave && !upWave) return 'dn';   // 하락만 파동
-  // 둘 다 파동 → 중립 / 둘 다 없음 → 중립
+  // 판정 = 교차점 지지/저항 횟수 (서버 계산: sr_judge)
+  // 시작점(겹친 교차점)을 과거 캔들이 지지 많이=상방 / 저항 많이=하방.
+  if(pj.sr_judge){ return pj.sr_judge; }
   return 'flat';
 }
 

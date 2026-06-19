@@ -457,12 +457,14 @@ def build_projection(bars, draws, risk_level, fut=63, market='', period='quarter
     # ===== 시나리오 기준점: 가장 최근 분기 시작(1,4,7,10월) 이후 첫 거래일 =====
     # chart의 d는 "MM/DD" 형식 → 월로 분기 판정. 7월 되면 자동 리셋.
     anchor_idx=None; anchor_price=None
+    sr_judge=None; sr_sup=0; sr_res=0; sr_aux=0
     try:
-        # 시작점 = 우리 보조지표(엘리엇·갠·피보·몬테)와 겹치는 교차점 중 현재가에 가장 가까운 것.
-        # 단독 교차점(노이즈) 배제 → 여러 지표가 모인 "진짜 자리"에서 출발.
-        # 우리 도구의 지표 레벨들 (위 목표 + 아래 1시그마)
-        others=[x for x in [ell_capped, gann_capped, fib_up_cap, mc_capped, dn_1sig] if x and x>0]
-        # 모든 교차점 (공방선 yc + 위험선 yc) 그리고 그 "다음 봉" 위치
+        # ── 본인 설계: 시작점 = 판정대상 교차점 = 시나리오 출발점 (하나로 통일) ──
+        # 1) 교차점(공방선+위험선) 중 보조지표(피보/갠/엘리엇/몬테)가 닿은 것만 후보
+        # 2) 그중 현재가에 가장 가까운 것 = 시작점 = 판정 대상
+        # 3) 1층: 과거 캔들이 그 선을 지지/저항 몇 번 → 지지>저항=상방, 저항>지지=하방
+        #    2층: 보조지표 닿은 개수 = 신뢰
+        aux=[x for x in [ell_capped, gann_capped, fib_up_cap, mc_capped, dn_1sig] if x and x>0]
         cross_list=[]  # (yc_price, next_idx)
         for d in (draws or []):
             if d.get('yc',0)>0:
@@ -473,17 +475,32 @@ def build_projection(bars, draws, risk_level, fut=63, market='', period='quarter
             if r.get('yc',0)>0:
                 ni=r.get('B_t1',0)+1
                 cross_list.append((r['yc'], ni))
-        # 각 교차점이 우리 지표와 몇 개 겹치나(1% 이내) 카운트
-        def overlap_count(yc):
-            return sum(1 for o in others if abs(yc-o)/cur<0.01)
-        scored=[(yc,ni,overlap_count(yc)) for (yc,ni) in cross_list if 0<=ni<len(bars)]
-        overlapped=[(yc,ni,k) for (yc,ni,k) in scored if k>=1]
-        pool = overlapped if overlapped else scored  # 겹친 게 없으면 전체로 폴백
+        cross_list=[(yc,ni) for (yc,ni) in cross_list if 0<=ni<len(bars)]
+        # 보조지표가 닿은(1% 이내) 교차점만, 닿은 개수도 기록
+        def aux_touch(yc): return sum(1 for a in aux if abs(yc-a)/cur<0.01)
+        touched=[(yc,ni,aux_touch(yc)) for (yc,ni) in cross_list if aux_touch(yc)>=1]
+        pool = touched if touched else [(yc,ni,0) for (yc,ni) in cross_list]
         if pool:
-            # 가장 많이 겹친 교차점 우선, 같으면 현재가에 가까운 것
-            yc,ni,k = max(pool, key=lambda z:(z[2], -abs(z[0]-cur)))
+            # 현재가에 가장 가까운 교차점
+            yc,ni,ak = min(pool, key=lambda z:abs(z[0]-cur))
             anchor_idx=ni
             anchor_price=round(bars[ni].get('o',bars[ni]['c']),2)
+            sr_aux=ak
+            # 1층: 과거 캔들이 이 교차점 선(yc)을 지지/저항한 횟수
+            TOUCH=0.008
+            near=False; came=None
+            for i in range(1,len(bars)):
+                p=bars[i]['c']; pp=bars[i-1]['c']
+                if abs(p-yc)/yc<=TOUCH:
+                    if not near: came='above' if pp>yc else 'below'; near=True
+                else:
+                    if near:
+                        if came=='above' and p>yc: sr_sup+=1   # 위에서 와 지지
+                        elif came=='below' and p<yc: sr_res+=1  # 아래서 와 저항
+                        near=False
+            if sr_sup>sr_res: sr_judge='up'
+            elif sr_res>sr_sup: sr_judge='dn'
+            else: sr_judge='flat'
         # 폴백
         if anchor_idx is None and len(bars)>5:
             anchor_idx=max(0,len(bars)-fut if fut<len(bars) else len(bars)//2)
@@ -510,6 +527,7 @@ def build_projection(bars, draws, risk_level, fut=63, market='', period='quarter
         'fib_levels':[round(cur*f) for f in (1.236,1.382,1.618,0.786,0.618)],
         'green_start': green_start,
         'anchor_idx':anchor_idx, 'anchor_price':anchor_price,
+        'sr_judge':sr_judge, 'sr_sup':sr_sup, 'sr_res':sr_res, 'sr_aux':sr_aux,
     }
 
 def analyze_pattern(bars, draws):
