@@ -458,27 +458,33 @@ def build_projection(bars, draws, risk_level, fut=63, market='', period='quarter
     # chart의 d는 "MM/DD" 형식 → 월로 분기 판정. 7월 되면 자동 리셋.
     anchor_idx=None; anchor_price=None
     try:
-        # 시작점 = 공방선(상방)·위험선(하방) 통틀어 가장 최근 교차점의 "다음 봉 시가".
-        # 교차점 자체(xc, 과거 가상점)는 한쪽으로 쏠리므로, 교차 직후 실제 출발가 기준. 세 시간축 동일.
-        cands=[]  # (다음봉idx, 가격)
-        if draws:
-            recent=draws[-1]
-            en=recent.get('entry')
-            if en is not None and 0<=en<len(bars): cands.append((en, bars[en].get('o',bars[en]['c'])))
-            elif recent.get('B_t1') is not None:
-                bt=recent['B_t1']+1
-                if 0<=bt<len(bars): cands.append((bt, bars[bt].get('o',bars[bt]['c'])))
-        if all_risks:
-            rr=all_risks[-1]
-            if rr.get('B_t1') is not None:
-                rt=rr['B_t1']+1
-                if 0<=rt<len(bars): cands.append((rt, bars[rt].get('o',bars[rt]['c'])))
-        if cands:
-            # 가장 최근(인덱스 큰) 교차점 다음 봉
-            cands.sort(key=lambda z:z[0])
-            anchor_idx, ap = cands[-1]
-            anchor_price=round(ap,2)
-        # 폴백: 작도 없으면 마지막에서 적당히 뒤
+        # 시작점 = 우리 보조지표(엘리엇·갠·피보·몬테)와 겹치는 교차점 중 현재가에 가장 가까운 것.
+        # 단독 교차점(노이즈) 배제 → 여러 지표가 모인 "진짜 자리"에서 출발.
+        # 우리 도구의 지표 레벨들 (위 목표 + 아래 1시그마)
+        others=[x for x in [ell_capped, gann_capped, fib_up_cap, mc_capped, dn_1sig] if x and x>0]
+        # 모든 교차점 (공방선 yc + 위험선 yc) 그리고 그 "다음 봉" 위치
+        cross_list=[]  # (yc_price, next_idx)
+        for d in (draws or []):
+            if d.get('yc',0)>0:
+                en=d.get('entry')
+                ni=en if (en is not None and 0<=en<len(bars)) else (d.get('B_t1',0)+1)
+                cross_list.append((d['yc'], ni))
+        for r in (all_risks or []):
+            if r.get('yc',0)>0:
+                ni=r.get('B_t1',0)+1
+                cross_list.append((r['yc'], ni))
+        # 각 교차점이 우리 지표와 몇 개 겹치나(1% 이내) 카운트
+        def overlap_count(yc):
+            return sum(1 for o in others if abs(yc-o)/cur<0.01)
+        scored=[(yc,ni,overlap_count(yc)) for (yc,ni) in cross_list if 0<=ni<len(bars)]
+        overlapped=[(yc,ni,k) for (yc,ni,k) in scored if k>=1]
+        pool = overlapped if overlapped else scored  # 겹친 게 없으면 전체로 폴백
+        if pool:
+            # 가장 많이 겹친 교차점 우선, 같으면 현재가에 가까운 것
+            yc,ni,k = max(pool, key=lambda z:(z[2], -abs(z[0]-cur)))
+            anchor_idx=ni
+            anchor_price=round(bars[ni].get('o',bars[ni]['c']),2)
+        # 폴백
         if anchor_idx is None and len(bars)>5:
             anchor_idx=max(0,len(bars)-fut if fut<len(bars) else len(bars)//2)
             anchor_price=round(bars[anchor_idx].get('o',bars[anchor_idx]['c']),2)
