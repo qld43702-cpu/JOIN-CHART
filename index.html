@@ -735,9 +735,10 @@ function mkChart(data,pj,sfx){
   var ANCHOR_P=(pj.anchor_price!=null)?pj.anchor_price:cur;
   var ANCHOR_SPAN=Math.max(1,(TOTAL-1)-ANCHOR_I);
   function fwave(ctx,fn,color,wid,dash,fromGreen,fromCur){
-    // fromCur=true면 보조지표: 현재가(마지막 봉)부터 미래끝까지. 아니면 시작점(anchor)부터.
-    var startI = fromCur ? (n-1) : ANCHOR_I;
-    var baseP  = fromCur ? cur   : ANCHOR_P;
+    // fromCur=true면 보조지표: aux_start(달력 N일 전)부터 미래끝까지. 아니면 시작점(anchor)부터.
+    var AUX_I=(pj.aux_start!=null && pj.aux_start<n)?pj.aux_start:(n-1);
+    var startI = fromCur ? AUX_I : ANCHOR_I;
+    var baseP  = fromCur ? (ch[AUX_I]?ch[AUX_I].c:cur) : ANCHOR_P;
     var totalSpan=Math.max(1,(TOTAL-1)-startI);
     var endI=Math.min(viewE,TOTAL-1);
     if(startI>endI)return;

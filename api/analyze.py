@@ -506,6 +506,27 @@ def build_projection(bars, draws, risk_level, fut=63, market='', period='quarter
             fut_calc=int(round(cal_remain*dens*(5/7))) if dens>0 else int(round(cal_remain*5/7))
             fut=max(1, fut_calc)
     except: pass
+    # 보조지표 출발 인덱스 = 달력 기준 N일 전 (주간/월간 5일, 분기 20일). 보조지표가 길게 보이도록.
+    aux_start=None
+    try:
+        import datetime as _dt2
+        def _dof(b):
+            d=b.get('rawd','') or b.get('d','')
+            if len(d)>=8:
+                try: return _dt2.date(int(d[:4]),int(d[4:6]),int(d[6:8]))
+                except: return None
+            return None
+        back_days = 20 if period=='quarter' else 5
+        last_dd=_dof(bars[-1])
+        if last_dd is not None:
+            target=last_dd - _dt2.timedelta(days=back_days)
+            # target 날짜 이상인 첫 봉
+            for i in range(len(bars)):
+                di=_dof(bars[i])
+                if di is not None and di>=target:
+                    aux_start=i; break
+        if aux_start is None: aux_start=max(0,len(bars)-1)
+    except: aux_start=max(0,len(bars)-1)
     return {
         'fut':fut, 'cur':round(cur,2),
         'up_slope':round(up_slope,3), 'up_target':round(up_target,2), 'green_max':round(green_max,2),
@@ -526,6 +547,7 @@ def build_projection(bars, draws, risk_level, fut=63, market='', period='quarter
         'fib_levels':[round(cur*f) for f in (1.236,1.382,1.618,0.786,0.618)],
         'green_start': green_start,
         'anchor_idx':anchor_idx, 'anchor_price':anchor_price,
+        'aux_start':aux_start,
     }
 
 def analyze_pattern(bars, draws):
