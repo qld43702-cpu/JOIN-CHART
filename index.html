@@ -332,7 +332,7 @@ inp.addEventListener('keydown',function(e){
     if(hit2){pick(hit2.code,hit2.name);return;}
   }
 });
-document.addEventListener('click',function(e){if(!e.target.closest('.search-box'))ac.classList.remove('show');});
+document.addEventListener('click',function(e){if(!e.target.closest('.hero-search')&&!e.target.closest('.search-box'))ac.classList.remove('show');});
 function pick(code,name){inp.value=name+' ('+code+')';ac.classList.remove('show');inp.blur();go(code);}
 
 function mkMethodLabel(val,nm,col,methods){
