@@ -374,6 +374,10 @@ def build_projection(bars, draws, risk_level, fut=63, market='', period='quarter
     DN_FLOOR = cur*0.4                      # 3개월 하락 바닥 (현실적으로 -60%면 충분히 극단)
     dn_1sig   = max(cur*(1-1.0*sigma3m), DN_FLOOR)
     dn_2sig   = max(cur*(1-2.0*sigma3m), DN_FLOOR)
+    # 각 보조지표 하락 목표 (위쪽과 대칭) — 보조지표 양방향
+    gann_dn = max(cur*(1-1.0*sigma_cap),          DN_FLOOR)   # 갠 하락
+    ell_dn  = max(cur*(1-1.5*min(sigma3m,0.4)),   DN_FLOOR)   # 엘리엇 하락
+    fib_dn2 = max(cur*(1-2.0*min(sigma3m,0.3)),   DN_FLOOR)   # 피보 하락
     # 하락목표 = 위험선(60분/작도) 또는 변동성 기반 (둘 다 0 이하 방지)
     if risk_level and 0 < risk_level < cur:
         dn_target = risk_level
@@ -458,7 +462,6 @@ def build_projection(bars, draws, risk_level, fut=63, market='', period='quarter
     # chart의 d는 "MM/DD" 형식 → 월로 분기 판정. 7월 되면 자동 리셋.
     anchor_idx=None; anchor_price=None
     try:
-        # 시작점 = 날짜 기준. 주간=가장 최근 월요일, 월간=가장 최근 매월1일, 분기=가장 최근 분기첫날(1/4/7/10월 1일).
         import datetime as _dt
         def _date_of(b):
             d=b.get('rawd','') or b.get('d','')
@@ -466,35 +469,25 @@ def build_projection(bars, draws, risk_level, fut=63, market='', period='quarter
                 try: return _dt.date(int(d[:4]),int(d[4:6]),int(d[6:8]))
                 except: return None
             return None
-        # 뒤(최근)에서부터: 그 주/달/분기가 바뀌는 '첫 거래일' = 시작점
-        cand=None
-        def _period_key(dd):
-            if dd is None: return None
-            if period=='week':
-                # ISO 주차
-                iso=dd.isocalendar(); return (iso[0],iso[1])
-            if period=='month':
-                return (dd.year, dd.month)
-            return (dd.year, (dd.month-1)//3)  # 분기
-        # 가장 최근 봉의 주/달/분기와 같은 구간의 '첫 봉'을 찾음
+        # ── 시작점 = 마지막 교차점(공방선·위험선 통틀어) 다음 봉. 내 작도와 일관. ──
+        cands=[]
+        for d in (draws or []):
+            if d.get('yc',0)>0:
+                en=d.get('entry')
+                ni=en if (en is not None and 0<=en<len(bars)) else (d.get('B_t1',0)+1)
+                if 0<=ni<len(bars): cands.append(ni)
+        for r in (all_risks or []):
+            if r.get('yc',0)>0:
+                ni=r.get('B_t1',0)+1
+                if 0<=ni<len(bars): cands.append(ni)
+        if cands:
+            anchor_idx=max(cands)  # 가장 최근(인덱스 큰) 교차점 다음 봉
+        else:
+            anchor_idx=max(0,len(bars)-fut if fut<len(bars) else len(bars)//2)
+        anchor_price=round(bars[anchor_idx].get('o',bars[anchor_idx]['c']),2)
+        # ── 끝(미래) = 이번 기간 말일까지 (유지) ──
         last_d=_date_of(bars[-1])
-        last_key=_period_key(last_d)
-        if last_key is not None:
-            for i in range(len(bars)-1,-1,-1):
-                dd=_date_of(bars[i])
-                if _period_key(dd)!=last_key:
-                    cand=i+1  # 구간 바뀌는 첫 봉
-                    break
-            if cand is None: cand=0  # 데이터 전체가 같은 구간이면 처음
-        if cand is None:
-            cand=max(0,len(bars)-fut if fut<len(bars) else len(bars)//2)
-        anchor_idx=cand
-        anchor_price=round(bars[cand].get('o',bars[cand]['c']),2)
-        # ── 끝(미래) = 이번 기간 말일까지 ──
-        # 시작점(첫 거래일)부터 이번 기간 전체 봉 수를 추정 → 그만큼이 기간 길이.
-        # 미래 봉 수(fut) = 기간 전체 봉 수 - 이미 지난 봉 수(시작점~현재).
         if last_d is not None:
-            # 이번 기간 말일(달력상)
             if period=='week':
                 end_cal=last_d + _dt.timedelta(days=(4-last_d.weekday()))  # 그 주 금요일
             elif period=='month':
@@ -504,13 +497,12 @@ def build_projection(bars, draws, risk_level, fut=63, market='', period='quarter
                 qend_month=((last_d.month-1)//3)*3+3
                 if qend_month==12: end_cal=_dt.date(last_d.year,12,31)
                 else: end_cal=_dt.date(last_d.year,qend_month+1,1)-_dt.timedelta(days=1)
-            # 시작점~현재 봉 수 / 그 사이 달력일수 → 하루당 봉 밀도
-            passed_bars=len(bars)-1-anchor_idx
-            start_d=_date_of(bars[anchor_idx])
-            cal_passed=max(1,(last_d-start_d).days) if start_d else 1
-            dens=passed_bars/cal_passed if cal_passed>0 else 1
+            # 최근 봉 밀도로 말일까지 남은 봉 수 추정
+            wlen=min(60,len(bars)-1)
+            d0=_date_of(bars[-1-wlen]); 
+            cal_span=max(1,(last_d-d0).days) if d0 else 1
+            dens=wlen/cal_span if cal_span>0 else 1
             cal_remain=max(0,(end_cal-last_d).days)
-            # 주말 제외 비율(영업일 5/7) 적용
             fut_calc=int(round(cal_remain*dens*(5/7))) if dens>0 else int(round(cal_remain*5/7))
             fut=max(1, fut_calc)
     except: pass
@@ -522,11 +514,10 @@ def build_projection(bars, draws, risk_level, fut=63, market='', period='quarter
         'mc_up':mc_up, 'mc_dn':mc_dn, 'mc_target':mc_target,
         'methods':methods,
         'tech_targets':{
-            'ell':ell_capped,
-            'mc':mc_capped,
-            'gann':gann_capped,
-            'fib_up':fib_up_cap,
-            'fib_dn':round(dn_1sig,2),
+            'ell':ell_capped, 'ell_dn':round(ell_dn,2),
+            'mc':mc_capped, 'mc_dn':round(dn_1sig,2),
+            'gann':gann_capped, 'gann_dn':round(gann_dn,2),
+            'fib_up':fib_up_cap, 'fib_dn':round(fib_dn2,2),
             'cap':cap_price,
         },
         'overheat':overheat, 'overheat_prob':oh_prob,

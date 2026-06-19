@@ -363,7 +363,7 @@ function trackHtml(sfx, label, hint, isUS){
   h+='</div>';
   h+='<div class="zoombar"><button id="zin'+sfx+'">+ 확대</button><button id="zout'+sfx+'">− 축소</button><button id="zall'+sfx+'">전체</button></div>';
   h+='<div class="chart-host"><canvas id="cv'+sfx+'"></canvas><div class="linetip" id="tip'+sfx+'"></div></div>';
-  h+='<div class="legend"><span><i style="background:#000"></i>2일선</span><span><i style="background:#1d9e75"></i>상승목표</span><span><i style="background:#5a6473"></i>상승잠재</span><span><i style="background:#d4537e"></i>공방선</span><span><i style="background:#8a98a8"></i>삼각수렴</span><span><i style="background:#e8743b"></i>매물집중</span></div>';
+  h+='<div class="legend"><span><i style="background:#000"></i>2일선</span><span><i style="background:#1d9e75"></i>상승목표</span><span><i style="background:#5a6473"></i>상승잠재</span><span><i style="background:#d4537e"></i>공방선</span><span><i style="background:#e8743b"></i>매물집중</span></div>';
   h+='<div class="scen-btns">';
   h+='<button class="scen-btn up" data-scen="up"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 15l5-6 4 3 7-8"/></svg>상승 시나리오</button>';
   h+='<button class="scen-btn flat" data-scen="flat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 12h16"/></svg>횡보 시나리오</button>';
@@ -734,10 +734,11 @@ function mkChart(data,pj,sfx){
   var ANCHOR_I=(pj.anchor_idx!=null)?pj.anchor_idx:(n-1);
   var ANCHOR_P=(pj.anchor_price!=null)?pj.anchor_price:cur;
   var ANCHOR_SPAN=Math.max(1,(TOTAL-1)-ANCHOR_I);
-  function fwave(ctx,fn,color,wid,dash,fromGreen){
-    var startI=ANCHOR_I;
-    var baseP=ANCHOR_P;
-    var totalSpan=ANCHOR_SPAN;
+  function fwave(ctx,fn,color,wid,dash,fromGreen,fromCur){
+    // fromCur=true면 보조지표: 현재가(마지막 봉)부터 미래끝까지. 아니면 시작점(anchor)부터.
+    var startI = fromCur ? (n-1) : ANCHOR_I;
+    var baseP  = fromCur ? cur   : ANCHOR_P;
+    var totalSpan=Math.max(1,(TOTAL-1)-startI);
     var endI=Math.min(viewE,TOTAL-1);
     if(startI>endI)return;
     ctx.strokeStyle=color;ctx.lineWidth=wid;ctx.setLineDash(dash||[]);
@@ -874,22 +875,26 @@ function mkChart(data,pj,sfx){
       // 기본 틀: 교차점 기준부터 — 직선
       fwave(ctx,function(t,b){return b+(upT-b)*t;},'rgba(29,158,117,.95)',2.4,[6,4],false);       // 상승목표(녹색 35%)
       fwave(ctx,function(t,b){return b+(dnT-b)*t;},'rgba(212,83,126,.9)',2.4,[6,4],false);         // 위험(분홍)
-      fwave(ctx,function(t,b){return b+b*0.10*(1-t);},'rgba(138,152,168,.6)',1.3,[],false);        // 삼각수렴 상단
-      fwave(ctx,function(t,b){return b-b*0.10*(1-t);},'rgba(138,152,168,.6)',1.3,[],false);        // 삼각수렴 하단
       // 체크박스 기법: 전부 교차점 기준부터 직선
       var checked=getChecked();
       var TT=pj.tech_targets||{};
       if(checked.indexOf('ell')>=0){
         var ellTarget=(TT.ell&&isFinite(TT.ell))?TT.ell:cur*1.15;
-        fwave(ctx,function(t,b){return b+(ellTarget-b)*t;},'rgba(127,119,221,.85)',2,[],false);
+        fwave(ctx,function(t,b){return b+(ellTarget-b)*t;},'rgba(127,119,221,.85)',2,[],false,true);
+        var ellDn=(TT.ell_dn&&isFinite(TT.ell_dn))?TT.ell_dn:cur*0.85;
+        fwave(ctx,function(t,b){return b+(ellDn-b)*t;},'rgba(127,119,221,.5)',2,[4,3],false,true);  // 엘리엇 하락
       }
       if(checked.indexOf('mc')>=0){
         var mcTarget=(TT.mc&&isFinite(TT.mc))?TT.mc:(pj.mc_target||cur*1.1);
-        fwave(ctx,function(t,b){return b+(mcTarget-b)*t;},'rgba(55,138,221,.85)',2,[],false);
+        fwave(ctx,function(t,b){return b+(mcTarget-b)*t;},'rgba(55,138,221,.85)',2,[],false,true);
+        var mcDn=(TT.mc_dn&&isFinite(TT.mc_dn))?TT.mc_dn:cur*0.9;
+        fwave(ctx,function(t,b){return b+(mcDn-b)*t;},'rgba(55,138,221,.5)',2,[4,3],false,true);  // 몬테 하락
       }
       if(checked.indexOf('gann')>=0){
         var gannTarget=(TT.gann&&isFinite(TT.gann))?TT.gann:cur*1.08;
-        fwave(ctx,function(t,b){return b+(gannTarget-b)*t;},'rgba(186,117,23,.85)',2,[],false);
+        fwave(ctx,function(t,b){return b+(gannTarget-b)*t;},'rgba(186,117,23,.85)',2,[],false,true);
+        var gannDn=(TT.gann_dn&&isFinite(TT.gann_dn))?TT.gann_dn:cur*0.92;
+        fwave(ctx,function(t,b){return b+(gannDn-b)*t;},'rgba(186,117,23,.5)',2,[4,3],false,true);  // 갠 하락
       }
       if(checked.indexOf('fib')>=0){
         // 피보나치: 수평 레벨선 — 교차점 기준부터 미래끝까지
