@@ -514,12 +514,18 @@ function mkChart(data,pj,sfx){
     var vs=Math.max(0,viewS), ve=Math.min(TOTAL-1,viewE);
     var lo=1e18, hi=-1e18;
     for(var i=vs;i<=Math.min(ve,n-1);i++){lo=Math.min(lo,ch[i].l);hi=Math.max(hi,ch[i].h);}
-    if(ve>=n&&pj){hi=Math.max(hi,pj.up_target||hi);lo=Math.min(lo,pj.dn_target||lo);}
     if(lo>hi){lo=Math.min.apply(null,c);hi=Math.max.apply(null,c);}
-    // 현재가를 세로 가운데로: 현재가에서 위/아래 더 먼 쪽 거리만큼 양쪽 대칭 확보.
-    // (공방선은 이 범위 안에 들면 보이고, 너무 멀면 안 보임 — 캔들 가독성 우선)
-    var half=Math.max(hi-cur, cur-lo)*1.08;
-    lo=cur-half; hi=cur+half;
+    // 타임프레임별 Y축 최대 범위 제한 (캔들 가독성 우선)
+    var tfRange = sfx==='10' ? 0.05 : sfx==='60' ? 0.12 : 0.25;  // 15분±5%, 60분±12%, 일봉±25%
+    lo = Math.max(lo, cur * (1 - tfRange));
+    hi = Math.min(hi, cur * (1 + tfRange));
+    // 미래 목표선은 범위 안에 들 때만 반영
+    if(ve>=n&&pj){
+      if(pj.up_target && pj.up_target <= cur*(1+tfRange)) hi=Math.max(hi,pj.up_target);
+      if(pj.dn_target && pj.dn_target >= cur*(1-tfRange)) lo=Math.min(lo,pj.dn_target);
+    }
+    var margin=(hi-lo)*0.1;
+    lo=lo-margin; hi=hi+margin;
     plot={lo:lo,hi:hi,x0:padL,x1:W-padR,y0:padT,y1:H-padB};
   }
   function getSpan(){return viewE-viewS+1;}
@@ -635,14 +641,16 @@ function mkChart(data,pj,sfx){
       var yo=yOf(r.o),yc2=yOf(r.c);
       ctx.fillRect(x-cw/2,Math.min(yo,yc2),cw,Math.max(1.5,Math.abs(yc2-yo)));
     }
-    // ── 공방선(마디)만 표시. 작도 추세선·화살표는 그리지 않음(차트 깔끔하게). ──
-    // 공방선 수평선(마디) = 모든 교차점 통합. 현재가 위는 가장 가까운 1개만.
+    // ── 공방선(마디) 타임프레임별 필터 ──
+    // 15분: 현재가 ±5% 이내만, 60분: ±12%, 일봉: ±25%
+    var nodeRange = sfx==='10' ? 0.05 : sfx==='60' ? 0.12 : 0.25;
+    var nodeGap   = sfx==='10' ? 0.03 : sfx==='60' ? 0.04 : 0.05;  // 클러스터 간격
     var nodes=[];
-    (data.risk_nodes||[]).forEach(function(v){ if(v>0) nodes.push(v); });
-    draws.forEach(function(d){ if(d.yc>0) nodes.push(d.yc); });
+    (data.risk_nodes||[]).forEach(function(v){ if(v>0 && v>=cur*(1-nodeRange) && v<=cur*(1+nodeRange)) nodes.push(v); });
+    draws.forEach(function(d){ if(d.yc>0 && d.yc>=cur*(1-nodeRange) && d.yc<=cur*(1+nodeRange)) nodes.push(d.yc); });
     // 근접 중복 제거
     nodes.sort(function(a,b){return a-b;});
-    var nclean=[]; nodes.forEach(function(v){ if(!nclean.length||Math.abs(v-nclean[nclean.length-1])>cur*0.05) nclean.push(v); });
+    var nclean=[]; nodes.forEach(function(v){ if(!nclean.length||Math.abs(v-nclean[nclean.length-1])>cur*nodeGap) nclean.push(v); });
     // 현재가 위/아래 각각 가장 가까운 2개씩만 표시
     var below=nclean.filter(function(v){return v<=cur;});   // 오름차순
     var above=nclean.filter(function(v){return v>cur;});
