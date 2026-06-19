@@ -40,7 +40,6 @@ def _yahoo_fetch(ticker, rng, interval):
         return None
 
 def get_day_us(ticker): return _yahoo_fetch(ticker,"2y","1d")
-def get_week_us(ticker): return _yahoo_fetch(ticker,"5y","1wk")
 def get_min_us(ticker,interval="60m"):
     return _yahoo_fetch(ticker, "2y" if interval=="60m" else "60d", interval)
 def get_name_us(ticker):
@@ -78,17 +77,6 @@ def get_day(tk,code):
     r=requests.post(f"{BASE}/stock/chart",verify=False,timeout=8,
         headers={"Content-Type":"application/json; charset=UTF-8","authorization":f"Bearer {tk}","tr_cd":"t8410","tr_cont":"N"},
         json={"t8410InBlock":{"shcode":code,"gubun":"2","qrycnt":150,"sdate":"20240101","edate":"20991231","cts_date":"","comp_yn":"N","sujung":"Y"}})
-    rows=r.json().get("t8410OutBlock1",[])
-    if not rows: return None
-    out=[{'d':x['date'],'o':float(x['open']),'h':float(x['high']),'l':float(x['low']),'c':float(x['close']),
-          'v':float(x.get('volume') or x.get('value') or x.get('jdiff_vol') or 0)} for x in rows]
-    out.sort(key=lambda z:z['d']); return out
-
-def get_week(tk,code):
-    # 주봉 (t8410 gubun=3). 2년치 약 100주.
-    r=requests.post(f"{BASE}/stock/chart",verify=False,timeout=8,
-        headers={"Content-Type":"application/json; charset=UTF-8","authorization":f"Bearer {tk}","tr_cd":"t8410","tr_cont":"N"},
-        json={"t8410InBlock":{"shcode":code,"gubun":"3","qrycnt":200,"sdate":"20220101","edate":"20991231","cts_date":"","comp_yn":"N","sujung":"Y"}})
     rows=r.json().get("t8410OutBlock1",[])
     if not rows: return None
     out=[{'d':x['date'],'o':float(x['open']),'h':float(x['high']),'l':float(x['low']),'c':float(x['close']),
@@ -310,7 +298,7 @@ def build_drawings(bars):
             'm2':round(MA2[i],2) if MA2[i] is not None else None} for i in range(len(bars))]
     return {'chart':chart,'draws':draws,'all_risks':all_risks,'draws_start':draws_start,'cur':round(c[-1],2)}
 
-def build_projection(bars, draws, risk_level, fut=63, market='', period='quarter'):
+def build_projection(bars, draws, risk_level, fut=63, market='', period='quarter', all_risks=None):
     """미래 예측: 몬테카를로로 양방향 확률 + 각 기법 목표 도달 확률(통일).
     fut = 미래 영업일 수 (약 3개월)"""
     import math, random
@@ -456,12 +444,12 @@ def build_projection(bars, draws, risk_level, fut=63, market='', period='quarter
         oh_prob = {'up':27, 'dn':32, 'flat':41}  # 코스닥: 하락 우위
     else:
         oh_prob = {'up':28, 'dn':22, 'flat':51}  # 코스피: 약한 상승 우위
-    # 기법 목표를 녹색의 35% 현실선(up_target)으로 캡
+    # 캡 해제: 보조지표(엘리엇/갠/피보/몬테) 목표를 35% 캡 없이 그대로. (내 작도선만 제 기준 유지)
     cap_price = round(up_target,2)
-    ell_capped  = min(round(tgt_15sig,2), cap_price)
-    gann_capped = min(round(tgt_1sig,2),  cap_price)
-    fib_up_cap  = min(round(tgt_2sig,2),  cap_price)
-    mc_capped   = min(mc_target, cap_price) if mc_target>cur else mc_target
+    ell_capped  = round(tgt_15sig,2)
+    gann_capped = round(tgt_1sig,2)
+    fib_up_cap  = round(tgt_2sig,2)
+    mc_capped   = mc_target
     cap_count = 0
     cap_detail = {}
     # 최근 살아있는 작도의 녹색 시작 인덱스
@@ -470,48 +458,61 @@ def build_projection(bars, draws, risk_level, fut=63, market='', period='quarter
     # chart의 d는 "MM/DD" 형식 → 월로 분기 판정. 7월 되면 자동 리셋.
     anchor_idx=None; anchor_price=None
     try:
-        import datetime
-        # 각 봉의 원본 날짜(YYYYMMDD) → date 객체. rawd 우선, 없으면 d(MM/DD)는 연도없어 폴백.
-        def bar_date(b):
-            rd=b.get('rawd','')
-            if len(rd)>=8:
-                try: return datetime.date(int(rd[0:4]),int(rd[4:6]),int(rd[6:8]))
+        # 시작점 = 날짜 기준. 주간=가장 최근 월요일, 월간=가장 최근 매월1일, 분기=가장 최근 분기첫날(1/4/7/10월 1일).
+        import datetime as _dt
+        def _date_of(b):
+            d=b.get('rawd','') or b.get('d','')
+            if len(d)>=8:
+                try: return _dt.date(int(d[:4]),int(d[4:6]),int(d[6:8]))
                 except: return None
             return None
-        dates=[bar_date(bars[i]) for i in range(len(bars))]
-        last=None
-        for dd in reversed(dates):
-            if dd: last=dd; break
-        if last is not None:
+        # 뒤(최근)에서부터: 그 주/달/분기가 바뀌는 '첫 거래일' = 시작점
+        cand=None
+        def _period_key(dd):
+            if dd is None: return None
             if period=='week':
-                # 이번 주 월요일 (last가 속한 주의 월요일). 그 날짜 이상인 첫 봉.
-                monday=last - datetime.timedelta(days=last.weekday())
-                for i in range(len(bars)):
-                    if dates[i] and dates[i]>=monday:
-                        anchor_idx=i; anchor_price=round(bars[i]["o"],2); break
+                # ISO 주차
+                iso=dd.isocalendar(); return (iso[0],iso[1])
+            if period=='month':
+                return (dd.year, dd.month)
+            return (dd.year, (dd.month-1)//3)  # 분기
+        # 가장 최근 봉의 주/달/분기와 같은 구간의 '첫 봉'을 찾음
+        last_d=_date_of(bars[-1])
+        last_key=_period_key(last_d)
+        if last_key is not None:
+            for i in range(len(bars)-1,-1,-1):
+                dd=_date_of(bars[i])
+                if _period_key(dd)!=last_key:
+                    cand=i+1  # 구간 바뀌는 첫 봉
+                    break
+            if cand is None: cand=0  # 데이터 전체가 같은 구간이면 처음
+        if cand is None:
+            cand=max(0,len(bars)-fut if fut<len(bars) else len(bars)//2)
+        anchor_idx=cand
+        anchor_price=round(bars[cand].get('o',bars[cand]['c']),2)
+        # ── 끝(미래) = 이번 기간 말일까지 ──
+        # 시작점(첫 거래일)부터 이번 기간 전체 봉 수를 추정 → 그만큼이 기간 길이.
+        # 미래 봉 수(fut) = 기간 전체 봉 수 - 이미 지난 봉 수(시작점~현재).
+        if last_d is not None:
+            # 이번 기간 말일(달력상)
+            if period=='week':
+                end_cal=last_d + _dt.timedelta(days=(4-last_d.weekday()))  # 그 주 금요일
             elif period=='month':
-                # 이번 달 1일 이후 첫 봉
-                first=datetime.date(last.year,last.month,1)
-                for i in range(len(bars)):
-                    if dates[i] and dates[i]>=first:
-                        anchor_idx=i; anchor_price=round(bars[i]["o"],2); break
-            else:  # quarter
-                # 분기 시작월(1/4/7/10) 1일 이후 첫 봉
-                qm=((last.month-1)//3)*3+1
-                first=datetime.date(last.year,qm,1)
-                for i in range(len(bars)):
-                    if dates[i] and dates[i]>=first:
-                        anchor_idx=i; anchor_price=round(bars[i]["o"],2); break
-        # 폴백: 날짜 계산 실패 시 기존 방식
-        if anchor_idx is None:
-            if period=='week':
-                day_starts=[]; prev=None
-                for i in range(len(bars)):
-                    di=bars[i].get('d','').split(' ')[0]
-                    if di!=prev: day_starts.append(i); prev=di
-                if len(day_starts)>=5: anchor_idx=day_starts[-5]
-                elif day_starts: anchor_idx=day_starts[0]
-                if anchor_idx is not None: anchor_price=round(bars[anchor_idx]["o"],2)
+                if last_d.month==12: end_cal=_dt.date(last_d.year,12,31)
+                else: end_cal=_dt.date(last_d.year,last_d.month+1,1)-_dt.timedelta(days=1)
+            else:
+                qend_month=((last_d.month-1)//3)*3+3
+                if qend_month==12: end_cal=_dt.date(last_d.year,12,31)
+                else: end_cal=_dt.date(last_d.year,qend_month+1,1)-_dt.timedelta(days=1)
+            # 시작점~현재 봉 수 / 그 사이 달력일수 → 하루당 봉 밀도
+            passed_bars=len(bars)-1-anchor_idx
+            start_d=_date_of(bars[anchor_idx])
+            cal_passed=max(1,(last_d-start_d).days) if start_d else 1
+            dens=passed_bars/cal_passed if cal_passed>0 else 1
+            cal_remain=max(0,(end_cal-last_d).days)
+            # 주말 제외 비율(영업일 5/7) 적용
+            fut_calc=int(round(cal_remain*dens*(5/7))) if dens>0 else int(round(cal_remain*5/7))
+            fut=max(1, fut_calc)
     except: pass
     return {
         'fut':fut, 'cur':round(cur,2),
@@ -680,8 +681,6 @@ class handler(BaseHTTPRequestHandler):
                 tkr=code.upper()
                 nm,mk=get_name_us(tkr)
                 day=get_day_us(tkr)
-                try: wk=get_week_us(tkr)
-                except Exception: wk=None
                 try: m60=get_min_us(tkr,"60m")
                 except Exception: m60=None
                 try: m10=get_min_us(tkr,"15m")
@@ -692,18 +691,15 @@ class handler(BaseHTTPRequestHandler):
                     self.wfile.write(json.dumps({'error':'국내는 6자리 코드, 해외는 영문 티커(AAPL 등)'}).encode()); return
                 tk=token(); nm,mk=get_name(tk,code)
                 day=get_day(tk,code)
-                try: wk=get_week(tk,code)
-                except Exception: wk=None
                 try: m60=get_60m(tk,code)
                 except Exception: m60=None
                 try: m10=get_min(tk,code,10)
                 except Exception: m10=None
             if not day or len(day)<30:
                 self.wfile.write(json.dumps({'error':'데이터를 찾을 수 없습니다 ('+code+')'}).encode()); return
-            # 새 체계: 주간=60분봉(tt) / 월간=일봉(mm) / 분기=주봉(dd)
-            dd = build_drawings(wk) if wk and len(wk)>30 else {'error':'데이터 부족'}
-            mm = build_drawings(day) if day and len(day)>30 else {'error':'데이터 부족'}
-            tt = build_drawings(m60) if m60 and len(m60)>30 else {'error':'데이터 부족'}
+            dd = build_drawings(day) if day and len(day)>30 else {'error':'데이터 부족'}
+            mm = build_drawings(m60) if m60 and len(m60)>30 else {'error':'데이터 부족'}
+            tt = build_drawings(m10) if m10 and len(m10)>30 else {'error':'데이터 부족'}
             # 일봉 위험: ①범위안 ②60분끌어옴 ③과거1개  (60분 all_risks 참조하므로 먼저)
             if 'draws' in dd:
                 resolve_risk(dd, mm if 'draws' in mm else None)
@@ -735,14 +731,11 @@ class handler(BaseHTTPRequestHandler):
                 for rk in tt.get('risks',[]):
                     if rk.get('yc') and rk['yc']>0: sr10.append(round(rk['yc']))
             sr10=sorted(set(sr10))
-            # all_risks 정리(용량)
-            for blk in (dd,mm,tt):
-                if isinstance(blk,dict): blk.pop('all_risks',None)
             # 미래 예측 (일봉): 위험선 가격을 하락 목표로
             if 'draws' in dd and dd.get('chart'):
                 risk_level = dd['risks'][0]['yc'] if dd.get('risks') else None
                 try:
-                    dd['projection'] = build_projection(dd['chart'], dd['draws'], risk_level, fut=13, market=mk, period='quarter')
+                    dd['projection'] = build_projection(dd['chart'], dd['draws'], risk_level, market=mk, period='quarter', all_risks=dd.get('all_risks'))
                     if dd['projection']:
                         dd['projection']['sr_levels'] = sr_levels
                 except Exception as pe:
@@ -751,7 +744,7 @@ class handler(BaseHTTPRequestHandler):
             if 'draws' in tt and tt.get('chart'):
                 risk10 = tt['risks'][0]['yc'] if tt.get('risks') else None
                 try:
-                    tt['projection'] = build_projection(tt['chart'], tt['draws'], risk10, fut=33, market=mk, period='week')
+                    tt['projection'] = build_projection(tt['chart'], tt['draws'], risk10, fut=39, market=mk, period='week', all_risks=tt.get('all_risks'))
                     if tt['projection']:
                         tt['projection']['sr_levels'] = sr10
                 except Exception as pe:
@@ -760,7 +753,7 @@ class handler(BaseHTTPRequestHandler):
             if 'draws' in mm and mm.get('chart'):
                 risk60 = mm['risks'][0]['yc'] if mm.get('risks') else None
                 try:
-                    mm['projection'] = build_projection(mm['chart'], mm['draws'], risk60, fut=20, market=mk, period='month')
+                    mm['projection'] = build_projection(mm['chart'], mm['draws'], risk60, fut=52, market=mk, period='month', all_risks=mm.get('all_risks'))
                     if mm['projection']:
                         # 60분봉 자체 작도 교차점을 sr로
                         sr60=[]
@@ -769,6 +762,9 @@ class handler(BaseHTTPRequestHandler):
                         mm['projection']['sr_levels'] = sorted(set(sr60))
                 except Exception as pe:
                     mm['projection'] = None
+            # all_risks 정리(용량) — projection 다 만든 후
+            for blk in (dd,mm,tt):
+                if isinstance(blk,dict): blk.pop('all_risks',None)
             out={'종목코드':code,'종목명':nm,'시장':mk,'일봉':dd,'60분':mm,'10분':tt}
             _payload=json.dumps(out,ensure_ascii=False).encode()
             # 캐시 저장 (30분)

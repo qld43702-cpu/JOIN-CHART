@@ -353,13 +353,13 @@ function goHome(){
 
 function trackHtml(sfx, label, hint, isUS){
   // 한 트랙(차트+기법+줌+시나리오)의 HTML 생성. sfx로 ID 분리.
-  var minName = isUS?'60분봉':'60분봉';
+  var minName = isUS?'15분봉':'10분봉';
   var h='<div id="host'+sfx+'" class="track">';
   h+='<div class="methods">';
-  h+='<label><input type="checkbox" class="mtd" value="ell" checked style="accent-color:#7f77dd"> 엘리엇</label>';
-  h+='<label><input type="checkbox" class="mtd" value="mc" checked style="accent-color:#378add"> 몬테카를로</label>';
-  h+='<label><input type="checkbox" class="mtd" value="fib" checked style="accent-color:#1d9e75"> 피보나치</label>';
-  h+='<label><input type="checkbox" class="mtd" value="gann" checked style="accent-color:#ba7517"> 갠</label>';
+  h+='<label><input type="checkbox" class="mtd" value="ell" style="accent-color:#7f77dd"> 엘리엇</label>';
+  h+='<label><input type="checkbox" class="mtd" value="mc" style="accent-color:#378add"> 몬테카를로</label>';
+  h+='<label><input type="checkbox" class="mtd" value="fib" style="accent-color:#1d9e75"> 피보나치</label>';
+  h+='<label><input type="checkbox" class="mtd" value="gann" style="accent-color:#ba7517"> 갠</label>';
   h+='</div>';
   h+='<div class="zoombar"><button id="zin'+sfx+'">+ 확대</button><button id="zout'+sfx+'">− 축소</button><button id="zall'+sfx+'">전체</button></div>';
   h+='<div class="chart-host"><canvas id="cv'+sfx+'"></canvas><div class="linetip" id="tip'+sfx+'"></div></div>';
@@ -383,7 +383,7 @@ function render(x){
   window.__IS_US=IS_US;
   var t60=x['60분']; var has60 = t60 && !t60.error && t60.chart && t60.projection;
   var t10=x['10분']; var has10 = t10 && !t10.error && t10.chart && t10.projection;
-  var minName=IS_US?'60분봉':'60분봉';
+  var minName=IS_US?'15분봉':'10분봉';
   var html='';
   var priceStr = IS_US ? ('$'+(d.cur||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})) : ((d.cur||0).toLocaleString()+'원');
   html+='<div class="result-head"><span class="rn">'+(x['종목명']||'')+'</span><span class="rc">'+x['종목코드']+' · '+(x['시장']||'')+'</span><span class="rp">'+priceStr+'</span></div>';
@@ -391,14 +391,14 @@ function render(x){
   // ===== 탭 =====
   html+='<div class="trk-tabs">';
   html+='<button class="trk-tab" data-trk="10"'+(has10?'':' style="display:none"')+'>주간<span>'+minName+'</span></button>';
-  html+='<button class="trk-tab'+(has60?' on':'')+'" data-trk="60"'+(has60?'':' style="display:none"')+'>월간<span>일봉</span></button>';
-  html+='<button class="trk-tab'+(has60?'':' on')+'" data-trk="" >분기<span>주봉</span></button>';
+  html+='<button class="trk-tab'+(has60?' on':'')+'" data-trk="60"'+(has60?'':' style="display:none"')+'>월간<span>60분봉</span></button>';
+  html+='<button class="trk-tab'+(has60?'':' on')+'" data-trk="" >분기<span>일봉</span></button>';
   html+='</div>';
 
   // 패널들 (기본: 월간 보임, 없으면 분기)
   html+='<div class="trk-panel" data-pnl="10" style="display:none">'+trackHtml('10', minName, minName+' — 최근 1주 기준', IS_US)+'</div>';
-  html+='<div class="trk-panel" data-pnl="60" style="display:'+(has60?'block':'none')+'">'+trackHtml('60', '일봉', '일봉 — 최근 1개월 기준', IS_US)+'</div>';
-  html+='<div class="trk-panel" data-pnl="" style="display:'+(has60?'none':'block')+'">'+trackHtml('', '주봉', '주봉 — 분기 기준, 다음 경로 참고용', IS_US)+'</div>';
+  html+='<div class="trk-panel" data-pnl="60" style="display:'+(has60?'block':'none')+'">'+trackHtml('60', '60분봉', '60분봉 — 최근 1개월 기준', IS_US)+'</div>';
+  html+='<div class="trk-panel" data-pnl="" style="display:'+(has60?'none':'block')+'">'+trackHtml('', '일봉', '일봉 — 분기 기준, 다음 경로 참고용', IS_US)+'</div>';
 
   // 최종 리포트
   html+='<button id="repBtn" class="report-btn"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>최종 결과 리포트 보기</button>';
@@ -526,11 +526,11 @@ function waveShows(pj, d, dir){
 function judgeDir(pj, d, isWeek){
   if(!pj) return 'flat';
   var cur=pj.cur||0; if(cur<=0) return 'flat';
+  // 갈래 판정: 시작점에서 상방 파동만 나타나면 상방, 하방만이면 하방, 둘 다(찢어짐)면 중립.
   var upWave=waveShows(pj, d, 'up');
   var dnWave=waveShows(pj, d, 'dn');
-  if(upWave && !dnWave) return 'up';   // 상승만 파동
-  if(dnWave && !upWave) return 'dn';   // 하락만 파동
-  // 둘 다 파동 → 중립 / 둘 다 없음 → 중립
+  if(upWave && !dnWave) return 'up';
+  if(dnWave && !upWave) return 'dn';
   return 'flat';
 }
 
@@ -543,11 +543,12 @@ function buildReport(x, d, pj, t10, t60){
   function pf(v){ return IS_US?('$'+Number(v).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})):(Math.round(v).toLocaleString()+'원'); }
   var qDir=judgeDir(pj, d, false);                                   // 분기(일봉)
   var mDir=(t60&&t60.projection)?judgeDir(t60.projection, t60, false):'flat';  // 월(60분봉)
-  var wDir=(t10&&t10.projection)?judgeDir(t10.projection, t10, true):'flat';   // 주(10분봉)
+  var wDir=(t10&&t10.projection)?judgeDir(t10.projection, t10, true):'flat';   // 주(10분봉) — 표시용
+  // 종합 판정은 월간+분기만 사용 (주간 제외). 멘트 조합에서 주간 자리는 중립 고정.
   var dirName={up:'상방',dn:'하방',flat:'횡보'};
   var dirCls={up:'d-up',dn:'d-dn',flat:'d-fl'};
-  // 종합 멘트 (분기 × 월 × 주 = 27조합)
-  var combo=qDir+'_'+mDir+'_'+wDir;
+  // 종합 멘트 (분기 × 월 — 주간 제외)
+  var combo=qDir+'_'+mDir+'_flat';
   var V=verdicts3[combo]||verdicts3['flat_flat_flat'];
   var v={t:V.t, s:V.s, b:V.b, hl:V.hl, c:V.c};
   var hlCls={orange:'hl-orange',blue:'hl-blue',gray:'hl-blue',red:'hl-orange'}[v.c];
@@ -643,26 +644,60 @@ function mkChart(data,pj,sfx){
   var SCEN=null;        // 현재 시나리오 'up'/'flat'/'dn'/null
   var scenFade=0;       // 페이드 0~1
   var srLevels=(pj&&pj.sr_levels)||[];  // 60분봉 지지/저항 가격들
-  // 초기 뷰: 작도 시작부터
+  // 초기 뷰: 시작점(anchor) 약간 앞부터 미래 끝까지 — 보기 편하게(사진1처럼)
   (function(){
-    var cand=[];
-    draws.forEach(function(d){cand.push(d.A_t1);});
-    if(data.view_start!=null)cand.push(data.view_start);
-    if(cand.length){var mn=Math.min.apply(null,cand);viewS=Math.max(0,mn-4);}
+    var aI=(pj&&pj.anchor_idx!=null)?pj.anchor_idx:(n-1);
+    // 시작점 앞쪽으로 약간의 맥락(전체 보이는 구간의 15%)만 남기고 그 앞 과거는 자름
+    var futLen=TOTAL-1-aI;            // 시작점부터 미래끝까지 길이
+    var pad=Math.round(futLen*0.25);  // 시작점 앞 여유(맥락)
+    viewS=Math.max(0, aI-pad);
     viewE=TOTAL-1;
   })();
   function futDates(){
-    var last=ch[n-1].d; // format: "MM/DD"
-    var parts=last.split('/');
-    var mo=parseInt(parts[0])||1, dy=parseInt(parts[1])||1;
-    var dt=new Date(2026,mo-1,dy);
+    var last=ch[n-1].d; // "MM/DD" 또는 "MM/DD HH시"
+    var isMin = last.indexOf('시')>=0;  // '시' 있으면 분봉
     var out=[]; var k=0;
-    while(k<FUT){
-      dt=new Date(dt.getTime()+86400000);
-      var w=dt.getDay();
-      if(w===0||w===6)continue;
-      out.push((dt.getMonth()+1)+'/'+(dt.getDate()));
-      k++;
+    if(isMin){
+      // 분봉: 봉 간격을 최근 두 봉 시간차로 추정, 장중(9:00~15:30) 안에서 더하고 넘으면 다음날 9:00
+      var stepMin=10;
+      // 최근 같은 날 두 봉의 시 차이로 간격 추정
+      try{
+        var pa=ch[n-1].d.split(' '); var pb=ch[n-2]?ch[n-2].d.split(' '):null;
+        if(pb && pa[0]===pb[0]){
+          var ha=parseInt(pa[1])||0, hb=parseInt(pb[1])||0;
+          var diff=(ha-hb)*60;
+          if(diff>0 && diff<=240) stepMin=diff;
+        }
+      }catch(e){}
+      // 시작 시각: 마지막 봉의 시(분은 0으로 단순화)
+      var pp=last.split(' ');
+      var md=pp[0].split('/'); var mo=parseInt(md[0])||1, dy=parseInt(md[1])||1;
+      var hh=parseInt(pp[1])||9; var mm=0;
+      var dt=new Date(2026,mo-1,dy,hh,mm);
+      while(k<FUT){
+        dt=new Date(dt.getTime()+stepMin*60000);
+        var hr=dt.getHours()+dt.getMinutes()/60;
+        // 장 마감(15:30) 넘으면 다음 거래일 9:00로
+        if(hr>15.5){
+          dt=new Date(dt.getFullYear(),dt.getMonth(),dt.getDate()+1,9,0);
+          var w0=dt.getDay();
+          while(w0===0||w0===6){ dt=new Date(dt.getFullYear(),dt.getMonth(),dt.getDate()+1,9,0); w0=dt.getDay(); }
+        }
+        out.push((dt.getMonth()+1)+'/'+dt.getDate()+' '+dt.getHours()+'시');
+        k++;
+      }
+    } else {
+      // 일봉: 하루씩(주말 제외)
+      var parts=last.split('/');
+      var mo2=parseInt(parts[0])||1, dy2=parseInt(parts[1])||1;
+      var dt2=new Date(2026,mo2-1,dy2);
+      while(k<FUT){
+        dt2=new Date(dt2.getTime()+86400000);
+        var w=dt2.getDay();
+        if(w===0||w===6)continue;
+        out.push((dt2.getMonth()+1)+'/'+(dt2.getDate()));
+        k++;
+      }
     }
     return out;
   }
@@ -694,8 +729,8 @@ function mkChart(data,pj,sfx){
     ctx.strokeStyle=color;ctx.lineWidth=w;ctx.setLineDash(dash||[]);
     ctx.beginPath();ctx.moveTo(xOf(i0),yOf(y0));ctx.lineTo(xOf(i1),yOf(y1));ctx.stroke();ctx.setLineDash([]);
   }
-  // fwave: 기법선·목표선을 4/1 기준점(anchor)부터 미래끝까지 그림
-  // fn(t, basePrice) → y값. t=0(4/1) ~ t=1(미래끝)
+  // fwave: 기법선·목표선을 교차점 기준점(anchor)부터 미래끝까지 그림
+  // fn(t, basePrice) → y값. t=0(시작점) ~ t=1(미래끝)
   var ANCHOR_I=(pj.anchor_idx!=null)?pj.anchor_idx:(n-1);
   var ANCHOR_P=(pj.anchor_price!=null)?pj.anchor_price:cur;
   var ANCHOR_SPAN=Math.max(1,(TOTAL-1)-ANCHOR_I);
@@ -827,7 +862,7 @@ function mkChart(data,pj,sfx){
         ctx.beginPath();ctx.moveTo(ex,ey-6);ctx.lineTo(ex-5,ey+5);ctx.lineTo(ex+5,ey+5);ctx.closePath();ctx.fill();
       }
     });
-    // 미래 예측 (전부 직선) — 4/1 기준점부터 그림
+    // 미래 예측 (전부 직선) — 교차점 기준점부터 그림
     if(viewE>=ANCHOR_I&&pj){
       var us=pj.up_slope||0, upT=pj.up_target, dnT=pj.dn_target, vol=pj.volatility||0.02;
       // 오리지날 상승 잠재선 (캡 없는 작도 최대치) — 진한 회색. 녹색보다 먼저(아래에) 그려 가림 방지
@@ -836,12 +871,12 @@ function mkChart(data,pj,sfx){
       if(gmax>upT*1.001){
         fwave(ctx,function(t,b){return b+(gmax-b)*t;},'rgba(70,80,95,.9)',2.4,[3,3],false);
       }
-      // 기본 틀: 4/1부터 — 직선 (b=4/1 가격)
+      // 기본 틀: 교차점 기준부터 — 직선
       fwave(ctx,function(t,b){return b+(upT-b)*t;},'rgba(29,158,117,.95)',2.4,[6,4],false);       // 상승목표(녹색 35%)
       fwave(ctx,function(t,b){return b+(dnT-b)*t;},'rgba(212,83,126,.9)',2.4,[6,4],false);         // 위험(분홍)
       fwave(ctx,function(t,b){return b+b*0.10*(1-t);},'rgba(138,152,168,.6)',1.3,[],false);        // 삼각수렴 상단
       fwave(ctx,function(t,b){return b-b*0.10*(1-t);},'rgba(138,152,168,.6)',1.3,[],false);        // 삼각수렴 하단
-      // 체크박스 기법: 전부 4/1부터 직선
+      // 체크박스 기법: 전부 교차점 기준부터 직선
       var checked=getChecked();
       var TT=pj.tech_targets||{};
       if(checked.indexOf('ell')>=0){
@@ -857,7 +892,7 @@ function mkChart(data,pj,sfx){
         fwave(ctx,function(t,b){return b+(gannTarget-b)*t;},'rgba(186,117,23,.85)',2,[],false);
       }
       if(checked.indexOf('fib')>=0){
-        // 피보나치: 수평 레벨선 — 4/1부터 미래끝까지
+        // 피보나치: 수평 레벨선 — 교차점 기준부터 미래끝까지
         var fibUp=(TT.fib_up&&isFinite(TT.fib_up))?TT.fib_up:cur*1.3;
         var fibDn=(TT.fib_dn&&isFinite(TT.fib_dn))?TT.fib_dn:cur*0.8;
         var fibLevels=[
@@ -885,9 +920,9 @@ function mkChart(data,pj,sfx){
         }
       }
     }
-    // ===== 시나리오 웨이브 (4/1 기준점부터 — 실제 봉과 비교 가능) =====
+    // ===== 시나리오 웨이브 (교차점 기준점부터 — 실제 봉과 비교 가능) =====
     if(SCEN && scenFade>0){
-      // 기준점: 4/1(분기시작). 없으면 현재
+      // 기준점: 최근 교차점 직후. 없으면 현재
       var anchorI=(pj.anchor_idx!=null)?pj.anchor_idx:(n-1);
       var anchorP=(pj.anchor_price!=null)?pj.anchor_price:cur;
       var startI=anchorI, endI=Math.min(viewE,TOTAL-1);
@@ -896,8 +931,8 @@ function mkChart(data,pj,sfx){
       // 천장/바닥 = 현실적 목표 (up_target은 이미 녹색의 35% 현실선)
       var ceil_ = pj.up_target||cur*1.1;   // 상승 천장 = 현실 목표선
       var floor_ = pj.dn_target||cur*0.8;  // 하락 바닥
-      // 모든 지지/저항 레벨 수집 (60분봉 + 작도 교차점)
-      var allLv=srLevels.slice();
+      // 시나리오 변곡점 = 내 작도(공방선 교차점)만. 보조지표 레벨 제외.
+      var allLv=[];
       draws.forEach(function(d){if(d.yc>0)allLv.push(d.yc);});
       // 중복 근접 제거
       allLv=allLv.filter(function(v){return v>plot.lo&&v<plot.hi;}).sort(function(a,b){return a-b;});
@@ -906,7 +941,7 @@ function mkChart(data,pj,sfx){
       var color = SCEN==='up'?'rgba(226,75,74,':SCEN==='dn'?'rgba(55,138,221,':'rgba(138,152,168,';
       ctx.save();
       ctx.globalAlpha=scenFade;
-      // 기준점(4/1) 세로선
+      // 기준점(교차점) 세로선
       if(startI>=viewS&&startI<=viewE){
         ctx.strokeStyle='rgba(232,116,59,'+(0.6*scenFade)+')';ctx.lineWidth=1.5;ctx.setLineDash([4,3]);
         ctx.beginPath();ctx.moveTo(xOf(startI),plot.y0);ctx.lineTo(xOf(startI),plot.y1);ctx.stroke();ctx.setLineDash([]);
@@ -933,9 +968,9 @@ function mkChart(data,pj,sfx){
         for(var i=0;i<ups.length;i++){
           seq.push({price:ups[i]});                       // 저항 돌파(상승파)
           if(i<ups.length-1){
-            // 되돌림: 방금 돌파한 레벨(이전 저항=새 지지) 부근으로 눌림
-            var pull=prev+(ups[i]-prev)*0.45;
-            seq.push({price:pull});                        // 조정파
+            // 되돌림: 상승은 "다시 떨어질라" 두려움이 커서 깊게 눌림(더디게 감)
+            var pull=prev+(ups[i]-prev)*0.55;
+            seq.push({price:pull});                        // 조정파(깊은 되돌림)
           }
           prev=ups[i];
         }
@@ -949,30 +984,34 @@ function mkChart(data,pj,sfx){
         for(var i2=0;i2<dns.length;i2++){
           seq.push({price:dns[i2]});                       // 지지 이탈(하락파)
           if(i2<dns.length-1){
-            var bounce=prevd+(dns[i2]-prevd)*0.45;          // 반등(데드캣)
+            // 반등: 하락은 공포라 반등 약함(얕게 튀고 급락) — 가파르게
+            var bounce=prevd+(dns[i2]-prevd)*0.30;          // 약한 반등(데드캣)
             seq.push({price:bounce});
           }
           prevd=dns[i2];
         }
       } else {
-        // 횡보: 현재가 위 첫 저항 / 아래 첫 지지 사이를 왕복, 수렴
-        var up1=allLv.filter(function(v){return v>startV;})[0] || startV*1.06;
-        var dn1=allLv.filter(function(v){return v<startV;}).slice(-1)[0] || startV*0.94;
-        // 진폭 줄며 5번 왕복 (수렴 삼각형)
-        var amps=[1.0,0.75,0.55,0.35,0.15];
-        for(var w=0;w<amps.length;w++){
-          var hiP=startV+(up1-startV)*amps[w];
-          var loP=startV+(dn1-startV)*amps[w];
-          seq.push({price: (w%2===0)?hiP:loP});
-        }
-        seq.push({price:startV+(up1-startV)*0.05});  // 수렴 마무리
+        // 횡보: 삼각수렴 없이 시작가 수평 유지
+        seq.push({price:startV});
       }
 
-      // ── 시퀀스를 시간축에 균등 배치하고 부드럽게 연결 ──
+      // ── 시퀀스를 시간축에 배치 (비대칭: 상승 더디게/하락 가파르게) ──
       var steps=endI-startI;
       var nSeg=seq.length-1;
-      // 각 변곡점의 t위치 (균등)
-      for(var q=0;q<seq.length;q++) seq[q].t=q/nSeg;
+      // 각 구간의 "시간 가중치": 올라가는 구간은 길게(더디), 내려가는 구간은 짧게(가파)
+      // 두려움 원칙 — 상승은 자꾸 눌리며 더디게, 하락은 공포로 한번에.
+      var segW=[];
+      for(var q=1;q<seq.length;q++){
+        var up = seq[q].price >= seq[q-1].price;
+        segW.push(up ? 1.6 : 0.7);   // 상승 구간 시간 1.6배(더디), 하락 0.7배(가파)
+      }
+      var wsum=0; for(var wi=0;wi<segW.length;wi++) wsum+=segW[wi];
+      // 누적 t 위치 (가중치 비례)
+      seq[0].t=0; var acc=0;
+      for(var q2=1;q2<seq.length;q2++){
+        acc+=segW[q2-1];
+        seq[q2].t=acc/wsum;
+      }
       ctx.strokeStyle=color+'0.95)';ctx.lineWidth=2.6;ctx.setLineDash([]);
       ctx.beginPath();
       for(var s=0;s<=steps;s++){
@@ -1087,7 +1126,7 @@ function mkChart(data,pj,sfx){
       draw(lastMx,lastMy);return;}
     SCEN=scen;scenFade=0;
     scope.querySelectorAll('.scen-btn').forEach(function(b){b.classList.toggle('active',b.getAttribute('data-scen')===scen);});
-    // 4/1 기준점부터 미래 끝까지 다 보이게 뷰 조정
+    // 교차점 기준부터 미래 끝까지 다 보이게 뷰 조정
     var aI=(pj.anchor_idx!=null)?pj.anchor_idx:(n-1);
     viewS=Math.max(0, aI-3);
     viewE=TOTAL-1;
