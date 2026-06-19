@@ -334,6 +334,11 @@ inp.addEventListener('keydown',function(e){
 });
 document.addEventListener('click',function(e){if(!e.target.closest('.hero-search')&&!e.target.closest('.search-box'))ac.classList.remove('show');});
 function pick(code,name){inp.value=name+' ('+code+')';ac.classList.remove('show');inp.blur();go(code);}
+function go2(code){
+  var ac2=document.getElementById('acList2');
+  if(ac2) ac2.classList.remove('show');
+  go(code);
+}
 
 function mkMethodLabel(val,nm,col,methods){
   return '<label><input type="checkbox" class="mtd" value="'+val+'" checked style="accent-color:'+col+'"> '+nm+'</label>';
@@ -417,7 +422,7 @@ function render(x){
       if(!q){ac2.classList.remove('show');return;}
       var hit=STOCKS.filter(function(s){return s.code.toLowerCase().includes(q)||(s.name&&s.name.toLowerCase().includes(q));}).slice(0,8);
       if(!hit.length){ac2.classList.remove('show');return;}
-      ac2.innerHTML=hit.map(function(s){return '<div class="ac-item" onclick="pick(''+s.code+'',''+((s.name||'').replace(/'/g,''))+'')">'+'<span class="an">'+s.name+'</span><span class="acode">'+s.code+'</span><span class="amk">'+s.market+'</span></div>';}).join('');
+      ac2.innerHTML=hit.map(function(s){return '<div class="ac-item" onclick="go2(\''+s.code+'\')">'+'<span class="an">'+s.name+'</span><span class="acode">'+s.code+'</span><span class="amk">'+s.market+'</span></div>';}).join('');
       ac2.classList.add('show');
     });
     inp2.addEventListener('keydown',function(e){
@@ -427,8 +432,8 @@ function render(x){
         var m=q.match(/(\d{6})/); if(m){go(m[1]);return;}
         var ql=q.toLowerCase();
         var hit=STOCKS.find(function(s){return s.name&&s.name.toLowerCase()===ql;})||STOCKS.find(function(s){return s.name&&s.name.toLowerCase().includes(ql);});
-        if(hit){pick(hit.code,hit.name);return;}
-        if(/^[A-Za-z][A-Za-z.\-]{0,6}$/.test(q)){go(q.toUpperCase());return;}
+        if(hit){go2(hit.code);return;}
+        if(/^[A-Za-z][A-Za-z.\-]{0,6}$/.test(q)){go2(q.toUpperCase());return;}
       }
     });
     if(window.__ac2Listener) document.removeEventListener('click', window.__ac2Listener);
