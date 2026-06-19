@@ -487,25 +487,19 @@ def build_projection(bars, draws, risk_level, fut=63, market='', period='quarter
         else:
             anchor_idx=max(0,len(bars)-fut if fut<len(bars) else len(bars)//2)
         anchor_price=round(bars[anchor_idx]['c'],2)   # 교차점 직후 봉의 종가
-        # ── 끝(미래) = 이번 기간 말일까지 (유지) ──
+        # ── 끝(미래) = 고정 기간. 단기 1주 / 중기 1달 / 중장기 3개월. ──
+        # 최근 봉 밀도(하루당 봉 수)로 달력 기간을 봉 수로 환산.
         last_d=_date_of(bars[-1])
+        cal_days = 7 if period=='week' else (30 if period=='month' else 92)  # 미래 달력일수
         if last_d is not None:
-            if period=='week':
-                end_cal=last_d + _dt.timedelta(days=(4-last_d.weekday()))  # 그 주 금요일
-            elif period=='month':
-                if last_d.month==12: end_cal=_dt.date(last_d.year,12,31)
-                else: end_cal=_dt.date(last_d.year,last_d.month+1,1)-_dt.timedelta(days=1)
-            else:
-                qend_month=((last_d.month-1)//3)*3+3
-                if qend_month==12: end_cal=_dt.date(last_d.year,12,31)
-                else: end_cal=_dt.date(last_d.year,qend_month+1,1)-_dt.timedelta(days=1)
             wlen=min(60,len(bars)-1)
             d0=_date_of(bars[-1-wlen])
             cal_span=max(1,(last_d-d0).days) if d0 else 1
-            dens=wlen/cal_span if cal_span>0 else 1
-            cal_remain=max(0,(end_cal-last_d).days)
-            fut_calc=int(round(cal_remain*dens*(5/7))) if dens>0 else int(round(cal_remain*5/7))
-            fut=max(1, fut_calc)
+            dens=wlen/cal_span if cal_span>0 else 1     # 하루(달력)당 봉 수 — 이미 영업일 반영됨
+            fut=max(1, int(round(cal_days*dens)))
+        else:
+            # 날짜 없으면 봉 수로 직접 (대략)
+            fut = 26*5 if period=='week' else (130 if period=='month' else 63)
     except: pass
     # 보조지표 출발 = 내 작도 시작점(교차점)과 동일하게 묶음.
     aux_start = anchor_idx if anchor_idx is not None else max(0,len(bars)-1)
