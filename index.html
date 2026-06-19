@@ -356,10 +356,10 @@ function trackHtml(sfx, label, hint, isUS){
   var minName = isUS?'15분봉':'10분봉';
   var h='<div id="host'+sfx+'" class="track">';
   h+='<div class="methods">';
-  h+='<label><input type="checkbox" class="mtd" value="ell" checked style="accent-color:#7f77dd"> 엘리엇</label>';
-  h+='<label><input type="checkbox" class="mtd" value="mc" checked style="accent-color:#378add"> 몬테카를로</label>';
-  h+='<label><input type="checkbox" class="mtd" value="fib" checked style="accent-color:#1d9e75"> 피보나치</label>';
-  h+='<label><input type="checkbox" class="mtd" value="gann" checked style="accent-color:#ba7517"> 갠</label>';
+  h+='<label><input type="checkbox" class="mtd" value="ell" style="accent-color:#7f77dd"> 엘리엇</label>';
+  h+='<label><input type="checkbox" class="mtd" value="mc" style="accent-color:#378add"> 몬테카를로</label>';
+  h+='<label><input type="checkbox" class="mtd" value="fib" style="accent-color:#1d9e75"> 피보나치</label>';
+  h+='<label><input type="checkbox" class="mtd" value="gann" style="accent-color:#ba7517"> 갠</label>';
   h+='</div>';
   h+='<div class="zoombar"><button id="zin'+sfx+'">+ 확대</button><button id="zout'+sfx+'">− 축소</button><button id="zall'+sfx+'">전체</button></div>';
   h+='<div class="chart-host"><canvas id="cv'+sfx+'"></canvas><div class="linetip" id="tip'+sfx+'"></div></div>';
@@ -526,9 +526,11 @@ function waveShows(pj, d, dir){
 function judgeDir(pj, d, isWeek){
   if(!pj) return 'flat';
   var cur=pj.cur||0; if(cur<=0) return 'flat';
-  // 판정 = 교차점 지지/저항 횟수 (서버 계산: sr_judge)
-  // 시작점(겹친 교차점)을 과거 캔들이 지지 많이=상방 / 저항 많이=하방.
-  if(pj.sr_judge){ return pj.sr_judge; }
+  // 갈래 판정: 시작점에서 상방 파동만 나타나면 상방, 하방만이면 하방, 둘 다(찢어짐)면 중립.
+  var upWave=waveShows(pj, d, 'up');
+  var dnWave=waveShows(pj, d, 'dn');
+  if(upWave && !dnWave) return 'up';
+  if(dnWave && !upWave) return 'dn';
   return 'flat';
 }
 
@@ -541,11 +543,12 @@ function buildReport(x, d, pj, t10, t60){
   function pf(v){ return IS_US?('$'+Number(v).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})):(Math.round(v).toLocaleString()+'원'); }
   var qDir=judgeDir(pj, d, false);                                   // 분기(일봉)
   var mDir=(t60&&t60.projection)?judgeDir(t60.projection, t60, false):'flat';  // 월(60분봉)
-  var wDir=(t10&&t10.projection)?judgeDir(t10.projection, t10, true):'flat';   // 주(10분봉)
+  var wDir=(t10&&t10.projection)?judgeDir(t10.projection, t10, true):'flat';   // 주(10분봉) — 표시용
+  // 종합 판정은 월간+분기만 사용 (주간 제외). 멘트 조합에서 주간 자리는 중립 고정.
   var dirName={up:'상방',dn:'하방',flat:'횡보'};
   var dirCls={up:'d-up',dn:'d-dn',flat:'d-fl'};
-  // 종합 멘트 (분기 × 월 × 주 = 27조합)
-  var combo=qDir+'_'+mDir+'_'+wDir;
+  // 종합 멘트 (분기 × 월 — 주간 제외)
+  var combo=qDir+'_'+mDir+'_flat';
   var V=verdicts3[combo]||verdicts3['flat_flat_flat'];
   var v={t:V.t, s:V.s, b:V.b, hl:V.hl, c:V.c};
   var hlCls={orange:'hl-orange',blue:'hl-blue',gray:'hl-blue',red:'hl-orange'}[v.c];
@@ -928,8 +931,8 @@ function mkChart(data,pj,sfx){
       // 천장/바닥 = 현실적 목표 (up_target은 이미 녹색의 35% 현실선)
       var ceil_ = pj.up_target||cur*1.1;   // 상승 천장 = 현실 목표선
       var floor_ = pj.dn_target||cur*0.8;  // 하락 바닥
-      // 모든 지지/저항 레벨 수집 (60분봉 + 작도 교차점)
-      var allLv=srLevels.slice();
+      // 시나리오 변곡점 = 내 작도(공방선 교차점)만. 보조지표 레벨 제외.
+      var allLv=[];
       draws.forEach(function(d){if(d.yc>0)allLv.push(d.yc);});
       // 중복 근접 제거
       allLv=allLv.filter(function(v){return v>plot.lo&&v<plot.hi;}).sort(function(a,b){return a-b;});
@@ -988,17 +991,8 @@ function mkChart(data,pj,sfx){
           prevd=dns[i2];
         }
       } else {
-        // 횡보: 현재가 위 첫 저항 / 아래 첫 지지 사이를 왕복, 수렴
-        var up1=allLv.filter(function(v){return v>startV;})[0] || startV*1.06;
-        var dn1=allLv.filter(function(v){return v<startV;}).slice(-1)[0] || startV*0.94;
-        // 진폭 줄며 5번 왕복 (수렴 삼각형)
-        var amps=[1.0,0.75,0.55,0.35,0.15];
-        for(var w=0;w<amps.length;w++){
-          var hiP=startV+(up1-startV)*amps[w];
-          var loP=startV+(dn1-startV)*amps[w];
-          seq.push({price: (w%2===0)?hiP:loP});
-        }
-        seq.push({price:startV+(up1-startV)*0.05});  // 수렴 마무리
+        // 횡보: 삼각수렴 없이 시작가 수평 유지
+        seq.push({price:startV});
       }
 
       // ── 시퀀스를 시간축에 배치 (비대칭: 상승 더디게/하락 가파르게) ──

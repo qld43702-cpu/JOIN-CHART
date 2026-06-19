@@ -444,12 +444,12 @@ def build_projection(bars, draws, risk_level, fut=63, market='', period='quarter
         oh_prob = {'up':27, 'dn':32, 'flat':41}  # 코스닥: 하락 우위
     else:
         oh_prob = {'up':28, 'dn':22, 'flat':51}  # 코스피: 약한 상승 우위
-    # 기법 목표를 녹색의 35% 현실선(up_target)으로 캡
+    # 캡 해제: 보조지표(엘리엇/갠/피보/몬테) 목표를 35% 캡 없이 그대로. (내 작도선만 제 기준 유지)
     cap_price = round(up_target,2)
-    ell_capped  = min(round(tgt_15sig,2), cap_price)
-    gann_capped = min(round(tgt_1sig,2),  cap_price)
-    fib_up_cap  = min(round(tgt_2sig,2),  cap_price)
-    mc_capped   = min(mc_target, cap_price) if mc_target>cur else mc_target
+    ell_capped  = round(tgt_15sig,2)
+    gann_capped = round(tgt_1sig,2)
+    fib_up_cap  = round(tgt_2sig,2)
+    mc_capped   = mc_target
     cap_count = 0
     cap_detail = {}
     # 최근 살아있는 작도의 녹색 시작 인덱스
@@ -457,54 +457,62 @@ def build_projection(bars, draws, risk_level, fut=63, market='', period='quarter
     # ===== 시나리오 기준점: 가장 최근 분기 시작(1,4,7,10월) 이후 첫 거래일 =====
     # chart의 d는 "MM/DD" 형식 → 월로 분기 판정. 7월 되면 자동 리셋.
     anchor_idx=None; anchor_price=None
-    sr_judge=None; sr_sup=0; sr_res=0; sr_aux=0
     try:
-        # ── 본인 설계: 시작점 = 판정대상 교차점 = 시나리오 출발점 (하나로 통일) ──
-        # 1) 교차점(공방선+위험선) 중 보조지표(피보/갠/엘리엇/몬테)가 닿은 것만 후보
-        # 2) 그중 현재가에 가장 가까운 것 = 시작점 = 판정 대상
-        # 3) 1층: 과거 캔들이 그 선을 지지/저항 몇 번 → 지지>저항=상방, 저항>지지=하방
-        #    2층: 보조지표 닿은 개수 = 신뢰
-        aux=[x for x in [ell_capped, gann_capped, fib_up_cap, mc_capped, dn_1sig] if x and x>0]
-        cross_list=[]  # (yc_price, next_idx)
-        for d in (draws or []):
-            if d.get('yc',0)>0:
-                en=d.get('entry')
-                ni=en if (en is not None and 0<=en<len(bars)) else (d.get('B_t1',0)+1)
-                cross_list.append((d['yc'], ni))
-        for r in (all_risks or []):
-            if r.get('yc',0)>0:
-                ni=r.get('B_t1',0)+1
-                cross_list.append((r['yc'], ni))
-        cross_list=[(yc,ni) for (yc,ni) in cross_list if 0<=ni<len(bars)]
-        # 보조지표가 닿은(1% 이내) 교차점만, 닿은 개수도 기록
-        def aux_touch(yc): return sum(1 for a in aux if abs(yc-a)/cur<0.01)
-        touched=[(yc,ni,aux_touch(yc)) for (yc,ni) in cross_list if aux_touch(yc)>=1]
-        pool = touched if touched else [(yc,ni,0) for (yc,ni) in cross_list]
-        if pool:
-            # 현재가에 가장 가까운 교차점
-            yc,ni,ak = min(pool, key=lambda z:abs(z[0]-cur))
-            anchor_idx=ni
-            anchor_price=round(bars[ni].get('o',bars[ni]['c']),2)
-            sr_aux=ak
-            # 1층: 과거 캔들이 이 교차점 선(yc)을 지지/저항한 횟수
-            TOUCH=0.008
-            near=False; came=None
-            for i in range(1,len(bars)):
-                p=bars[i]['c']; pp=bars[i-1]['c']
-                if abs(p-yc)/yc<=TOUCH:
-                    if not near: came='above' if pp>yc else 'below'; near=True
-                else:
-                    if near:
-                        if came=='above' and p>yc: sr_sup+=1   # 위에서 와 지지
-                        elif came=='below' and p<yc: sr_res+=1  # 아래서 와 저항
-                        near=False
-            if sr_sup>sr_res: sr_judge='up'
-            elif sr_res>sr_sup: sr_judge='dn'
-            else: sr_judge='flat'
-        # 폴백
-        if anchor_idx is None and len(bars)>5:
-            anchor_idx=max(0,len(bars)-fut if fut<len(bars) else len(bars)//2)
-            anchor_price=round(bars[anchor_idx].get('o',bars[anchor_idx]['c']),2)
+        # 시작점 = 날짜 기준. 주간=가장 최근 월요일, 월간=가장 최근 매월1일, 분기=가장 최근 분기첫날(1/4/7/10월 1일).
+        import datetime as _dt
+        def _date_of(b):
+            d=b.get('rawd','') or b.get('d','')
+            if len(d)>=8:
+                try: return _dt.date(int(d[:4]),int(d[4:6]),int(d[6:8]))
+                except: return None
+            return None
+        # 뒤(최근)에서부터: 그 주/달/분기가 바뀌는 '첫 거래일' = 시작점
+        cand=None
+        def _period_key(dd):
+            if dd is None: return None
+            if period=='week':
+                # ISO 주차
+                iso=dd.isocalendar(); return (iso[0],iso[1])
+            if period=='month':
+                return (dd.year, dd.month)
+            return (dd.year, (dd.month-1)//3)  # 분기
+        # 가장 최근 봉의 주/달/분기와 같은 구간의 '첫 봉'을 찾음
+        last_d=_date_of(bars[-1])
+        last_key=_period_key(last_d)
+        if last_key is not None:
+            for i in range(len(bars)-1,-1,-1):
+                dd=_date_of(bars[i])
+                if _period_key(dd)!=last_key:
+                    cand=i+1  # 구간 바뀌는 첫 봉
+                    break
+            if cand is None: cand=0  # 데이터 전체가 같은 구간이면 처음
+        if cand is None:
+            cand=max(0,len(bars)-fut if fut<len(bars) else len(bars)//2)
+        anchor_idx=cand
+        anchor_price=round(bars[cand].get('o',bars[cand]['c']),2)
+        # ── 끝(미래) = 이번 기간 말일까지 ──
+        # 시작점(첫 거래일)부터 이번 기간 전체 봉 수를 추정 → 그만큼이 기간 길이.
+        # 미래 봉 수(fut) = 기간 전체 봉 수 - 이미 지난 봉 수(시작점~현재).
+        if last_d is not None:
+            # 이번 기간 말일(달력상)
+            if period=='week':
+                end_cal=last_d + _dt.timedelta(days=(4-last_d.weekday()))  # 그 주 금요일
+            elif period=='month':
+                if last_d.month==12: end_cal=_dt.date(last_d.year,12,31)
+                else: end_cal=_dt.date(last_d.year,last_d.month+1,1)-_dt.timedelta(days=1)
+            else:
+                qend_month=((last_d.month-1)//3)*3+3
+                if qend_month==12: end_cal=_dt.date(last_d.year,12,31)
+                else: end_cal=_dt.date(last_d.year,qend_month+1,1)-_dt.timedelta(days=1)
+            # 시작점~현재 봉 수 / 그 사이 달력일수 → 하루당 봉 밀도
+            passed_bars=len(bars)-1-anchor_idx
+            start_d=_date_of(bars[anchor_idx])
+            cal_passed=max(1,(last_d-start_d).days) if start_d else 1
+            dens=passed_bars/cal_passed if cal_passed>0 else 1
+            cal_remain=max(0,(end_cal-last_d).days)
+            # 주말 제외 비율(영업일 5/7) 적용
+            fut_calc=int(round(cal_remain*dens*(5/7))) if dens>0 else int(round(cal_remain*5/7))
+            fut=max(1, fut_calc)
     except: pass
     return {
         'fut':fut, 'cur':round(cur,2),
@@ -527,7 +535,6 @@ def build_projection(bars, draws, risk_level, fut=63, market='', period='quarter
         'fib_levels':[round(cur*f) for f in (1.236,1.382,1.618,0.786,0.618)],
         'green_start': green_start,
         'anchor_idx':anchor_idx, 'anchor_price':anchor_price,
-        'sr_judge':sr_judge, 'sr_sup':sr_sup, 'sr_res':sr_res, 'sr_aux':sr_aux,
     }
 
 def analyze_pattern(bars, draws):
@@ -746,7 +753,7 @@ class handler(BaseHTTPRequestHandler):
             if 'draws' in mm and mm.get('chart'):
                 risk60 = mm['risks'][0]['yc'] if mm.get('risks') else None
                 try:
-                    mm['projection'] = build_projection(mm['chart'], mm['draws'], risk60, fut=52, market=mk, period='quarter', all_risks=mm.get('all_risks'))
+                    mm['projection'] = build_projection(mm['chart'], mm['draws'], risk60, fut=52, market=mk, period='month', all_risks=mm.get('all_risks'))
                     if mm['projection']:
                         # 60분봉 자체 작도 교차점을 sr로
                         sr60=[]
