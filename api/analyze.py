@@ -458,32 +458,22 @@ def build_projection(bars, draws, risk_level, fut=63, market='', period='quarter
     # chart의 d는 "MM/DD" 형식 → 월로 분기 판정. 7월 되면 자동 리셋.
     anchor_idx=None; anchor_price=None
     try:
-        if period=='quarter':
-            # 일봉: 분기 시작월(1/4/7/10) 첫 봉
-            last_d = bars[-1].get('d','')  # "MM/DD"
-            lm = int(last_d.split('/')[0]) if '/' in last_d else None
-            if lm:
-                q_start_month = ((lm-1)//3)*3 + 1
-                for i in range(len(bars)-1, 0, -1):
-                    di=bars[i].get('d',''); dp=bars[i-1].get('d','')
-                    mi=int(di.split('/')[0]) if '/' in di else 0
-                    mp=int(dp.split('/')[0]) if '/' in dp else 0
-                    if mi==q_start_month and mp!=q_start_month:
-                        anchor_idx=i; anchor_price=round(c[i],2); break
-                if anchor_idx is None:
-                    for i in range(len(bars)):
-                        di=bars[i].get('d','')
-                        mi=int(di.split('/')[0]) if '/' in di else 0
-                        if mi==q_start_month: anchor_idx=i; anchor_price=round(c[i],2); break
-        elif period=='week':
-            # 10분봉: 최근 5거래일 전(약 1주) 시작점 (롤링)
-            day_starts=[]; prev=None
-            for i in range(len(bars)):
-                di=bars[i].get('d','').split(' ')[0]
-                if di!=prev: day_starts.append(i); prev=di
-            if len(day_starts)>=5: anchor_idx=day_starts[-5]
-            elif day_starts: anchor_idx=day_starts[0]
-            if anchor_idx is not None: anchor_price=round(c[anchor_idx],2)
+        # 시작점 = 가장 최근 작도(공방선 교차점)의 "다음 봉 시가"(entry).
+        # 날짜/분기/만기 등 외부 기준 없이, 차트 작도가 만든 자리로만. 세 시간축 동일.
+        if draws:
+            recent=draws[-1]  # 가장 최근 작도
+            en=recent.get('entry')
+            if en is not None and 0<=en<len(bars):
+                anchor_idx=en
+                anchor_price=round(bars[en].get('o', bars[en]['c']),2)
+            elif recent.get('B_t1') is not None:
+                bt=recent['B_t1']
+                if 0<=bt<len(bars):
+                    anchor_idx=bt; anchor_price=round(bars[bt].get('o',bars[bt]['c']),2)
+        # 폴백: 작도 없으면 마지막에서 적당히 뒤
+        if anchor_idx is None and len(bars)>5:
+            anchor_idx=max(0,len(bars)-fut if fut<len(bars) else len(bars)//2)
+            anchor_price=round(bars[anchor_idx].get('o',bars[anchor_idx]['c']),2)
     except: pass
     return {
         'fut':fut, 'cur':round(cur,2),
