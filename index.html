@@ -191,7 +191,8 @@ header{display:flex;align-items:center;gap:11px;margin-bottom:16px}
 .hero-search .hs-ic{position:absolute;right:16px;top:28px;transform:translateY(-50%);width:24px;height:24px;pointer-events:none}
 .hero-tf{margin-top:15px;position:relative;z-index:1;display:flex;flex-direction:column;gap:8px}
 .hero-tf .tfr{display:flex;align-items:baseline;gap:9px;font-size:12px;color:#cdddee;line-height:1.5}
-.hero-tf .tfr .k{font-size:12px;font-weight:800;color:#f4a06a;flex-shrink:0;width:30px}
+.hero-tf .tfr .k{font-size:12px;font-weight:800;color:#f4a06a;flex-shrink:0;width:42px}
+.hero-tf .tfr .bn{flex-shrink:0;width:52px;color:#e8f0f8;font-weight:700}
 .hero-tf .tfr b{color:#fff;font-weight:700}
 .hero-once{text-align:center;font-size:12px;color:#bcd0e6;margin-top:16px;font-weight:600;position:relative;z-index:1;padding-top:14px;border-top:1px solid rgba(255,255,255,.1)}
 .hero-once b{color:#fff;font-weight:800}
@@ -276,9 +277,9 @@ header{display:flex;align-items:center;gap:11px;margin-bottom:16px}
     <div class="ac" id="acList"></div>
   </div>
   <div class="hero-tf">
-    <div class="tfr"><span class="k">단기</span><span>15분봉 — 최근 <b>교차점</b>에서 출발, 단기 흐름</span></div>
-    <div class="tfr"><span class="k">중기</span><span>60분봉 — 최근 <b>교차점</b>에서 출발, 중기 흐름</span></div>
-    <div class="tfr"><span class="k">중장기</span><span>일봉 — 최근 <b>교차점</b>에서 출발, 큰 추세</span></div>
+    <div class="tfr"><span class="k">단기</span><span class="bn">15분봉</span><span>최근 <b>교차점</b>에서 출발, 단기 흐름</span></div>
+    <div class="tfr"><span class="k">중기</span><span class="bn">60분봉</span><span>최근 <b>교차점</b>에서 출발, 중기 흐름</span></div>
+    <div class="tfr"><span class="k">중장기</span><span class="bn">일봉</span><span>최근 <b>교차점</b>에서 출발, 큰 추세</span></div>
   </div>
   <div class="hero-once">국내·미국 어떤 종목이든 <b>한 번에</b></div>
 </div>
@@ -641,29 +642,17 @@ function mkChart(data,pj,sfx){
       if(!st){ctx.moveTo(x,y);st=true;}else{ctx.lineTo(x,y);}
     }
     ctx.stroke();
-    // 위험선
+    // ── 공방선(마디) = draws·risks 교차점 통합. 위/아래 같은 성질(싸우는 자리). ──
+    // 추세선은 각자 그리고, 수평선(마디)은 합쳐서 — 현재가 위는 가장 가까운 1개만.
+    // 1) 추세선 그리기 (위험선 작도)
     risks.forEach(function(d){
       if(!d.price_only){
         seg(ctx,d.A_t1-1,ma2[d.A_t1-1]||d.A_y1,d.A_t1,d.A_y1,'#d4537e',2.4);
         seg(ctx,d.B_t1,d.B_y1,Math.round(d.xc),d.yc,'rgba(212,83,126,.6)',1.2,[4,3]);
       }
-      ctx.strokeStyle='rgba(212,83,126,.85)';ctx.lineWidth=1.4;ctx.setLineDash(d.price_only?[6,4]:[]);
-      ctx.beginPath();ctx.moveTo(plot.x0,yOf(d.yc));ctx.lineTo(plot.x1,yOf(d.yc));ctx.stroke();ctx.setLineDash([]);
-      var glbl='공방선 '+fmtP(d.yc); ctx.font='11px '+FF();
-      var glw=ctx.measureText(glbl).width+10;
-      ctx.fillStyle='#d4537e';ctx.fillRect(plot.x0+4,yOf(d.yc)-9,glw,18);
-      ctx.fillStyle='#fff';ctx.fillText(glbl,plot.x0+9,yOf(d.yc)+3);
     });
-    // 작도선
-    // 현재가 위 공방선은 "가장 가까운 1개"만 표시 (뚫으면 자연히 다음 것이 1개가 됨).
-    // 현재가 아래 공방선은 그대로(이미 싸운 자리).
-    var aboveDraws=draws.filter(function(d){return d.yc>cur;});
-    var belowDraws=draws.filter(function(d){return d.yc<=cur;});
-    var nearestAbove=null;
-    aboveDraws.forEach(function(d){ if(!nearestAbove||d.yc<nearestAbove.yc) nearestAbove=d; });
-    var drawsToShow = belowDraws.slice();
-    if(nearestAbove) drawsToShow.push(nearestAbove);
-    drawsToShow.forEach(function(d){
+    // 2) 추세선 그리기 (공방 작도) + 진입 화살표
+    draws.forEach(function(d){
       var al=d.alive?1:.32;
       seg(ctx,d.A_t1-1,ma2[d.A_t1-1]||d.A_y1,d.A_t1,d.A_y1,'rgba(226,75,74,'+al+')',2.4);
       seg(ctx,d.A_t1,d.A_y1,Math.round(d.xc),d.yc,'rgba(226,75,74,'+(al*.5)+')',1,[4,3]);
@@ -674,6 +663,26 @@ function mkChart(data,pj,sfx){
         var ex=xOf(d.entry),ey=yOf(c[d.entry]);
         ctx.beginPath();ctx.moveTo(ex,ey-6);ctx.lineTo(ex-5,ey+5);ctx.lineTo(ex+5,ey+5);ctx.closePath();ctx.fill();
       }
+    });
+    // 3) 공방선 수평선(마디) = 모든 교차점 통합. 현재가 위는 가장 가까운 1개만.
+    var nodes=[];
+    risks.forEach(function(d){ if(d.yc>0) nodes.push(d.yc); });
+    draws.forEach(function(d){ if(d.yc>0) nodes.push(d.yc); });
+    // 근접 중복 제거
+    nodes.sort(function(a,b){return a-b;});
+    var nclean=[]; nodes.forEach(function(v){ if(!nclean.length||Math.abs(v-nclean[nclean.length-1])>cur*0.012) nclean.push(v); });
+    // 현재가 위는 가장 가까운 1개만, 아래는 다
+    var below=nclean.filter(function(v){return v<=cur;});
+    var above=nclean.filter(function(v){return v>cur;});
+    var showNodes=below.slice();
+    if(above.length) showNodes.push(above[0]);  // 위로 가장 가까운 1개(다음 싸울 자리)
+    showNodes.forEach(function(yc){
+      ctx.strokeStyle='rgba(212,83,126,.85)';ctx.lineWidth=1.4;ctx.setLineDash([]);
+      ctx.beginPath();ctx.moveTo(plot.x0,yOf(yc));ctx.lineTo(plot.x1,yOf(yc));ctx.stroke();
+      var glbl='공방선 '+fmtP(yc); ctx.font='11px '+FF();
+      var glw=ctx.measureText(glbl).width+10;
+      ctx.fillStyle='#d4537e';ctx.fillRect(plot.x0+4,yOf(yc)-9,glw,18);
+      ctx.fillStyle='#fff';ctx.fillText(glbl,plot.x0+9,yOf(yc)+3);
     });
     // 미래 예측 (전부 직선) — 교차점 기준점부터 그림
     if(viewE>=ANCHOR_I&&pj){
