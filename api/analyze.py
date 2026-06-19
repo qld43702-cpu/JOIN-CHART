@@ -40,6 +40,32 @@ def _yahoo_fetch(ticker, rng, interval):
         return None
 
 def get_day_us(ticker): return _yahoo_fetch(ticker,"2y","1d")
+
+def kr_ticker(code, market=''):
+    """한국 종목코드 → 야후 티커 (코스피:.KS, 코스닥:.KQ)"""
+    sj=_load_stocks().get(code,{})
+    mk=market or sj.get('market','')
+    suffix='.KQ' if '코스닥' in mk else '.KS'
+    return code+suffix
+
+def get_day_kr(code, market=''): return _yahoo_fetch(kr_ticker(code,market),"2y","1d")
+def get_60m_kr(code, market=''): return _yahoo_fetch(kr_ticker(code,market),"2y","60m")
+def get_15m_kr(code, market=''): return _yahoo_fetch(kr_ticker(code,market),"60d","15m")
+
+def get_cur_ls(tk, code):
+    """LS에서 현재가만 가져옴 (장중 실시간)"""    try:
+        import datetime as _dt
+        now=_dt.datetime.now()
+        # 장중(09:00~15:30)에만 LS 현재가 사용
+        if not (9 <= now.hour < 15 or (now.hour==15 and now.minute<=30)):
+            return None
+        r=requests.post(f"{BASE}/stock/market-data",verify=False,timeout=5,
+            headers={"Content-Type":"application/json; charset=UTF-8","authorization":f"Bearer {tk}","tr_cd":"t1102","tr_cont":"N"},
+            json={"t1102InBlock":{"shcode":code}})
+        b=r.json().get("t1102OutBlock",{})
+        p=float(b.get("price") or b.get("jnilclose") or 0)
+        return p if p>0 else None
+    except: return None
 def get_min_us(ticker,interval="60m"):
     return _yahoo_fetch(ticker, "2y" if interval=="60m" else "60d", interval)
 def get_name_us(ticker):
@@ -686,15 +712,23 @@ class handler(BaseHTTPRequestHandler):
                 try: m10=get_min_us(tkr,"15m")
                 except Exception: m10=None
             else:
-                # ===== 한국 주식 (LS) =====
+                # ===== 한국 주식 (야후 데이터 + LS 현재가) =====
                 if not code.isdigit() or len(code)!=6:
                     self.wfile.write(json.dumps({'error':'국내는 6자리 코드, 해외는 영문 티커(AAPL 등)'}).encode()); return
-                tk=token(); nm,mk=get_name(tk,code)
-                day=get_day(tk,code)
-                try: m60=get_60m(tk,code)
+                # 종목명/시장 — LS 또는 stocks.json
+                try: tk=token(); nm,mk=get_name(tk,code)
+                except Exception: tk=None; sj=_load_stocks().get(code,{}); nm=sj.get('name',code); mk=sj.get('market','코스피')
+                # 야후에서 데이터
+                day=get_day_kr(code,mk)
+                try: m60=get_60m_kr(code,mk)
                 except Exception: m60=None
-                try: m10=get_min(tk,code,10)
+                try: m10=get_15m_kr(code,mk)
                 except Exception: m10=None
+                # 장중 현재가 LS로 덮어씌우기
+                if tk and day:
+                    cur_ls=get_cur_ls(tk,code)
+                    if cur_ls and cur_ls>0:
+                        day[-1]['c']=cur_ls
             if not day or len(day)<30:
                 self.wfile.write(json.dumps({'error':'데이터를 찾을 수 없습니다 ('+code+')'}).encode()); return
             dd = build_drawings(day) if day and len(day)>30 else {'error':'데이터 부족'}
