@@ -925,13 +925,11 @@ function mkChart(data,pj,sfx){
     // viewS(시작점) 고정, viewE(오른쪽/미래)만 늘어남
     var en=viewS+ns-1;
     if(en>TOTAL-1){en=TOTAL-1;}
-    isDragging=true;
     viewE=en;lay();draw(lastMx,lastMy);
-    isDragging=false;
   },{passive:false});
   var drag=false, dx0=0, dvs=0;
   cv.addEventListener('mousedown',function(e){drag=true;dx0=e.clientX;dvs=viewS;});
-  window.addEventListener('mouseup',function(){drag=false;});
+  window.addEventListener('mouseup',function(){drag=false;isDragging=false;draw(lastMx,lastMy);});
   cv.addEventListener('mousemove',function(e){
     if(!drag)return;
     var dx=e.clientX-dx0, per=(plot.x1-plot.x0)/getSpan();
@@ -939,7 +937,6 @@ function mkChart(data,pj,sfx){
     if(s<0)s=0;if(s+sp>TOTAL)s=TOTAL-sp;
     isDragging=true;
     viewS=s;viewE=s+sp-1;lay();draw(lastMx,lastMy);
-    isDragging=false;
   });
   // ===== 모바일 터치 =====
   // 한 손가락: 가격선(크로스헤어) 표시 + 좌우 스크롤
@@ -974,6 +971,7 @@ function mkChart(data,pj,sfx){
   },{passive:false});
   cv.addEventListener('touchend',function(){
     isDragging=false;
+    draw(lastMx,lastMy);
     setTimeout(function(){ lastMx=lastMy=null; draw(null,null); tip.style.display='none'; }, 1500);
   },{passive:true});
   document.getElementById('zin'+sfx).onclick=function(){isDragging=true;var sp=getSpan(),ns=Math.max(15,Math.round(sp*0.7)),md=Math.round((viewS+viewE)/2);viewS=Math.max(0,md-Math.round(ns/2));viewE=Math.min(TOTAL-1,viewS+ns-1);lay();draw();isDragging=false;};

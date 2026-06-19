@@ -759,6 +759,7 @@ class handler(BaseHTTPRequestHandler):
                     if tt['projection']:
                         tt['projection']['sr_levels'] = sr10
                 except Exception as pe:
+                    import traceback; traceback.print_exc()
                     tt['projection'] = None
             # 미래 예측 (60분봉): 월 단위 기준
             if 'draws' in mm and mm.get('chart'):
