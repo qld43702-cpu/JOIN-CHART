@@ -652,17 +652,50 @@ function mkChart(data,pj,sfx){
     viewE=TOTAL-1;
   })();
   function futDates(){
-    var last=ch[n-1].d; // format: "MM/DD"
-    var parts=last.split('/');
-    var mo=parseInt(parts[0])||1, dy=parseInt(parts[1])||1;
-    var dt=new Date(2026,mo-1,dy);
+    var last=ch[n-1].d; // "MM/DD" 또는 "MM/DD HH시"
+    var isMin = last.indexOf('시')>=0;  // '시' 있으면 분봉
     var out=[]; var k=0;
-    while(k<FUT){
-      dt=new Date(dt.getTime()+86400000);
-      var w=dt.getDay();
-      if(w===0||w===6)continue;
-      out.push((dt.getMonth()+1)+'/'+(dt.getDate()));
-      k++;
+    if(isMin){
+      // 분봉: 봉 간격을 최근 두 봉 시간차로 추정, 장중(9:00~15:30) 안에서 더하고 넘으면 다음날 9:00
+      var stepMin=10;
+      // 최근 같은 날 두 봉의 시 차이로 간격 추정
+      try{
+        var pa=ch[n-1].d.split(' '); var pb=ch[n-2]?ch[n-2].d.split(' '):null;
+        if(pb && pa[0]===pb[0]){
+          var ha=parseInt(pa[1])||0, hb=parseInt(pb[1])||0;
+          var diff=(ha-hb)*60;
+          if(diff>0 && diff<=240) stepMin=diff;
+        }
+      }catch(e){}
+      // 시작 시각: 마지막 봉의 시(분은 0으로 단순화)
+      var pp=last.split(' ');
+      var md=pp[0].split('/'); var mo=parseInt(md[0])||1, dy=parseInt(md[1])||1;
+      var hh=parseInt(pp[1])||9; var mm=0;
+      var dt=new Date(2026,mo-1,dy,hh,mm);
+      while(k<FUT){
+        dt=new Date(dt.getTime()+stepMin*60000);
+        var hr=dt.getHours()+dt.getMinutes()/60;
+        // 장 마감(15:30) 넘으면 다음 거래일 9:00로
+        if(hr>15.5){
+          dt=new Date(dt.getFullYear(),dt.getMonth(),dt.getDate()+1,9,0);
+          var w0=dt.getDay();
+          while(w0===0||w0===6){ dt=new Date(dt.getFullYear(),dt.getMonth(),dt.getDate()+1,9,0); w0=dt.getDay(); }
+        }
+        out.push((dt.getMonth()+1)+'/'+dt.getDate()+' '+dt.getHours()+'시');
+        k++;
+      }
+    } else {
+      // 일봉: 하루씩(주말 제외)
+      var parts=last.split('/');
+      var mo2=parseInt(parts[0])||1, dy2=parseInt(parts[1])||1;
+      var dt2=new Date(2026,mo2-1,dy2);
+      while(k<FUT){
+        dt2=new Date(dt2.getTime()+86400000);
+        var w=dt2.getDay();
+        if(w===0||w===6)continue;
+        out.push((dt2.getMonth()+1)+'/'+(dt2.getDate()));
+        k++;
+      }
     }
     return out;
   }
