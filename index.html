@@ -642,11 +642,11 @@ function mkChart(data,pj,sfx){
     draws.forEach(function(d){ if(d.yc>0) nodes.push(d.yc); });
     // 근접 중복 제거
     nodes.sort(function(a,b){return a-b;});
-    var nclean=[]; nodes.forEach(function(v){ if(!nclean.length||Math.abs(v-nclean[nclean.length-1])>cur*0.012) nclean.push(v); });
-    // 현재가 위/아래 각각 가장 가까운 3개씩만 표시 (단기는 교차점이 많아 정리)
+    var nclean=[]; nodes.forEach(function(v){ if(!nclean.length||Math.abs(v-nclean[nclean.length-1])>cur*0.05) nclean.push(v); });
+    // 현재가 위/아래 각각 가장 가까운 2개씩만 표시
     var below=nclean.filter(function(v){return v<=cur;});   // 오름차순
     var above=nclean.filter(function(v){return v>cur;});
-    var showNodes=below.slice(-3).concat(above.slice(0,3)); // 아래 가까운 3개 + 위 가까운 3개
+    var showNodes=below.slice(-2).concat(above.slice(0,2)); // 아래 가까운 2개 + 위 가까운 2개
     showNodes.forEach(function(yc){
       ctx.strokeStyle='rgba(212,83,126,.85)';ctx.lineWidth=1.4;ctx.setLineDash([]);
       ctx.beginPath();ctx.moveTo(plot.x0,yOf(yc));ctx.lineTo(plot.x1,yOf(yc));ctx.stroke();

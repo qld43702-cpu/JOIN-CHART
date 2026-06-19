@@ -291,16 +291,11 @@ def build_drawings(bars):
         if yc>=cur_p: continue  # 하방 교차점이 현재가보다 아래여야 위험
         if yc<=0: continue       # 주가는 0 밑으로 못 감 — 음수 교차점 제외
         if yc < cur_p*0.3: continue  # 현재가의 30% 미만은 비현실적 위험선, 제외
-        # [방법2] 진폭 필터: 하락파동(M) 진폭이 현재가의 2% 미만이면 노이즈로 제외
-        M_range = abs(bars[M['t1']]['l'] - bars[M['t0']]['h'])
-        if M_range < cur_p * 0.02: continue
         all_risks.append({
             'A_t1':A['t1'],'A_y1':round(MA2[A['t1']],1),
             'B_t1':B['t1'],'B_y1':round(MA2[B['t1']],1),
             'xc':round(xc,2),'yc':round(yc,1)
         })
-    # [방법2] 최근 것 우선, 최대 5개만 유지
-    all_risks = all_risks[-5:]
 
     chart=[{'i':i,'d':(bars[i].get('d','')[4:6]+'/'+bars[i].get('d','')[6:8]+(' '+str(bars[i]['t']).zfill(6)[:2]+'시' if 't' in bars[i] else '')),
             'rawd':bars[i].get('d',''),
