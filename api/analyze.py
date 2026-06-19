@@ -675,41 +675,36 @@ class handler(BaseHTTPRequestHandler):
             _hit=_RESULT_CACHE.get(_ck)
             if _hit and _t.time() < _hit["exp"]:
                 self.wfile.write(_hit["data"]); return
+            import threading
+            def _parallel_fetch(tasks):
+                res={}
+                def _run(key,fn,args):
+                    try: res[key]=fn(*args)
+                    except: res[key]=None
+                ts=[threading.Thread(target=_run,args=(k,f,a)) for k,f,a in tasks]
+                for t in ts: t.start()
+                for t in ts: t.join()
+                return res
             if is_us(code):
                 # ===== 미국 주식 (야후) — 병렬 호출 =====
-                import threading
                 tkr=code.upper()
                 nm,mk=get_name_us(tkr)
-                results={}
-                def _fetch_us(key,fn,*args):
-                    try: results[key]=fn(*args)
-                    except: results[key]=None
-                threads=[
-                    threading.Thread(target=_fetch_us,args=('day',get_day_us,tkr)),
-                    threading.Thread(target=_fetch_us,args=('m60',get_min_us,tkr,'60m')),
-                    threading.Thread(target=_fetch_us,args=('m10',get_min_us,tkr,'15m')),
-                ]
-                for t in threads: t.start()
-                for t in threads: t.join()
-                day=results.get('day'); m60=results.get('m60'); m10=results.get('m10')
+                res=_parallel_fetch([
+                    ('day',get_day_us,(tkr,)),
+                    ('m60',get_min_us,(tkr,'60m')),
+                    ('m10',get_min_us,(tkr,'15m')),
+                ])
             else:
                 # ===== 한국 주식 (LS) — 병렬 호출 =====
                 if not code.isdigit() or len(code)!=6:
                     self.wfile.write(json.dumps({'error':'국내는 6자리 코드, 해외는 영문 티커(AAPL 등)'}).encode()); return
-                import threading
                 tk=token(); nm,mk=get_name(tk,code)
-                results={}
-                def _fetch_kr(key,fn,*args):
-                    try: results[key]=fn(*args)
-                    except: results[key]=None
-                threads=[
-                    threading.Thread(target=_fetch_kr,args=('day',get_day,tk,code)),
-                    threading.Thread(target=_fetch_kr,args=('m60',get_60m,tk,code)),
-                    threading.Thread(target=_fetch_kr,args=('m10',get_min,tk,code,15)),
-                ]
-                for t in threads: t.start()
-                for t in threads: t.join()
-                day=results.get('day'); m60=results.get('m60'); m10=results.get('m10')
+                res=_parallel_fetch([
+                    ('day',get_day,(tk,code)),
+                    ('m60',get_60m,(tk,code)),
+                    ('m10',get_min,(tk,code,15)),
+                ])
+            day=res.get('day'); m60=res.get('m60'); m10=res.get('m10')
             if not day or len(day)<30:
                 self.wfile.write(json.dumps({'error':'데이터를 찾을 수 없습니다 ('+code+')'}).encode()); return
             dd = build_drawings(day) if day and len(day)>30 else {'error':'데이터 부족'}
