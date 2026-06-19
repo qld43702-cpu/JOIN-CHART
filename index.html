@@ -967,9 +967,9 @@ function mkChart(data,pj,sfx){
         for(var i=0;i<ups.length;i++){
           seq.push({price:ups[i]});                       // 저항 돌파(상승파)
           if(i<ups.length-1){
-            // 되돌림: 방금 돌파한 레벨(이전 저항=새 지지) 부근으로 눌림
-            var pull=prev+(ups[i]-prev)*0.45;
-            seq.push({price:pull});                        // 조정파
+            // 되돌림: 상승은 "다시 떨어질라" 두려움이 커서 깊게 눌림(더디게 감)
+            var pull=prev+(ups[i]-prev)*0.55;
+            seq.push({price:pull});                        // 조정파(깊은 되돌림)
           }
           prev=ups[i];
         }
@@ -983,7 +983,8 @@ function mkChart(data,pj,sfx){
         for(var i2=0;i2<dns.length;i2++){
           seq.push({price:dns[i2]});                       // 지지 이탈(하락파)
           if(i2<dns.length-1){
-            var bounce=prevd+(dns[i2]-prevd)*0.45;          // 반등(데드캣)
+            // 반등: 하락은 공포라 반등 약함(얕게 튀고 급락) — 가파르게
+            var bounce=prevd+(dns[i2]-prevd)*0.30;          // 약한 반등(데드캣)
             seq.push({price:bounce});
           }
           prevd=dns[i2];
@@ -1002,11 +1003,23 @@ function mkChart(data,pj,sfx){
         seq.push({price:startV+(up1-startV)*0.05});  // 수렴 마무리
       }
 
-      // ── 시퀀스를 시간축에 균등 배치하고 부드럽게 연결 ──
+      // ── 시퀀스를 시간축에 배치 (비대칭: 상승 더디게/하락 가파르게) ──
       var steps=endI-startI;
       var nSeg=seq.length-1;
-      // 각 변곡점의 t위치 (균등)
-      for(var q=0;q<seq.length;q++) seq[q].t=q/nSeg;
+      // 각 구간의 "시간 가중치": 올라가는 구간은 길게(더디), 내려가는 구간은 짧게(가파)
+      // 두려움 원칙 — 상승은 자꾸 눌리며 더디게, 하락은 공포로 한번에.
+      var segW=[];
+      for(var q=1;q<seq.length;q++){
+        var up = seq[q].price >= seq[q-1].price;
+        segW.push(up ? 1.6 : 0.7);   // 상승 구간 시간 1.6배(더디), 하락 0.7배(가파)
+      }
+      var wsum=0; for(var wi=0;wi<segW.length;wi++) wsum+=segW[wi];
+      // 누적 t 위치 (가중치 비례)
+      seq[0].t=0; var acc=0;
+      for(var q2=1;q2<seq.length;q2++){
+        acc+=segW[q2-1];
+        seq[q2].t=acc/wsum;
+      }
       ctx.strokeStyle=color+'0.95)';ctx.lineWidth=2.6;ctx.setLineDash([]);
       ctx.beginPath();
       for(var s=0;s<=steps;s++){
