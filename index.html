@@ -489,13 +489,13 @@ function mkChart(data,pj,sfx){
   var SCEN=null;        // 현재 시나리오 'up'/'flat'/'dn'/null
   var scenFade=0;       // 페이드 0~1
   var srLevels=(pj&&pj.sr_levels)||[];  // 60분봉 지지/저항 가격들
-  // 초기 뷰: 시작점(anchor)을 화면 왼쪽에 두고 미래 끝까지.
+  // 초기 뷰: 타임프레임별 표시 봉 수 제한
   (function(){
     var aI=(pj&&pj.anchor_idx!=null)?pj.anchor_idx:(n-1);
-    var futLen=TOTAL-1-aI;                 // 시작점부터 미래끝까지
-    var pad=Math.max(3, Math.round(futLen*0.2));  // 시작점 왼쪽 약간의 여유
+    var maxSpan = sfx==='10' ? 80 : sfx==='60' ? 100 : TOTAL;  // 15분:80봉, 60분:100봉, 일봉:전체
+    var pad=Math.max(3, Math.round(maxSpan*0.2));
     viewS=Math.max(0, aI-pad);
-    viewE=TOTAL-1;
+    viewE=Math.min(TOTAL-1, viewS+maxSpan-1);
   })();
   function futDates(){
     var last=ch[n-1].d; // "MM/DD" 또는 "MM/DD HH시"
