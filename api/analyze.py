@@ -291,16 +291,11 @@ def build_drawings(bars):
         if yc>=cur_p: continue  # 하방 교차점이 현재가보다 아래여야 위험
         if yc<=0: continue       # 주가는 0 밑으로 못 감 — 음수 교차점 제외
         if yc < cur_p*0.3: continue  # 현재가의 30% 미만은 비현실적 위험선, 제외
-        # [방법2] 진폭 필터: 하락파동(M) 진폭이 현재가의 2% 미만이면 노이즈로 제외
-        M_range = abs(bars[M['t1']]['l'] - bars[M['t0']]['h'])
-        if M_range < cur_p * 0.02: continue
         all_risks.append({
             'A_t1':A['t1'],'A_y1':round(MA2[A['t1']],1),
             'B_t1':B['t1'],'B_y1':round(MA2[B['t1']],1),
             'xc':round(xc,2),'yc':round(yc,1)
         })
-    # [방법2] 최근 것 우선, 최대 5개만 유지
-    all_risks = all_risks[-5:]
 
     chart=[{'i':i,'d':(bars[i].get('d','')[4:6]+'/'+bars[i].get('d','')[6:8]+(' '+str(bars[i]['t']).zfill(6)[:2]+'시' if 't' in bars[i] else '')),
             'rawd':bars[i].get('d',''),
@@ -492,8 +487,7 @@ def build_projection(bars, draws, risk_level, fut=63, market='', period='quarter
                 ni=r.get('B_t1',0)+1
                 if 0<=ni<len(bars): cands.append(ni)
         if cands:
-            scands=sorted(cands)
-            anchor_idx=scands[-2] if len(scands)>=2 else scands[-1]  # 최근 이전 교차점(없으면 최근)
+            anchor_idx=max(cands)  # 가장 최근(인덱스 큰) 교차점 다음 봉
         else:
             anchor_idx=max(0,len(bars)-fut if fut<len(bars) else len(bars)//2)
         anchor_price=round(bars[anchor_idx]['c'],2)   # 교차점 직후 봉의 종가
@@ -675,37 +669,25 @@ class handler(BaseHTTPRequestHandler):
             _hit=_RESULT_CACHE.get(_ck)
             if _hit and _t.time() < _hit["exp"]:
                 self.wfile.write(_hit["data"]); return
-            import threading
-            def _parallel_fetch(tasks):
-                import threading as _th
-                results=[None]*len(tasks)
-                def _run(i,fn,args):
-                    try: results[i]=fn(*args)
-                    except: results[i]=None
-                ts=[_th.Thread(target=_run,args=(i,f,a)) for i,(k,f,a) in enumerate(tasks)]
-                for t in ts: t.start()
-                for t in ts: t.join()
-                return {tasks[i][0]:results[i] for i in range(len(tasks))}
             if is_us(code):
-                # ===== 미국 주식 (야후) — 병렬 호출 =====
+                # ===== 미국 주식 (야후) =====
                 tkr=code.upper()
                 nm,mk=get_name_us(tkr)
-                res=_parallel_fetch([
-                    ('day',get_day_us,(tkr,)),
-                    ('m60',get_min_us,(tkr,'60m')),
-                    ('m10',get_min_us,(tkr,'15m')),
-                ])
+                day=get_day_us(tkr)
+                try: m60=get_min_us(tkr,"60m")
+                except Exception: m60=None
+                try: m10=get_min_us(tkr,"15m")
+                except Exception: m10=None
             else:
-                # ===== 한국 주식 (LS) — 병렬 호출 =====
+                # ===== 한국 주식 (LS) =====
                 if not code.isdigit() or len(code)!=6:
                     self.wfile.write(json.dumps({'error':'국내는 6자리 코드, 해외는 영문 티커(AAPL 등)'}).encode()); return
                 tk=token(); nm,mk=get_name(tk,code)
-                res=_parallel_fetch([
-                    ('day',get_day,(tk,code)),
-                    ('m60',get_60m,(tk,code)),
-                    ('m10',get_min,(tk,code,15)),
-                ])
-            day=res.get('day'); m60=res.get('m60'); m10=res.get('m10')
+                day=get_day(tk,code)
+                try: m60=get_60m(tk,code)
+                except Exception: m60=None
+                try: m10=get_min(tk,code,15)
+                except Exception: m10=None
             if not day or len(day)<30:
                 self.wfile.write(json.dumps({'error':'데이터를 찾을 수 없습니다 ('+code+')'}).encode()); return
             dd = build_drawings(day) if day and len(day)>30 else {'error':'데이터 부족'}
@@ -759,7 +741,6 @@ class handler(BaseHTTPRequestHandler):
                     if tt['projection']:
                         tt['projection']['sr_levels'] = sr10
                 except Exception as pe:
-                    import traceback; traceback.print_exc()
                     tt['projection'] = None
             # 미래 예측 (60분봉): 월 단위 기준
             if 'draws' in mm and mm.get('chart'):

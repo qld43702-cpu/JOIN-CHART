@@ -33,12 +33,6 @@ header{display:flex;align-items:center;gap:11px;margin-bottom:16px}
 #backbar{display:none;margin-bottom:12px}
 #backbar button{font-size:14px;font-weight:700;padding:8px 16px;border:1px solid #d5dce4;border-radius:9px;background:#fff;color:var(--navy);cursor:pointer}
 .result-head{display:flex;align-items:center;gap:10px;margin:14px 0 10px;flex-wrap:wrap}
-.result-sbar{position:sticky;top:56px;z-index:20;background:var(--card);border-bottom:1px solid var(--line);padding:10px 16px;display:flex;align-items:center;gap:10px;margin:0 -16px 12px;}
-.result-sbar input{flex:1;height:38px;border:1.5px solid var(--navy);border-radius:10px;padding:0 36px 0 12px;font-size:14px;font-weight:600;outline:none;color:var(--ink);background:#fff;}
-.result-sbar input:focus{border-color:var(--orange);}
-.result-sbar .rs-ic{position:absolute;right:26px;top:50%;transform:translateY(-50%);width:18px;height:18px;pointer-events:none;}
-.result-sbar .rs-wrap{position:relative;flex:1;}
-.result-sbar .rs-price{font-size:14px;font-weight:800;color:var(--ink);flex-shrink:0;white-space:nowrap;}
 .result-head .rn{font-size:20px;font-weight:800}.result-head .rc{font-size:14px;color:var(--faint);font-weight:600}
 .result-head .rp{margin-left:auto;font-size:19px;font-weight:800}
 .risk-alert{display:flex;align-items:center;gap:9px;margin:0 0 12px;padding:11px 14px;border-radius:10px;background:#fcebeb;border:1px solid #f09595}
@@ -332,13 +326,8 @@ inp.addEventListener('keydown',function(e){
     if(hit2){pick(hit2.code,hit2.name);return;}
   }
 });
-document.addEventListener('click',function(e){if(!e.target.closest('.hero-search')&&!e.target.closest('.search-box'))ac.classList.remove('show');});
+document.addEventListener('click',function(e){if(!e.target.closest('.search-box'))ac.classList.remove('show');});
 function pick(code,name){inp.value=name+' ('+code+')';ac.classList.remove('show');inp.blur();go(code);}
-function go2(code){
-  var ac2=document.getElementById('acList2');
-  if(ac2) ac2.classList.remove('show');
-  go(code);
-}
 
 function mkMethodLabel(val,nm,col,methods){
   return '<label><input type="checkbox" class="mtd" value="'+val+'" checked style="accent-color:'+col+'"> '+nm+'</label>';
@@ -375,7 +364,7 @@ function trackHtml(sfx, label, hint, isUS){
   h+='</div>';
   h+='<div class="zoombar"><button id="zin'+sfx+'">+ 확대</button><button id="zout'+sfx+'">− 축소</button><button id="zall'+sfx+'">전체</button></div>';
   h+='<div class="chart-host"><canvas id="cv'+sfx+'"></canvas><div class="linetip" id="tip'+sfx+'"></div></div>';
-  h+='<div class="legend"><span><i style="background:#b48c3c"></i>MA2</span><span><i style="background:#1d9e75"></i>상승목표</span><span><i style="background:#5a6473"></i>상승잠재</span><span><i style="background:#d4537e"></i>공방선</span><span><i style="background:#e8743b"></i>매물집중</span></div>';
+  h+='<div class="legend"><span><i style="background:#1d9e75"></i>상승목표</span><span><i style="background:#5a6473"></i>상승잠재</span><span><i style="background:#d4537e"></i>공방선</span><span><i style="background:#e8743b"></i>매물집중</span></div>';
   h+='<div class="scen-btns">';
   h+='<button class="scen-btn up" data-scen="up"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 15l5-6 4 3 7-8"/></svg>상승 시나리오</button>';
   h+='<button class="scen-btn dn" data-scen="dn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 9l5 6 4-3 7 8"/></svg>하락 시나리오</button>';
@@ -397,8 +386,7 @@ function render(x){
   var minName='15분봉';
   var html='';
   var priceStr = IS_US ? ('$'+(d.cur||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})) : ((d.cur||0).toLocaleString()+'원');
-  var _sbarVal=(x['종목명']||'')+' ('+(x['종목코드'])+')';
-  html+='<div class="result-sbar"><div class="rs-wrap"><input type="text" id="resultSearchInput" autocomplete="off"><svg class="rs-ic" viewBox="0 0 24 24" fill="none" stroke="#ed7d31" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg><div class="ac" id="acList2"></div></div><span class="rs-price">'+priceStr+'</span></div>';
+  html+='<div class="result-head"><span class="rn">'+(x['종목명']||'')+'</span><span class="rc">'+x['종목코드']+' · '+(x['시장']||'')+'</span><span class="rp">'+priceStr+'</span></div>';
 
   // ===== 탭 =====
   html+='<div class="trk-tabs">';
@@ -413,35 +401,6 @@ function render(x){
   html+='<div class="trk-panel" data-pnl="" style="display:'+(has60?'none':'block')+'">'+trackHtml('', '일봉', '일봉 — 중장기 흐름', IS_US)+'</div>';
 
   box.innerHTML=html;
-
-  // 결과 검색창 이벤트 연결
-  var inp2=document.getElementById('resultSearchInput'), ac2=document.getElementById('acList2');
-  if(inp2){
-    inp2.value=_sbarVal;
-    inp2.addEventListener('focus',function(){inp2.select();});
-    inp2.addEventListener('input',function(){
-      var q=inp2.value.trim().toLowerCase();
-      if(!q){ac2.classList.remove('show');return;}
-      var hit=STOCKS.filter(function(s){return s.code.toLowerCase().includes(q)||(s.name&&s.name.toLowerCase().includes(q));}).slice(0,8);
-      if(!hit.length){ac2.classList.remove('show');return;}
-      ac2.innerHTML=hit.map(function(s){return '<div class="ac-item" onclick="go2(\''+s.code+'\')">'+'<span class="an">'+s.name+'</span><span class="acode">'+s.code+'</span><span class="amk">'+s.market+'</span></div>';}).join('');
-      ac2.classList.add('show');
-    });
-    inp2.addEventListener('keydown',function(e){
-      if(e.key==='Enter'){
-        e.preventDefault(); inp2.blur(); ac2.classList.remove('show');
-        var q=inp2.value.trim();
-        var m=q.match(/(\d{6})/); if(m){go(m[1]);return;}
-        var ql=q.toLowerCase();
-        var hit=STOCKS.find(function(s){return s.name&&s.name.toLowerCase()===ql;})||STOCKS.find(function(s){return s.name&&s.name.toLowerCase().includes(ql);});
-        if(hit){go2(hit.code);return;}
-        if(/^[A-Za-z][A-Za-z.\-]{0,6}$/.test(q)){go2(q.toUpperCase());return;}
-      }
-    });
-    if(window.__ac2Listener) document.removeEventListener('click', window.__ac2Listener);
-    window.__ac2Listener=function(e){if(ac2&&!e.target.closest('.result-sbar'))ac2.classList.remove('show');};
-    document.addEventListener('click', window.__ac2Listener);
-  }
 
   // 탭 전환 — 보일 때 차트 다시 그림 (display:none 상태에선 캔버스 0이라 깨짐)
   var trackData={ '':{d:d,pj:pj}, '60':has60?{d:t60,pj:t60.projection}:null, '10':has10?{d:t10,pj:t10.projection}:null };
@@ -488,15 +447,14 @@ function mkChart(data,pj,sfx){
   var W,H,plot,viewS=0,viewE=TOTAL-1;
   var SCEN=null;        // 현재 시나리오 'up'/'flat'/'dn'/null
   var scenFade=0;       // 페이드 0~1
-  var isDragging=false; // 줌/드래그 중 시나리오 숨김
   var srLevels=(pj&&pj.sr_levels)||[];  // 60분봉 지지/저항 가격들
-  // 초기 뷰: 타임프레임별 표시 봉 수 제한
+  // 초기 뷰: 시작점(anchor)을 화면 왼쪽에 두고 미래 끝까지.
   (function(){
     var aI=(pj&&pj.anchor_idx!=null)?pj.anchor_idx:(n-1);
-    var maxSpan = sfx==='10' ? 80 : sfx==='60' ? 100 : TOTAL;  // 15분:80봉, 60분:100봉, 일봉:전체
-    var pad=Math.max(3, Math.round(maxSpan*0.2));
+    var futLen=TOTAL-1-aI;                 // 시작점부터 미래끝까지
+    var pad=Math.max(3, Math.round(futLen*0.2));  // 시작점 왼쪽 약간의 여유
     viewS=Math.max(0, aI-pad);
-    viewE=Math.min(TOTAL-1, viewS+maxSpan-1);
+    viewE=TOTAL-1;
   })();
   function futDates(){
     var last=ch[n-1].d; // "MM/DD" 또는 "MM/DD HH시"
@@ -556,15 +514,12 @@ function mkChart(data,pj,sfx){
     var vs=Math.max(0,viewS), ve=Math.min(TOTAL-1,viewE);
     var lo=1e18, hi=-1e18;
     for(var i=vs;i<=Math.min(ve,n-1);i++){lo=Math.min(lo,ch[i].l);hi=Math.max(hi,ch[i].h);}
+    if(ve>=n&&pj){hi=Math.max(hi,pj.up_target||hi);lo=Math.min(lo,pj.dn_target||lo);}
     if(lo>hi){lo=Math.min.apply(null,c);hi=Math.max.apply(null,c);}
-    // 타임프레임별 미래 목표선만 범위 제한 (과거 캔들은 그대로)
-    var tfRange = sfx==='10' ? 0.05 : sfx==='60' ? 0.12 : 0.25;
-    if(ve>=n&&pj){
-      if(pj.up_target && pj.up_target <= cur*(1+tfRange)) hi=Math.max(hi,pj.up_target);
-      if(pj.dn_target && pj.dn_target >= cur*(1-tfRange)) lo=Math.min(lo,pj.dn_target);
-    }
-    var margin=(hi-lo)*0.1;
-    lo=lo-margin; hi=hi+margin;
+    // 현재가를 세로 가운데로: 현재가에서 위/아래 더 먼 쪽 거리만큼 양쪽 대칭 확보.
+    // (공방선은 이 범위 안에 들면 보이고, 너무 멀면 안 보임 — 캔들 가독성 우선)
+    var half=Math.max(hi-cur, cur-lo)*1.08;
+    lo=cur-half; hi=cur+half;
     plot={lo:lo,hi:hi,x0:padL,x1:W-padR,y0:padT,y1:H-padB};
   }
   function getSpan(){return viewE-viewS+1;}
@@ -680,43 +635,18 @@ function mkChart(data,pj,sfx){
       var yo=yOf(r.o),yc2=yOf(r.c);
       ctx.fillRect(x-cw/2,Math.min(yo,yc2),cw,Math.max(1.5,Math.abs(yc2-yo)));
     }
-    // ── MA2 선 ──
-    ctx.strokeStyle='rgba(180,140,60,.85)';ctx.lineWidth=1.4;ctx.setLineDash([]);
-    ctx.beginPath();var ma2started=false;
-    for(var i=Math.max(0,viewS);i<=Math.min(viewE,n-1);i++){
-      if(ma2[i]==null){ma2started=false;continue;}
-      if(!ma2started){ctx.moveTo(xOf(i),yOf(ma2[i]));ma2started=true;}
-      else{ctx.lineTo(xOf(i),yOf(ma2[i]));}
-    }
-    ctx.stroke();
-    // ── 공방선(마디) 필터 ──
-    var nodeGap = sfx==='10' ? 0.03 : sfx==='60' ? 0.04 : 0.05;  // 클러스터 간격
-    var nodeExtra = sfx==='10' ? 0.10 : sfx==='60' ? 0.15 : 0.25; // 추가 표시 허용 거리
+    // ── 공방선(마디)만 표시. 작도 추세선·화살표는 그리지 않음(차트 깔끔하게). ──
+    // 공방선 수평선(마디) = 모든 교차점 통합. 현재가 위는 가장 가까운 1개만.
     var nodes=[];
     (data.risk_nodes||[]).forEach(function(v){ if(v>0) nodes.push(v); });
     draws.forEach(function(d){ if(d.yc>0) nodes.push(d.yc); });
     // 근접 중복 제거
     nodes.sort(function(a,b){return a-b;});
-    var nclean=[]; nodes.forEach(function(v){ if(!nclean.length||Math.abs(v-nclean[nclean.length-1])>cur*nodeGap) nclean.push(v); });
-    var below=nclean.filter(function(v){return v<=cur;});  // 오름차순
+    var nclean=[]; nodes.forEach(function(v){ if(!nclean.length||Math.abs(v-nclean[nclean.length-1])>cur*0.012) nclean.push(v); });
+    // 현재가 위/아래 각각 가장 가까운 3개씩만 표시 (단기는 교차점이 많아 정리)
+    var below=nclean.filter(function(v){return v<=cur;});   // 오름차순
     var above=nclean.filter(function(v){return v>cur;});
-    console.log("[공방선] sfx:",sfx,"nodes전체:",nodes.length,"nclean:",nclean.length,"below:",below.length,above.length,"above:",above,"below:",below);
-    // 아래: 가장 가까운 1개 무조건 + 거리 안에 있으면 1개 추가
-    var showBelow=[];
-    if(below.length>=1) showBelow.push(below[below.length-1]);  // 가장 가까운 1개 무조건
-    if(below.length>=2){
-      // 15분: 거리 조건 유지, 60분/일봉: 무조건 추가
-      if(sfx==='10'){ if(Math.abs(below[below.length-2]-cur)<=cur*nodeExtra) showBelow.unshift(below[below.length-2]); }
-      else{ showBelow.unshift(below[below.length-2]); }
-    }
-    // 위: 가장 가까운 1개 무조건 + 2번째
-    var showAbove=[];
-    if(above.length>=1) showAbove.push(above[0]);  // 가장 가까운 1개 무조건
-    if(above.length>=2){
-      if(sfx==='10'){ if(Math.abs(above[1]-cur)<=cur*nodeExtra) showAbove.push(above[1]); }
-      else{ showAbove.push(above[1]); }
-    }
-    var showNodes=showBelow.concat(showAbove);
+    var showNodes=below.slice(-3).concat(above.slice(0,3)); // 아래 가까운 3개 + 위 가까운 3개
     showNodes.forEach(function(yc){
       ctx.strokeStyle='rgba(212,83,126,.85)';ctx.lineWidth=1.4;ctx.setLineDash([]);
       ctx.beginPath();ctx.moveTo(plot.x0,yOf(yc));ctx.lineTo(plot.x1,yOf(yc));ctx.stroke();
@@ -784,7 +714,7 @@ function mkChart(data,pj,sfx){
       }
     }
     // ===== 시나리오 웨이브 (교차점 기준점부터 — 실제 봉과 비교 가능) =====
-    if(SCEN && scenFade>0 && !isDragging){
+    if(SCEN && scenFade>0){
       // 기준점: 최근 교차점 직후. 없으면 현재
       var anchorI=(pj.anchor_idx!=null)?pj.anchor_idx:(n-1);
       var anchorP=(pj.anchor_price!=null)?pj.anchor_price:cur;
@@ -920,22 +850,22 @@ function mkChart(data,pj,sfx){
   cv.addEventListener('mouseleave',function(){lastMx=lastMy=null;draw(null,null);tip.style.display='none';});
   cv.addEventListener('wheel',function(e){
     e.preventDefault();
-    var sp=getSpan();
+    var r=cv.getBoundingClientRect(), mx=e.clientX-r.left;
+    var center=iOfX(mx), sp=getSpan();
     var ns=Math.max(15,Math.min(TOTAL,Math.round(sp*(e.deltaY>0?1.15:0.87))));
-    // viewS(시작점) 고정, viewE(오른쪽/미래)만 늘어남
-    var en=viewS+ns-1;
-    if(en>TOTAL-1){en=TOTAL-1;}
-    viewE=en;lay();draw(lastMx,lastMy);
+    var ratio=(center-viewS)/sp;
+    var s=Math.round(center-ns*ratio), en=s+ns-1;
+    if(s<0){s=0;en=ns-1;}if(en>TOTAL-1){en=TOTAL-1;s=Math.max(0,en-ns+1);}
+    viewS=s;viewE=en;lay();draw(lastMx,lastMy);
   },{passive:false});
   var drag=false, dx0=0, dvs=0;
   cv.addEventListener('mousedown',function(e){drag=true;dx0=e.clientX;dvs=viewS;});
-  window.addEventListener('mouseup',function(){drag=false;isDragging=false;draw(lastMx,lastMy);});
+  window.addEventListener('mouseup',function(){drag=false;});
   cv.addEventListener('mousemove',function(e){
     if(!drag)return;
     var dx=e.clientX-dx0, per=(plot.x1-plot.x0)/getSpan();
     var sh=Math.round(-dx/per), sp=getSpan(), s=dvs+sh;
     if(s<0)s=0;if(s+sp>TOTAL)s=TOTAL-sp;
-    isDragging=true;
     viewS=s;viewE=s+sp-1;lay();draw(lastMx,lastMy);
   });
   // ===== 모바일 터치 =====
@@ -957,7 +887,6 @@ function mkChart(data,pj,sfx){
     // 좌우로 많이 움직이면 스크롤, 그 외엔 가격선만
     if(Math.abs(dx)>10){
       tMoved=true;
-      isDragging=true;
       var per=(plot.x1-plot.x0)/getSpan();
       var sh=Math.round(-dx/per), sp=getSpan(), s=tDvs+sh;
       if(s<0)s=0;if(s+sp>TOTAL)s=TOTAL-sp;
@@ -970,12 +899,11 @@ function mkChart(data,pj,sfx){
     risks.forEach(function(d){if(Math.abs(lastMy-yOf(d.yc))<8){tip.style.display='block';tip.style.background='#d4537e';tip.textContent='공방선 '+fmtP(d.yc);tip.style.left=Math.min(lastMx+12,W-110)+'px';tip.style.top=(yOf(d.yc)-28)+'px';}});
   },{passive:false});
   cv.addEventListener('touchend',function(){
-    isDragging=false;
-    draw(lastMx,lastMy);
+    // 손 떼면 잠시 후 가격선·툴팁 정리
     setTimeout(function(){ lastMx=lastMy=null; draw(null,null); tip.style.display='none'; }, 1500);
   },{passive:true});
-  document.getElementById('zin'+sfx).onclick=function(){isDragging=true;var sp=getSpan(),ns=Math.max(15,Math.round(sp*0.7)),md=Math.round((viewS+viewE)/2);viewS=Math.max(0,md-Math.round(ns/2));viewE=Math.min(TOTAL-1,viewS+ns-1);lay();draw();isDragging=false;};
-  document.getElementById('zout'+sfx).onclick=function(){isDragging=true;var sp=getSpan(),ns=Math.min(TOTAL,Math.round(sp*1.4)),md=Math.round((viewS+viewE)/2);viewS=Math.max(0,md-Math.round(ns/2));viewE=Math.min(TOTAL-1,viewS+ns-1);lay();draw();isDragging=false;};
+  document.getElementById('zin'+sfx).onclick=function(){var sp=getSpan(),ns=Math.max(15,Math.round(sp*0.7)),md=Math.round((viewS+viewE)/2);viewS=Math.max(0,md-Math.round(ns/2));viewE=Math.min(TOTAL-1,viewS+ns-1);lay();draw();};
+  document.getElementById('zout'+sfx).onclick=function(){var sp=getSpan(),ns=Math.min(TOTAL,Math.round(sp*1.4)),md=Math.round((viewS+viewE)/2);viewS=Math.max(0,md-Math.round(ns/2));viewE=Math.min(TOTAL-1,viewS+ns-1);lay();draw();};
   document.getElementById('zall'+sfx).onclick=function(){viewS=0;viewE=TOTAL-1;lay();draw();};
   scope.querySelectorAll('.mtd').forEach(function(el){el.addEventListener('change',function(){draw(lastMx,lastMy);});});
   // 시나리오 버튼 이벤트 + 페이드 애니메이션
@@ -1004,7 +932,7 @@ function mkChart(data,pj,sfx){
     b.addEventListener('click',function(){playScenario(b.getAttribute('data-scen'));});
   });
   try{lay();draw(null,null);}catch(err){console.error('draw error:',err);}
-  window.addEventListener('resize',function(){isDragging=true;lay();draw(null,null);isDragging=false;});
+  window.addEventListener('resize',function(){lay();draw(null,null);});
 }
 </script>
 </div>
