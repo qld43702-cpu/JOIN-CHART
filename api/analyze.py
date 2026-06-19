@@ -298,7 +298,7 @@ def build_drawings(bars):
             'm2':round(MA2[i],2) if MA2[i] is not None else None} for i in range(len(bars))]
     return {'chart':chart,'draws':draws,'all_risks':all_risks,'draws_start':draws_start,'cur':round(c[-1],2)}
 
-def build_projection(bars, draws, risk_level, fut=63, market='', period='quarter'):
+def build_projection(bars, draws, risk_level, fut=63, market='', period='quarter', all_risks=None):
     """미래 예측: 몬테카를로로 양방향 확률 + 각 기법 목표 도달 확률(통일).
     fut = 미래 영업일 수 (약 3개월)"""
     import math, random
@@ -458,18 +458,26 @@ def build_projection(bars, draws, risk_level, fut=63, market='', period='quarter
     # chart의 d는 "MM/DD" 형식 → 월로 분기 판정. 7월 되면 자동 리셋.
     anchor_idx=None; anchor_price=None
     try:
-        # 시작점 = 가장 최근 작도(공방선 교차점)의 "다음 봉 시가"(entry).
-        # 날짜/분기/만기 등 외부 기준 없이, 차트 작도가 만든 자리로만. 세 시간축 동일.
+        # 시작점 = 공방선(상방)·위험선(하방) 통틀어 가장 최근 교차점의 "다음 봉 시가".
+        # 교차점 자체(xc, 과거 가상점)는 한쪽으로 쏠리므로, 교차 직후 실제 출발가 기준. 세 시간축 동일.
+        cands=[]  # (다음봉idx, 가격)
         if draws:
-            recent=draws[-1]  # 가장 최근 작도
+            recent=draws[-1]
             en=recent.get('entry')
-            if en is not None and 0<=en<len(bars):
-                anchor_idx=en
-                anchor_price=round(bars[en].get('o', bars[en]['c']),2)
+            if en is not None and 0<=en<len(bars): cands.append((en, bars[en].get('o',bars[en]['c'])))
             elif recent.get('B_t1') is not None:
-                bt=recent['B_t1']
-                if 0<=bt<len(bars):
-                    anchor_idx=bt; anchor_price=round(bars[bt].get('o',bars[bt]['c']),2)
+                bt=recent['B_t1']+1
+                if 0<=bt<len(bars): cands.append((bt, bars[bt].get('o',bars[bt]['c'])))
+        if all_risks:
+            rr=all_risks[-1]
+            if rr.get('B_t1') is not None:
+                rt=rr['B_t1']+1
+                if 0<=rt<len(bars): cands.append((rt, bars[rt].get('o',bars[rt]['c'])))
+        if cands:
+            # 가장 최근(인덱스 큰) 교차점 다음 봉
+            cands.sort(key=lambda z:z[0])
+            anchor_idx, ap = cands[-1]
+            anchor_price=round(ap,2)
         # 폴백: 작도 없으면 마지막에서 적당히 뒤
         if anchor_idx is None and len(bars)>5:
             anchor_idx=max(0,len(bars)-fut if fut<len(bars) else len(bars)//2)
@@ -692,14 +700,11 @@ class handler(BaseHTTPRequestHandler):
                 for rk in tt.get('risks',[]):
                     if rk.get('yc') and rk['yc']>0: sr10.append(round(rk['yc']))
             sr10=sorted(set(sr10))
-            # all_risks 정리(용량)
-            for blk in (dd,mm,tt):
-                if isinstance(blk,dict): blk.pop('all_risks',None)
             # 미래 예측 (일봉): 위험선 가격을 하락 목표로
             if 'draws' in dd and dd.get('chart'):
                 risk_level = dd['risks'][0]['yc'] if dd.get('risks') else None
                 try:
-                    dd['projection'] = build_projection(dd['chart'], dd['draws'], risk_level, market=mk, period='quarter')
+                    dd['projection'] = build_projection(dd['chart'], dd['draws'], risk_level, market=mk, period='quarter', all_risks=dd.get('all_risks'))
                     if dd['projection']:
                         dd['projection']['sr_levels'] = sr_levels
                 except Exception as pe:
@@ -708,7 +713,7 @@ class handler(BaseHTTPRequestHandler):
             if 'draws' in tt and tt.get('chart'):
                 risk10 = tt['risks'][0]['yc'] if tt.get('risks') else None
                 try:
-                    tt['projection'] = build_projection(tt['chart'], tt['draws'], risk10, fut=39, market=mk, period='week')
+                    tt['projection'] = build_projection(tt['chart'], tt['draws'], risk10, fut=39, market=mk, period='week', all_risks=tt.get('all_risks'))
                     if tt['projection']:
                         tt['projection']['sr_levels'] = sr10
                 except Exception as pe:
@@ -717,7 +722,7 @@ class handler(BaseHTTPRequestHandler):
             if 'draws' in mm and mm.get('chart'):
                 risk60 = mm['risks'][0]['yc'] if mm.get('risks') else None
                 try:
-                    mm['projection'] = build_projection(mm['chart'], mm['draws'], risk60, fut=52, market=mk, period='quarter')
+                    mm['projection'] = build_projection(mm['chart'], mm['draws'], risk60, fut=52, market=mk, period='quarter', all_risks=mm.get('all_risks'))
                     if mm['projection']:
                         # 60분봉 자체 작도 교차점을 sr로
                         sr60=[]
@@ -726,6 +731,9 @@ class handler(BaseHTTPRequestHandler):
                         mm['projection']['sr_levels'] = sorted(set(sr60))
                 except Exception as pe:
                     mm['projection'] = None
+            # all_risks 정리(용량) — projection 다 만든 후
+            for blk in (dd,mm,tt):
+                if isinstance(blk,dict): blk.pop('all_risks',None)
             out={'종목코드':code,'종목명':nm,'시장':mk,'일봉':dd,'60분':mm,'10분':tt}
             _payload=json.dumps(out,ensure_ascii=False).encode()
             # 캐시 저장 (30분)

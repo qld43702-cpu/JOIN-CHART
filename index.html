@@ -694,8 +694,8 @@ function mkChart(data,pj,sfx){
     ctx.strokeStyle=color;ctx.lineWidth=w;ctx.setLineDash(dash||[]);
     ctx.beginPath();ctx.moveTo(xOf(i0),yOf(y0));ctx.lineTo(xOf(i1),yOf(y1));ctx.stroke();ctx.setLineDash([]);
   }
-  // fwave: 기법선·목표선을 4/1 기준점(anchor)부터 미래끝까지 그림
-  // fn(t, basePrice) → y값. t=0(4/1) ~ t=1(미래끝)
+  // fwave: 기법선·목표선을 교차점 기준점(anchor)부터 미래끝까지 그림
+  // fn(t, basePrice) → y값. t=0(시작점) ~ t=1(미래끝)
   var ANCHOR_I=(pj.anchor_idx!=null)?pj.anchor_idx:(n-1);
   var ANCHOR_P=(pj.anchor_price!=null)?pj.anchor_price:cur;
   var ANCHOR_SPAN=Math.max(1,(TOTAL-1)-ANCHOR_I);
@@ -827,7 +827,7 @@ function mkChart(data,pj,sfx){
         ctx.beginPath();ctx.moveTo(ex,ey-6);ctx.lineTo(ex-5,ey+5);ctx.lineTo(ex+5,ey+5);ctx.closePath();ctx.fill();
       }
     });
-    // 미래 예측 (전부 직선) — 4/1 기준점부터 그림
+    // 미래 예측 (전부 직선) — 교차점 기준점부터 그림
     if(viewE>=ANCHOR_I&&pj){
       var us=pj.up_slope||0, upT=pj.up_target, dnT=pj.dn_target, vol=pj.volatility||0.02;
       // 오리지날 상승 잠재선 (캡 없는 작도 최대치) — 진한 회색. 녹색보다 먼저(아래에) 그려 가림 방지
@@ -836,12 +836,12 @@ function mkChart(data,pj,sfx){
       if(gmax>upT*1.001){
         fwave(ctx,function(t,b){return b+(gmax-b)*t;},'rgba(70,80,95,.9)',2.4,[3,3],false);
       }
-      // 기본 틀: 4/1부터 — 직선 (b=4/1 가격)
+      // 기본 틀: 교차점 기준부터 — 직선
       fwave(ctx,function(t,b){return b+(upT-b)*t;},'rgba(29,158,117,.95)',2.4,[6,4],false);       // 상승목표(녹색 35%)
       fwave(ctx,function(t,b){return b+(dnT-b)*t;},'rgba(212,83,126,.9)',2.4,[6,4],false);         // 위험(분홍)
       fwave(ctx,function(t,b){return b+b*0.10*(1-t);},'rgba(138,152,168,.6)',1.3,[],false);        // 삼각수렴 상단
       fwave(ctx,function(t,b){return b-b*0.10*(1-t);},'rgba(138,152,168,.6)',1.3,[],false);        // 삼각수렴 하단
-      // 체크박스 기법: 전부 4/1부터 직선
+      // 체크박스 기법: 전부 교차점 기준부터 직선
       var checked=getChecked();
       var TT=pj.tech_targets||{};
       if(checked.indexOf('ell')>=0){
@@ -857,7 +857,7 @@ function mkChart(data,pj,sfx){
         fwave(ctx,function(t,b){return b+(gannTarget-b)*t;},'rgba(186,117,23,.85)',2,[],false);
       }
       if(checked.indexOf('fib')>=0){
-        // 피보나치: 수평 레벨선 — 4/1부터 미래끝까지
+        // 피보나치: 수평 레벨선 — 교차점 기준부터 미래끝까지
         var fibUp=(TT.fib_up&&isFinite(TT.fib_up))?TT.fib_up:cur*1.3;
         var fibDn=(TT.fib_dn&&isFinite(TT.fib_dn))?TT.fib_dn:cur*0.8;
         var fibLevels=[
@@ -885,9 +885,9 @@ function mkChart(data,pj,sfx){
         }
       }
     }
-    // ===== 시나리오 웨이브 (4/1 기준점부터 — 실제 봉과 비교 가능) =====
+    // ===== 시나리오 웨이브 (교차점 기준점부터 — 실제 봉과 비교 가능) =====
     if(SCEN && scenFade>0){
-      // 기준점: 4/1(분기시작). 없으면 현재
+      // 기준점: 최근 교차점 직후. 없으면 현재
       var anchorI=(pj.anchor_idx!=null)?pj.anchor_idx:(n-1);
       var anchorP=(pj.anchor_price!=null)?pj.anchor_price:cur;
       var startI=anchorI, endI=Math.min(viewE,TOTAL-1);
@@ -906,7 +906,7 @@ function mkChart(data,pj,sfx){
       var color = SCEN==='up'?'rgba(226,75,74,':SCEN==='dn'?'rgba(55,138,221,':'rgba(138,152,168,';
       ctx.save();
       ctx.globalAlpha=scenFade;
-      // 기준점(4/1) 세로선
+      // 기준점(교차점) 세로선
       if(startI>=viewS&&startI<=viewE){
         ctx.strokeStyle='rgba(232,116,59,'+(0.6*scenFade)+')';ctx.lineWidth=1.5;ctx.setLineDash([4,3]);
         ctx.beginPath();ctx.moveTo(xOf(startI),plot.y0);ctx.lineTo(xOf(startI),plot.y1);ctx.stroke();ctx.setLineDash([]);
@@ -1087,7 +1087,7 @@ function mkChart(data,pj,sfx){
       draw(lastMx,lastMy);return;}
     SCEN=scen;scenFade=0;
     scope.querySelectorAll('.scen-btn').forEach(function(b){b.classList.toggle('active',b.getAttribute('data-scen')===scen);});
-    // 4/1 기준점부터 미래 끝까지 다 보이게 뷰 조정
+    // 교차점 기준부터 미래 끝까지 다 보이게 뷰 조정
     var aI=(pj.anchor_idx!=null)?pj.anchor_idx:(n-1);
     viewS=Math.max(0, aI-3);
     viewE=TOTAL-1;
