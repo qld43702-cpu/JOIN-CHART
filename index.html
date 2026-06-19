@@ -658,6 +658,7 @@ function mkChart(data,pj,sfx){
     var nclean=[]; nodes.forEach(function(v){ if(!nclean.length||Math.abs(v-nclean[nclean.length-1])>cur*nodeGap) nclean.push(v); });
     var below=nclean.filter(function(v){return v<=cur;});  // 오름차순
     var above=nclean.filter(function(v){return v>cur;});
+    console.log("[공방선] sfx:",sfx,"nodes전체:",nodes.length,"nclean:",nclean.length,"below:",below.length,above.length,"above:",above,"below:",below);
     // 아래: 가장 가까운 1개 무조건 + 거리 안에 있으면 1개 추가
     var showBelow=[];
     if(below.length>=1) showBelow.push(below[below.length-1]);  // 가장 가까운 1개
