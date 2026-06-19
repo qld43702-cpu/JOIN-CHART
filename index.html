@@ -448,23 +448,13 @@ function mkChart(data,pj,sfx){
   var SCEN=null;        // 현재 시나리오 'up'/'flat'/'dn'/null
   var scenFade=0;       // 페이드 0~1
   var srLevels=(pj&&pj.sr_levels)||[];  // 60분봉 지지/저항 가격들
-  // 초기 뷰: 시작점(anchor)이 화면 왼쪽 1/3 지점에 오도록. 작도+현재가+미래가 한 화면에.
+  // 초기 뷰: 시작점(anchor)을 화면 왼쪽에 두고 미래 끝까지.
   (function(){
     var aI=(pj&&pj.anchor_idx!=null)?pj.anchor_idx:(n-1);
-    var futLen=TOTAL-1-aI;            // 시작점부터 미래끝까지 (시작점 오른쪽)
-    // 시작점이 화면 왼쪽 약 1/3에 오게 → 전체 보임폭의 1/3은 시작점 왼쪽(과거 맥락),
-    // 2/3는 시작점 오른쪽(작도 진행~현재~미래). 단 최소폭 보장.
-    var rightPart = Math.max(futLen, 1);             // 시작점 오른쪽
-    var leftPart  = Math.round(rightPart*0.5);        // 시작점 왼쪽 = 오른쪽의 절반(시작점이 왼쪽 1/3)
-    var span = rightPart + leftPart;
-    var minSpan = Math.max(50, Math.round(TOTAL*0.35));
-    if(span < minSpan){
-      // 너무 좁으면 양쪽으로 더 벌림 (왼쪽 위주로)
-      var extra = minSpan - span;
-      leftPart += extra; span = minSpan;
-    }
-    viewS = Math.max(0, aI - leftPart);
-    viewE = TOTAL-1;
+    var futLen=TOTAL-1-aI;                 // 시작점부터 미래끝까지
+    var pad=Math.max(3, Math.round(futLen*0.2));  // 시작점 왼쪽 약간의 여유
+    viewS=Math.max(0, aI-pad);
+    viewE=TOTAL-1;
   })();
   function futDates(){
     var last=ch[n-1].d; // "MM/DD" 또는 "MM/DD HH시"
