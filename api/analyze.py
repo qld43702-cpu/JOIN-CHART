@@ -484,7 +484,7 @@ def build_projection(bars, draws, risk_level, fut=63, market='', period='quarter
             anchor_idx=max(cands)  # 가장 최근(인덱스 큰) 교차점 다음 봉
         else:
             anchor_idx=max(0,len(bars)-fut if fut<len(bars) else len(bars)//2)
-        anchor_price=round(bars[anchor_idx].get('o',bars[anchor_idx]['c']),2)
+        anchor_price=round(bars[anchor_idx]['c'],2)   # 교차점 직후 봉의 종가
         # ── 끝(미래) = 이번 기간 말일까지 (유지) ──
         last_d=_date_of(bars[-1])
         if last_d is not None:
@@ -497,36 +497,16 @@ def build_projection(bars, draws, risk_level, fut=63, market='', period='quarter
                 qend_month=((last_d.month-1)//3)*3+3
                 if qend_month==12: end_cal=_dt.date(last_d.year,12,31)
                 else: end_cal=_dt.date(last_d.year,qend_month+1,1)-_dt.timedelta(days=1)
-            # 최근 봉 밀도로 말일까지 남은 봉 수 추정
             wlen=min(60,len(bars)-1)
-            d0=_date_of(bars[-1-wlen]); 
+            d0=_date_of(bars[-1-wlen])
             cal_span=max(1,(last_d-d0).days) if d0 else 1
             dens=wlen/cal_span if cal_span>0 else 1
             cal_remain=max(0,(end_cal-last_d).days)
             fut_calc=int(round(cal_remain*dens*(5/7))) if dens>0 else int(round(cal_remain*5/7))
             fut=max(1, fut_calc)
     except: pass
-    # 보조지표 출발 인덱스 = 달력 기준 N일 전 (주간/월간 5일, 분기 20일). 보조지표가 길게 보이도록.
-    aux_start=None
-    try:
-        import datetime as _dt2
-        def _dof(b):
-            d=b.get('rawd','') or b.get('d','')
-            if len(d)>=8:
-                try: return _dt2.date(int(d[:4]),int(d[4:6]),int(d[6:8]))
-                except: return None
-            return None
-        back_days = 20 if period=='quarter' else 5
-        last_dd=_dof(bars[-1])
-        if last_dd is not None:
-            target=last_dd - _dt2.timedelta(days=back_days)
-            # target 날짜 이상인 첫 봉
-            for i in range(len(bars)):
-                di=_dof(bars[i])
-                if di is not None and di>=target:
-                    aux_start=i; break
-        if aux_start is None: aux_start=max(0,len(bars)-1)
-    except: aux_start=max(0,len(bars)-1)
+    # 보조지표 출발 = 내 작도 시작점(교차점)과 동일하게 묶음.
+    aux_start = anchor_idx if anchor_idx is not None else max(0,len(bars)-1)
     return {
         'fut':fut, 'cur':round(cur,2),
         'up_slope':round(up_slope,3), 'up_target':round(up_target,2), 'green_max':round(green_max,2),
@@ -706,7 +686,7 @@ class handler(BaseHTTPRequestHandler):
                 day=get_day(tk,code)
                 try: m60=get_60m(tk,code)
                 except Exception: m60=None
-                try: m10=get_min(tk,code,10)
+                try: m10=get_min(tk,code,15)
                 except Exception: m10=None
             if not day or len(day)<30:
                 self.wfile.write(json.dumps({'error':'데이터를 찾을 수 없습니다 ('+code+')'}).encode()); return
