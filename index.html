@@ -431,7 +431,9 @@ function render(x){
         if(/^[A-Za-z][A-Za-z.\-]{0,6}$/.test(q)){go(q.toUpperCase());return;}
       }
     });
-    document.addEventListener('click',function(e){if(!e.target.closest('.result-sbar'))ac2.classList.remove('show');});
+    if(window.__ac2Listener) document.removeEventListener('click', window.__ac2Listener);
+    window.__ac2Listener=function(e){if(ac2&&!e.target.closest('.result-sbar'))ac2.classList.remove('show');};
+    document.addEventListener('click', window.__ac2Listener);
   }
 
   // 탭 전환 — 보일 때 차트 다시 그림 (display:none 상태에선 캔버스 0이라 깨짐)
