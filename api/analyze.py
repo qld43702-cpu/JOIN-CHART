@@ -492,7 +492,8 @@ def build_projection(bars, draws, risk_level, fut=63, market='', period='quarter
                 ni=r.get('B_t1',0)+1
                 if 0<=ni<len(bars): cands.append(ni)
         if cands:
-            anchor_idx=max(cands)  # 가장 최근(인덱스 큰) 교차점 다음 봉
+            scands=sorted(cands)
+            anchor_idx=scands[-2] if len(scands)>=2 else scands[-1]  # 최근 이전 교차점(없으면 최근)
         else:
             anchor_idx=max(0,len(bars)-fut if fut<len(bars) else len(bars)//2)
         anchor_price=round(bars[anchor_idx]['c'],2)   # 교차점 직후 봉의 종가
