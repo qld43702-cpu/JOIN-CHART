@@ -515,10 +515,9 @@ function mkChart(data,pj,sfx){
     var lo=1e18, hi=-1e18;
     for(var i=vs;i<=Math.min(ve,n-1);i++){lo=Math.min(lo,ch[i].l);hi=Math.max(hi,ch[i].h);}
     if(ve>=n&&pj){hi=Math.max(hi,pj.up_target||hi);lo=Math.min(lo,pj.dn_target||lo);}
-    (data.risk_nodes||[]).forEach(function(v){if(v>0){lo=Math.min(lo,v);hi=Math.max(hi,v);}});
-    draws.forEach(function(d){if(d.yc>0){lo=Math.min(lo,d.yc);hi=Math.max(hi,d.yc);}});
     if(lo>hi){lo=Math.min.apply(null,c);hi=Math.max.apply(null,c);}
     // 현재가를 세로 가운데로: 현재가에서 위/아래 더 먼 쪽 거리만큼 양쪽 대칭 확보.
+    // (공방선은 이 범위 안에 들면 보이고, 너무 멀면 안 보임 — 캔들 가독성 우선)
     var half=Math.max(hi-cur, cur-lo)*1.08;
     lo=cur-half; hi=cur+half;
     plot={lo:lo,hi:hi,x0:padL,x1:W-padR,y0:padT,y1:H-padB};
@@ -644,11 +643,10 @@ function mkChart(data,pj,sfx){
     // 근접 중복 제거
     nodes.sort(function(a,b){return a-b;});
     var nclean=[]; nodes.forEach(function(v){ if(!nclean.length||Math.abs(v-nclean[nclean.length-1])>cur*0.012) nclean.push(v); });
-    // 현재가 위는 가장 가까운 1개만, 아래는 다
-    var below=nclean.filter(function(v){return v<=cur;});
+    // 현재가 위/아래 각각 가장 가까운 3개씩만 표시 (단기는 교차점이 많아 정리)
+    var below=nclean.filter(function(v){return v<=cur;});   // 오름차순
     var above=nclean.filter(function(v){return v>cur;});
-    var showNodes=below.slice();
-    if(above.length) showNodes.push(above[0]);  // 위로 가장 가까운 1개(다음 싸울 자리)
+    var showNodes=below.slice(-3).concat(above.slice(0,3)); // 아래 가까운 3개 + 위 가까운 3개
     showNodes.forEach(function(yc){
       ctx.strokeStyle='rgba(212,83,126,.85)';ctx.lineWidth=1.4;ctx.setLineDash([]);
       ctx.beginPath();ctx.moveTo(plot.x0,yOf(yc));ctx.lineTo(plot.x1,yOf(yc));ctx.stroke();
