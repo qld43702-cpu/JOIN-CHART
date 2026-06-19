@@ -33,6 +33,12 @@ header{display:flex;align-items:center;gap:11px;margin-bottom:16px}
 #backbar{display:none;margin-bottom:12px}
 #backbar button{font-size:14px;font-weight:700;padding:8px 16px;border:1px solid #d5dce4;border-radius:9px;background:#fff;color:var(--navy);cursor:pointer}
 .result-head{display:flex;align-items:center;gap:10px;margin:14px 0 10px;flex-wrap:wrap}
+.result-sbar{position:sticky;top:56px;z-index:20;background:var(--card);border-bottom:1px solid var(--line);padding:10px 16px;display:flex;align-items:center;gap:10px;margin:0 -16px 12px;}
+.result-sbar input{flex:1;height:38px;border:1.5px solid var(--navy);border-radius:10px;padding:0 36px 0 12px;font-size:14px;font-weight:600;outline:none;color:var(--ink);background:#fff;}
+.result-sbar input:focus{border-color:var(--orange);}
+.result-sbar .rs-ic{position:absolute;right:26px;top:50%;transform:translateY(-50%);width:18px;height:18px;pointer-events:none;}
+.result-sbar .rs-wrap{position:relative;flex:1;}
+.result-sbar .rs-price{font-size:14px;font-weight:800;color:var(--ink);flex-shrink:0;white-space:nowrap;}
 .result-head .rn{font-size:20px;font-weight:800}.result-head .rc{font-size:14px;color:var(--faint);font-weight:600}
 .result-head .rp{margin-left:auto;font-size:19px;font-weight:800}
 .risk-alert{display:flex;align-items:center;gap:9px;margin:0 0 12px;padding:11px 14px;border-radius:10px;background:#fcebeb;border:1px solid #f09595}
@@ -386,7 +392,7 @@ function render(x){
   var minName='15분봉';
   var html='';
   var priceStr = IS_US ? ('$'+(d.cur||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})) : ((d.cur||0).toLocaleString()+'원');
-  html+='<div class="result-head"><span class="rn">'+(x['종목명']||'')+'</span><span class="rc">'+x['종목코드']+' · '+(x['시장']||'')+'</span><span class="rp">'+priceStr+'</span></div>';
+  html+='<div class="result-sbar"><div class="rs-wrap"><input type="text" id="resultSearchInput" value="'+(x['종목명']||'')+' ('+(x['종목코드'])+')'" autocomplete="off"><svg class="rs-ic" viewBox="0 0 24 24" fill="none" stroke="#ed7d31" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg><div class="ac" id="acList2"></div></div><span class="rs-price">'+priceStr+'</span></div>';
 
   // ===== 탭 =====
   html+='<div class="trk-tabs">';
@@ -401,6 +407,32 @@ function render(x){
   html+='<div class="trk-panel" data-pnl="" style="display:'+(has60?'none':'block')+'">'+trackHtml('', '일봉', '일봉 — 중장기 흐름', IS_US)+'</div>';
 
   box.innerHTML=html;
+
+  // 결과 검색창 이벤트 연결
+  var inp2=document.getElementById('resultSearchInput'), ac2=document.getElementById('acList2');
+  if(inp2){
+    inp2.addEventListener('focus',function(){inp2.select();});
+    inp2.addEventListener('input',function(){
+      var q=inp2.value.trim().toLowerCase();
+      if(!q){ac2.classList.remove('show');return;}
+      var hit=STOCKS.filter(function(s){return s.code.toLowerCase().includes(q)||(s.name&&s.name.toLowerCase().includes(q));}).slice(0,8);
+      if(!hit.length){ac2.classList.remove('show');return;}
+      ac2.innerHTML=hit.map(function(s){return '<div class="ac-item" onclick="pick(''+s.code+'',''+((s.name||'').replace(/'/g,''))+'')">'+'<span class="an">'+s.name+'</span><span class="acode">'+s.code+'</span><span class="amk">'+s.market+'</span></div>';}).join('');
+      ac2.classList.add('show');
+    });
+    inp2.addEventListener('keydown',function(e){
+      if(e.key==='Enter'){
+        e.preventDefault(); inp2.blur(); ac2.classList.remove('show');
+        var q=inp2.value.trim();
+        var m=q.match(/(\d{6})/); if(m){go(m[1]);return;}
+        var ql=q.toLowerCase();
+        var hit=STOCKS.find(function(s){return s.name&&s.name.toLowerCase()===ql;})||STOCKS.find(function(s){return s.name&&s.name.toLowerCase().includes(ql);});
+        if(hit){pick(hit.code,hit.name);return;}
+        if(/^[A-Za-z][A-Za-z.\-]{0,6}$/.test(q)){go(q.toUpperCase());return;}
+      }
+    });
+    document.addEventListener('click',function(e){if(!e.target.closest('.result-sbar'))ac2.classList.remove('show');});
+  }
 
   // 탭 전환 — 보일 때 차트 다시 그림 (display:none 상태에선 캔버스 0이라 깨짐)
   var trackData={ '':{d:d,pj:pj}, '60':has60?{d:t60,pj:t60.projection}:null, '10':has10?{d:t10,pj:t10.projection}:null };
@@ -661,12 +693,19 @@ function mkChart(data,pj,sfx){
     console.log("[공방선] sfx:",sfx,"nodes전체:",nodes.length,"nclean:",nclean.length,"below:",below.length,above.length,"above:",above,"below:",below);
     // 아래: 가장 가까운 1개 무조건 + 거리 안에 있으면 1개 추가
     var showBelow=[];
-    if(below.length>=1) showBelow.push(below[below.length-1]);  // 가장 가까운 1개
-    if(below.length>=2 && Math.abs(below[below.length-2]-cur)<=cur*nodeExtra) showBelow.unshift(below[below.length-2]);
-    // 위: 가장 가까운 1개 무조건 + 거리 안에 있으면 1개 추가
+    if(below.length>=1) showBelow.push(below[below.length-1]);  // 가장 가까운 1개 무조건
+    if(below.length>=2){
+      // 15분: 거리 조건 유지, 60분/일봉: 무조건 추가
+      if(sfx==='10'){ if(Math.abs(below[below.length-2]-cur)<=cur*nodeExtra) showBelow.unshift(below[below.length-2]); }
+      else{ showBelow.unshift(below[below.length-2]); }
+    }
+    // 위: 가장 가까운 1개 무조건 + 2번째
     var showAbove=[];
-    if(above.length>=1) showAbove.push(above[0]);  // 가장 가까운 1개
-    if(above.length>=2 && Math.abs(above[1]-cur)<=cur*nodeExtra) showAbove.push(above[1]);
+    if(above.length>=1) showAbove.push(above[0]);  // 가장 가까운 1개 무조건
+    if(above.length>=2){
+      if(sfx==='10'){ if(Math.abs(above[1]-cur)<=cur*nodeExtra) showAbove.push(above[1]); }
+      else{ showAbove.push(above[1]); }
+    }
     var showNodes=showBelow.concat(showAbove);
     showNodes.forEach(function(yc){
       ctx.strokeStyle='rgba(212,83,126,.85)';ctx.lineWidth=1.4;ctx.setLineDash([]);
