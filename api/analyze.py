@@ -170,12 +170,14 @@ def ma(a,w):
     for i in range(w-1,len(a)): o[i]=sum(a[i-w+1:i+1])/w
     return o
 def turns(v,w=2):
+    # 국소 전환점: 직전·다음 대비 골(저점) 또는 봉우리(고점).
+    # 절대 최저/최고가 아니어도, 방향이 바뀌면 전환점. (상승 W의 두번째 골처럼
+    #  저점이 높아지는 꺾임도 잡기 위함 — 마지막 꺾임 각도가 완만하면 공방선/위험선 성립)
     t=[]
-    for i in range(w,len(v)-w):
-        if v[i] is None: continue
-        seg=[x for x in v[i-w:i+w+1] if x is not None]
-        if not seg: continue
-        if v[i]==max(seg) or v[i]==min(seg): t.append(i)
+    for i in range(1,len(v)-1):
+        if v[i] is None or v[i-1] is None or v[i+1] is None: continue
+        if v[i]<=v[i-1] and v[i]<v[i+1]: t.append(i)      # 국소 저점(골)
+        elif v[i]>=v[i-1] and v[i]>v[i+1]: t.append(i)     # 국소 고점(봉우리)
     return t
 def last_down_slope(MA2,t0,t1):
     if t1-t0<=1: return (MA2[t1]-MA2[t0])/max(1,t1-t0)
