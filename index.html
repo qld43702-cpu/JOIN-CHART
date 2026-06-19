@@ -42,7 +42,7 @@ header{display:flex;align-items:center;gap:11px;margin-bottom:16px}
 .methods .up{color:var(--green);font-weight:700}.methods .dn{color:var(--pink);font-weight:700}
 .chart-host{position:relative;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:10px}
 .chart-host canvas{width:100%;height:440px;display:block;cursor:crosshair}
-.zoombar{display:flex;gap:6px;margin-bottom:8px}
+.zoombar{display:flex;gap:6px;margin-bottom:8px;justify-content:flex-end}
 .zoombar button{font-size:13px;font-weight:700;padding:5px 12px;border:1px solid #d5dce4;border-radius:8px;background:#fff;color:var(--navy);cursor:pointer}
 .linetip{position:absolute;display:none;padding:5px 9px;border-radius:6px;font-size:13px;font-weight:600;color:#fff;pointer-events:none;white-space:nowrap;z-index:5}
 .legend{display:flex;gap:12px;flex-wrap:wrap;margin-top:8px;font-size:12px;color:#5a6b7d}
@@ -448,14 +448,23 @@ function mkChart(data,pj,sfx){
   var SCEN=null;        // 현재 시나리오 'up'/'flat'/'dn'/null
   var scenFade=0;       // 페이드 0~1
   var srLevels=(pj&&pj.sr_levels)||[];  // 60분봉 지지/저항 가격들
-  // 초기 뷰: 시작점(anchor) 약간 앞부터 미래 끝까지 — 보기 편하게(사진1처럼)
+  // 초기 뷰: 시작점(anchor)이 화면 왼쪽 1/3 지점에 오도록. 작도+현재가+미래가 한 화면에.
   (function(){
     var aI=(pj&&pj.anchor_idx!=null)?pj.anchor_idx:(n-1);
-    // 시작점 앞쪽으로 약간의 맥락(전체 보이는 구간의 15%)만 남기고 그 앞 과거는 자름
-    var futLen=TOTAL-1-aI;            // 시작점부터 미래끝까지 길이
-    var pad=Math.round(futLen*0.25);  // 시작점 앞 여유(맥락)
-    viewS=Math.max(0, aI-pad);
-    viewE=TOTAL-1;
+    var futLen=TOTAL-1-aI;            // 시작점부터 미래끝까지 (시작점 오른쪽)
+    // 시작점이 화면 왼쪽 약 1/3에 오게 → 전체 보임폭의 1/3은 시작점 왼쪽(과거 맥락),
+    // 2/3는 시작점 오른쪽(작도 진행~현재~미래). 단 최소폭 보장.
+    var rightPart = Math.max(futLen, 1);             // 시작점 오른쪽
+    var leftPart  = Math.round(rightPart*0.5);        // 시작점 왼쪽 = 오른쪽의 절반(시작점이 왼쪽 1/3)
+    var span = rightPart + leftPart;
+    var minSpan = Math.max(50, Math.round(TOTAL*0.35));
+    if(span < minSpan){
+      // 너무 좁으면 양쪽으로 더 벌림 (왼쪽 위주로)
+      var extra = minSpan - span;
+      leftPart += extra; span = minSpan;
+    }
+    viewS = Math.max(0, aI - leftPart);
+    viewE = TOTAL-1;
   })();
   function futDates(){
     var last=ch[n-1].d; // "MM/DD" 또는 "MM/DD HH시"
