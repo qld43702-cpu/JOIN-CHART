@@ -193,8 +193,17 @@ tr:last-child td{border-bottom:none}
     </div>
 
     <!-- 작도 도구 (어드민 전용) -->
-    <div class="page" id="page-drawing" style="padding:0;height:calc(100vh - 52px);">
-      <iframe id="admin-chart-iframe" src="/index.html" style="width:100%;height:100%;border:none;display:block;"></iframe>
+    <div class="page" id="page-drawing" style="padding:0;display:flex;flex-direction:column;height:calc(100vh - 52px);">
+      <div style="display:flex;align-items:center;gap:8px;padding:10px 16px;background:#1b3a5c;position:relative;">
+        <div style="display:flex;align-items:center;gap:7px;flex-shrink:0;">
+          <div style="width:28px;height:28px;border-radius:7px;background:#ed7d31;display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px;font-weight:700;">J</div>
+          <span style="color:#fff;font-size:13px;font-weight:700;">JOIN <span style="color:#ed7d31;">CHART</span></span>
+        </div>
+        <input type="text" id="drawing-search" placeholder="종목명 · 코드 검색 (예: 삼성전자, 005930, AAPL)" autocomplete="off"
+          style="flex:1;height:34px;border-radius:8px;border:none;padding:0 12px;font-size:14px;font-weight:600;outline:none;background:rgba(255,255,255,.15);color:#fff;">
+        <div id="drawing-ac" style="display:none;position:absolute;top:52px;left:60px;right:16px;background:#fff;border-radius:0 0 10px 10px;box-shadow:0 4px 12px rgba(0,0,0,.2);z-index:100;max-height:240px;overflow-y:auto;"></div>
+      </div>
+      <iframe id="admin-chart-iframe" src="/index.html?code=005930" style="flex:1;border:none;display:block;"></iframe>
     </div>
   </div>
 </div>
@@ -331,7 +340,49 @@ function initStats() {
   }).join('');
 }
 
-// adminGo 제거 - 작도 탭은 바로 iframe으로 표시
+// 작도 탭 검색창
+document.addEventListener('DOMContentLoaded', function() {
+  var di = document.getElementById('drawing-search');
+  var dac = document.getElementById('drawing-ac');
+  if (!di) return;
+
+  di.addEventListener('input', function() {
+    var q = di.value.trim().toLowerCase();
+    if (!q) { dac.style.display='none'; return; }
+    var hit = STOCKS.filter(function(s){ return s.code.toLowerCase().includes(q)||(s.name&&s.name.toLowerCase().includes(q)); }).slice(0,8);
+    if (!hit.length) { dac.style.display='none'; return; }
+    dac.innerHTML = hit.map(function(s){
+      return '<div onclick="drawingPick(''+s.code+'',''+(s.name||'').replace(/'/g,'')+'')" style="padding:10px 14px;cursor:pointer;font-size:13px;border-bottom:1px solid #f0f3f7;">'
+        +'<span style="font-weight:600">'+s.name+'</span> <span style="color:#888;font-size:12px">'+s.code+'</span></div>';
+    }).join('');
+    dac.style.display = 'block';
+  });
+
+  di.addEventListener('keydown', function(e) {
+    if (e.key !== 'Enter') return;
+    dac.style.display = 'none';
+    var q = di.value.trim();
+    var m = q.match(/(\d{6})/); if (m) { drawingPick(m[1],''); return; }
+    var ql = q.toLowerCase();
+    var hit = STOCKS.find(function(s){ return s.name&&s.name.toLowerCase()===ql; })
+           || STOCKS.find(function(s){ return s.name&&s.name.toLowerCase().includes(ql); });
+    if (hit) { drawingPick(hit.code, hit.name); return; }
+    if (/^[A-Za-z][A-Za-z.\-]{0,6}$/.test(q)) drawingPick(q.toUpperCase(),'');
+  });
+
+  document.addEventListener('click', function(e) {
+    if (!e.target.closest('#page-drawing')) dac.style.display='none';
+  });
+});
+
+function drawingPick(code, name) {
+  var di = document.getElementById('drawing-search');
+  var dac = document.getElementById('drawing-ac');
+  if (di) di.value = name ? name+' ('+code+')' : code;
+  if (dac) dac.style.display = 'none';
+  var iframe = document.getElementById('admin-chart-iframe');
+  if (iframe) iframe.src = '/index.html?code='+encodeURIComponent(code);
+}
 
 initDashboard();
 initPayments();

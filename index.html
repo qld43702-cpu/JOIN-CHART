@@ -702,6 +702,7 @@ function closeFsSearch() {
 // ===== 전체화면 검색바 끝 =====
 
 function pick(code,name){inp.value=name+' ('+code+')';ac.classList.remove('show');inp.blur();go(code);}
+function go2(code){var ac2=document.getElementById('acList2');if(ac2)ac2.classList.remove('show');go(code);}
 
 function mkMethodLabel(val,nm,col,methods){
   return '<label><input type="checkbox" class="mtd" value="'+val+'" checked style="accent-color:'+col+'"> '+nm+'</label>';
