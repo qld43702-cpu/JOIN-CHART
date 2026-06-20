@@ -45,6 +45,15 @@ header{display:flex;align-items:center;gap:11px;margin-bottom:16px}
 .zoombar{display:flex;gap:6px;margin-bottom:8px}
 .zoombar button{font-size:13px;font-weight:700;padding:5px 12px;border:1px solid #d5dce4;border-radius:8px;background:#fff;color:var(--navy);cursor:pointer}
 .linetip{position:absolute;display:none;padding:5px 9px;border-radius:6px;font-size:13px;font-weight:600;color:#fff;pointer-events:none;white-space:nowrap;z-index:5}
+.draw-canvas{position:absolute;top:10px;left:10px;right:10px;bottom:10px;pointer-events:none;z-index:10;border-radius:10px;}
+.draw-canvas.active{pointer-events:all;cursor:crosshair;}
+.draw-toolbar{display:none;align-items:center;gap:5px;padding:7px 10px;background:var(--card);border:1px solid var(--line);border-radius:10px;margin-bottom:8px;flex-wrap:wrap;}
+.draw-toolbar.show{display:flex;}
+.dtool{width:30px;height:30px;border-radius:7px;border:1px solid var(--line);background:var(--card);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;color:var(--ink);font-family:inherit;}
+.dtool.on{background:#1b3a5c;color:#fff;border-color:#1b3a5c;}
+.dtool-sep{width:1px;height:22px;background:var(--line);margin:0 2px;}
+.draw-toggle{display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:8px;border:1px solid var(--line);background:var(--card);cursor:pointer;font-size:12px;font-weight:600;color:var(--ink);margin-bottom:6px;}
+.draw-toggle.on{background:#1b3a5c;color:#fff;border-color:#1b3a5c;}
 .legend{display:flex;gap:12px;flex-wrap:wrap;margin-top:8px;font-size:12px;color:#5a6b7d}
 .legend i{display:inline-block;width:14px;height:3px;vertical-align:middle;margin-right:3px}
 .draws-info{margin-top:10px;font-size:13px;color:#555;line-height:1.8}
@@ -326,6 +335,219 @@ inp.addEventListener('keydown',function(e){
   }
 });
 document.addEventListener('click',function(e){if(!e.target.closest('.search-box'))ac.classList.remove('show');});
+
+// ===== 드로잉 레이어 =====
+var drawState = {};  // sfx별 상태
+
+function getDraw(sfx) {
+  if (!drawState[sfx]) drawState[sfx] = {
+    tool: 'line', active: false, color: '#e24b4a',
+    strokes: [], undoStack: [],
+    drawing: false, startX: 0, startY: 0, lastX: 0, lastY: 0, currentPath: []
+  };
+  return drawState[sfx];
+}
+
+function toggleDraw(sfx) {
+  var ds = getDraw(sfx);
+  ds.active = !ds.active;
+  var btn = document.getElementById('dtoggle' + sfx);
+  var bar = document.getElementById('dtbar' + sfx);
+  var dcv = document.getElementById('dcv' + sfx);
+  if (btn) btn.classList.toggle('on', ds.active);
+  if (bar) bar.classList.toggle('show', ds.active);
+  if (dcv) dcv.classList.toggle('active', ds.active);
+  if (!ds.active) redrawCanvas(sfx);
+}
+
+function setDTool(tool, sfx) {
+  var ds = getDraw(sfx);
+  ds.tool = tool;
+  var dcv = document.getElementById('dcv' + sfx);
+  if (dcv) dcv.style.cursor = tool === 'eraser' ? 'cell' : tool === 'text' ? 'text' : 'crosshair';
+  ['Line','Pen','Text','Eraser'].forEach(function(t) {
+    var el = document.getElementById('dt' + t + sfx);
+    if (el) el.classList.toggle('on', t.toLowerCase() === tool);
+  });
+}
+
+function drawUndo(sfx) {
+  var ds = getDraw(sfx);
+  if (ds.strokes.length) { ds.undoStack.push(ds.strokes.pop()); redrawCanvas(sfx); }
+}
+
+function drawClear(sfx) {
+  var ds = getDraw(sfx);
+  ds.undoStack = ds.undoStack.concat(ds.strokes);
+  ds.strokes = [];
+  redrawCanvas(sfx);
+}
+
+function redrawCanvas(sfx) {
+  var dcv = document.getElementById('dcv' + sfx);
+  var cv  = document.getElementById('cv' + sfx);
+  if (!dcv || !cv) return;
+  dcv.width  = cv.clientWidth;
+  dcv.height = cv.clientHeight;
+  var ctx = dcv.getContext('2d');
+  ctx.clearRect(0, 0, dcv.width, dcv.height);
+  var ds = getDraw(sfx);
+  if (!ds.active) return;
+  ds.strokes.forEach(function(s) { renderStroke(ctx, s); });
+}
+
+function renderStroke(ctx, s) {
+  ctx.save();
+  ctx.strokeStyle = s.color;
+  ctx.lineWidth   = s.tool === 'eraser' ? 16 : 2;
+  ctx.lineCap     = 'round';
+  ctx.lineJoin    = 'round';
+  if (s.tool === 'eraser') {
+    ctx.globalCompositeOperation = 'destination-out';
+  }
+  if (s.tool === 'line') {
+    ctx.beginPath();
+    ctx.moveTo(s.x0, s.y0);
+    ctx.lineTo(s.x1, s.y1);
+    ctx.stroke();
+  } else if (s.tool === 'pen' || s.tool === 'eraser') {
+    if (s.pts && s.pts.length > 1) {
+      ctx.beginPath();
+      ctx.moveTo(s.pts[0].x, s.pts[0].y);
+      for (var i = 1; i < s.pts.length; i++) ctx.lineTo(s.pts[i].x, s.pts[i].y);
+      ctx.stroke();
+    }
+  } else if (s.tool === 'text') {
+    ctx.fillStyle = s.color;
+    ctx.font = '14px sans-serif';
+    ctx.fillText(s.text, s.x0, s.y0);
+  }
+  ctx.restore();
+}
+
+function initDrawCanvas(sfx) {
+  var dcv = document.getElementById('dcv' + sfx);
+  var cv  = document.getElementById('cv' + sfx);
+  if (!dcv || !cv) return;
+
+  dcv.width  = cv.clientWidth;
+  dcv.height = cv.clientHeight;
+
+  dcv.addEventListener('mousedown', function(e) {
+    var ds = getDraw(sfx);
+    if (!ds.active) return;
+    ds.drawing = true;
+    var r = dcv.getBoundingClientRect();
+    ds.startX = ds.lastX = e.clientX - r.left;
+    ds.startY = ds.lastY = e.clientY - r.top;
+    ds.currentPath = [{x: ds.startX, y: ds.startY}];
+    ds.color = (document.getElementById('dtColor' + sfx) || {value: '#e24b4a'}).value;
+
+    if (ds.tool === 'text') {
+      var txt = prompt('텍스트 입력:');
+      if (txt) {
+        ds.strokes.push({tool:'text', color:ds.color, x0:ds.startX, y0:ds.startY, text:txt});
+        redrawCanvas(sfx);
+      }
+      ds.drawing = false;
+    }
+  });
+
+  dcv.addEventListener('mousemove', function(e) {
+    var ds = getDraw(sfx);
+    if (!ds.active || !ds.drawing) return;
+    var r = dcv.getBoundingClientRect();
+    var mx = e.clientX - r.left, my = e.clientY - r.top;
+    ds.currentPath.push({x: mx, y: my});
+
+    redrawCanvas(sfx);
+    var ctx = dcv.getContext('2d');
+    ctx.save();
+    ctx.strokeStyle = ds.color;
+    ctx.lineWidth   = ds.tool === 'eraser' ? 16 : 2;
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    if (ds.tool === 'eraser') ctx.globalCompositeOperation = 'destination-out';
+    if (ds.tool === 'line') {
+      ctx.beginPath(); ctx.moveTo(ds.startX, ds.startY); ctx.lineTo(mx, my); ctx.stroke();
+    } else if (ds.tool === 'pen' || ds.tool === 'eraser') {
+      ctx.beginPath(); ctx.moveTo(ds.currentPath[0].x, ds.currentPath[0].y);
+      ds.currentPath.forEach(function(p){ctx.lineTo(p.x,p.y);}); ctx.stroke();
+    }
+    ctx.restore();
+    ds.lastX = mx; ds.lastY = my;
+  });
+
+  dcv.addEventListener('mouseup', function(e) {
+    var ds = getDraw(sfx);
+    if (!ds.active || !ds.drawing) return;
+    ds.drawing = false;
+    var r = dcv.getBoundingClientRect();
+    var mx = e.clientX - r.left, my = e.clientY - r.top;
+    if (ds.tool === 'line') {
+      ds.strokes.push({tool:'line', color:ds.color, x0:ds.startX, y0:ds.startY, x1:mx, y1:my});
+    } else if (ds.tool === 'pen' || ds.tool === 'eraser') {
+      ds.strokes.push({tool:ds.tool, color:ds.color, pts:ds.currentPath.slice()});
+    }
+    redrawCanvas(sfx);
+  });
+
+  dcv.addEventListener('mouseleave', function(e) {
+    var ds = getDraw(sfx);
+    if (ds.drawing) {
+      ds.drawing = false;
+      var r = dcv.getBoundingClientRect();
+      var mx = e.clientX - r.left, my = e.clientY - r.top;
+      if (ds.tool === 'line') {
+        ds.strokes.push({tool:'line', color:ds.color, x0:ds.startX, y0:ds.startY, x1:mx, y1:my});
+      } else if (ds.tool === 'pen' || ds.tool === 'eraser') {
+        ds.strokes.push({tool:ds.tool, color:ds.color, pts:ds.currentPath.slice()});
+      }
+      redrawCanvas(sfx);
+    }
+  });
+
+  // 터치 지원
+  dcv.addEventListener('touchstart', function(e) {
+    e.preventDefault();
+    var ds = getDraw(sfx);
+    if (!ds.active) return;
+    var t = e.touches[0], r = dcv.getBoundingClientRect();
+    ds.drawing = true;
+    ds.startX = ds.lastX = t.clientX - r.left;
+    ds.startY = ds.lastY = t.clientY - r.top;
+    ds.currentPath = [{x:ds.startX,y:ds.startY}];
+    ds.color = (document.getElementById('dtColor'+sfx)||{value:'#e24b4a'}).value;
+  }, {passive:false});
+
+  dcv.addEventListener('touchmove', function(e) {
+    e.preventDefault();
+    var ds = getDraw(sfx);
+    if (!ds.active || !ds.drawing) return;
+    var t = e.touches[0], r = dcv.getBoundingClientRect();
+    var mx = t.clientX - r.left, my = t.clientY - r.top;
+    ds.currentPath.push({x:mx,y:my});
+    redrawCanvas(sfx);
+    var ctx = dcv.getContext('2d');
+    ctx.save(); ctx.strokeStyle=ds.color; ctx.lineWidth=2; ctx.lineCap='round'; ctx.lineJoin='round';
+    if (ds.tool==='line'){ctx.beginPath();ctx.moveTo(ds.startX,ds.startY);ctx.lineTo(mx,my);ctx.stroke();}
+    else{ctx.beginPath();ctx.moveTo(ds.currentPath[0].x,ds.currentPath[0].y);ds.currentPath.forEach(function(p){ctx.lineTo(p.x,p.y);});ctx.stroke();}
+    ctx.restore();
+    ds.lastX=mx; ds.lastY=my;
+  }, {passive:false});
+
+  dcv.addEventListener('touchend', function(e) {
+    var ds = getDraw(sfx);
+    if (!ds.active || !ds.drawing) return;
+    ds.drawing = false;
+    if (ds.tool==='line') ds.strokes.push({tool:'line',color:ds.color,x0:ds.startX,y0:ds.startY,x1:ds.lastX,y1:ds.lastY});
+    else ds.strokes.push({tool:ds.tool,color:ds.color,pts:ds.currentPath.slice()});
+    redrawCanvas(sfx);
+  }, {passive:false});
+
+  window.addEventListener('resize', function(){ redrawCanvas(sfx); });
+}
+// ===== 드로잉 레이어 끝 =====
+
 function pick(code,name){inp.value=name+' ('+code+')';ac.classList.remove('show');inp.blur();go(code);}
 
 function mkMethodLabel(val,nm,col,methods){
@@ -362,7 +584,19 @@ function trackHtml(sfx, label, hint, isUS){
   h+='<label><input type="checkbox" class="mtd" value="gann" style="accent-color:#ba7517"> 갠</label>';
   h+='</div>';
   h+='<div class="zoombar"><button id="zin'+sfx+'">+ 확대</button><button id="zout'+sfx+'">− 축소</button><button id="zall'+sfx+'">전체</button></div>';
-  h+='<div class="chart-host"><canvas id="cv'+sfx+'"></canvas><div class="linetip" id="tip'+sfx+'"></div></div>';
+  h+='<button class="draw-toggle" id="dtoggle'+sfx+'" onclick="toggleDraw(\''+sfx+'\')">&#9998; 작도</button>';
+  h+='<div class="draw-toolbar" id="dtbar'+sfx+'">';
+  h+='<button class="dtool on" id="dtLine'+sfx+'" onclick="setDTool(\'line\',\''+sfx+'\')" title="직선">&#8599;</button>';
+  h+='<button class="dtool" id="dtPen'+sfx+'" onclick="setDTool(\'pen\',\''+sfx+'\')" title="연필">&#9998;</button>';
+  h+='<button class="dtool" id="dtText'+sfx+'" onclick="setDTool(\'text\',\''+sfx+'\')" title="텍스트">T</button>';
+  h+='<button class="dtool" id="dtEraser'+sfx+'" onclick="setDTool(\'eraser\',\''+sfx+'\')" title="지우개">□</button>';
+  h+='<div class="dtool-sep"></div>';
+  h+='<input type="color" id="dtColor'+sfx+'" value="#e24b4a" title="색상" style="width:30px;height:30px;border-radius:7px;border:1px solid var(--line);padding:2px;cursor:pointer;">';
+  h+='<div class="dtool-sep"></div>';
+  h+='<button class="dtool" onclick="drawUndo(\''+sfx+'\')" title="Undo">&#8617;</button>';
+  h+='<button class="dtool" onclick="drawClear(\''+sfx+'\')" title="전체지우기">✕</button>';
+  h+='</div>';
+  h+='<div class="chart-host" style="position:relative;"><canvas id="cv'+sfx+'"></canvas><canvas class="draw-canvas" id="dcv'+sfx+'" width="100%" height="100%"></canvas><div class="linetip" id="tip'+sfx+'"></div></div>';
   h+='<div class="legend"><span><i style="background:#000"></i>2일선</span><span><i style="background:#1d9e75"></i>상승목표</span><span><i style="background:#5a6473"></i>상승잠재</span><span><i style="background:#d4537e"></i>공방선</span><span><i style="background:#8a98a8"></i>삼각수렴</span><span><i style="background:#e8743b"></i>매물집중</span></div>';
   h+='<div class="scen-btns">';
   h+='<button class="scen-btn up" data-scen="up"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 15l5-6 4 3 7-8"/></svg>상승 시나리오</button>';
@@ -398,7 +632,7 @@ function render(x){
   // 패널들 (기본: 월간 보임, 없으면 분기)
   html+='<div class="trk-panel" data-pnl="10" style="display:none">'+trackHtml('10', minName, minName+' — 최근 1주 기준', IS_US)+'</div>';
   html+='<div class="trk-panel" data-pnl="60" style="display:'+(has60?'block':'none')+'">'+trackHtml('60', '60분봉', '60분봉 — 최근 1개월 기준', IS_US)+'</div>';
-  html+='<div class="trk-panel" data-pnl="" style="display:'+(has60?'none':'block')+'">'+trackHtml('', '일봉', '일봉 — 중장기 흐름', IS_US)+'</div>';
+  html+='<div class="trk-panel" data-pnl="" style="display:'+(has60?'none':'block')+'">'+trackHtml('', '일봉', '일봉 — 분기 기준, 다음 경로 참고용', IS_US)+'</div>';
 
   // 최종 리포트
   html+='<button id="repBtn" class="report-btn"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>최종 결과 리포트 보기</button>';
@@ -1115,6 +1349,7 @@ function mkChart(data,pj,sfx){
   document.getElementById('zin'+sfx).onclick=function(){var sp=getSpan(),ns=Math.max(15,Math.round(sp*0.7)),md=Math.round((viewS+viewE)/2);viewS=Math.max(0,md-Math.round(ns/2));viewE=Math.min(TOTAL-1,viewS+ns-1);lay();draw();};
   document.getElementById('zout'+sfx).onclick=function(){var sp=getSpan(),ns=Math.min(TOTAL,Math.round(sp*1.4)),md=Math.round((viewS+viewE)/2);viewS=Math.max(0,md-Math.round(ns/2));viewE=Math.min(TOTAL-1,viewS+ns-1);lay();draw();};
   document.getElementById('zall'+sfx).onclick=function(){viewS=0;viewE=TOTAL-1;lay();draw();};
+  initDrawCanvas(sfx);
   scope.querySelectorAll('.mtd').forEach(function(el){el.addEventListener('change',function(){draw(lastMx,lastMy);});});
   // 시나리오 버튼 이벤트 + 페이드 애니메이션
   var fadeTimer=null;

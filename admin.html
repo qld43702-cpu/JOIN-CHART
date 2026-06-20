@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>JOIN CHART — 어드민</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f5f7fa;color:#1a2a3a;font-size:14px}
+.admin-wrap{display:flex;min-height:100vh}
+.sidebar{width:220px;background:#1b3a5c;flex-shrink:0;padding:0}
+.sb-logo{padding:20px 18px 16px;border-bottom:1px solid rgba(255,255,255,.1)}
+.sb-logo .lt{color:#fff;font-size:16px;font-weight:600}
+.sb-logo .ls{color:#a8bdd6;font-size:11px;margin-top:2px}
+.sb-menu{padding:10px 0}
+.sb-item{display:flex;align-items:center;gap:10px;padding:10px 18px;color:#a8bdd6;cursor:pointer;font-size:13px;border-left:3px solid transparent;transition:.15s}
+.sb-item:hover{background:rgba(255,255,255,.06);color:#fff}
+.sb-item.on{background:rgba(255,255,255,.1);color:#fff;border-left-color:#ed7d31}
+.sb-icon{font-size:16px;width:18px;text-align:center}
+.content{flex:1;overflow:auto}
+.topbar{background:#fff;border-bottom:1px solid #e5eaf0;padding:14px 24px;display:flex;align-items:center;justify-content:space-between}
+.topbar h1{font-size:16px;font-weight:600;color:#1b3a5c}
+.topbar .tdate{font-size:12px;color:#888}
+.page{display:none;padding:24px}
+.page.on{display:block}
+.stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px}
+.stat-card{background:#fff;border-radius:12px;border:1px solid #e5eaf0;padding:16px 18px}
+.stat-card .sl{font-size:11px;color:#888;margin-bottom:6px}
+.stat-card .sv{font-size:24px;font-weight:600;color:#1b3a5c}
+.stat-card .sd{font-size:11px;color:#1d9e75;margin-top:3px}
+.card{background:#fff;border-radius:12px;border:1px solid #e5eaf0;padding:18px;margin-bottom:16px}
+.card-title{font-size:13px;font-weight:600;color:#1b3a5c;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;padding:8px 10px;font-size:11px;color:#888;font-weight:600;border-bottom:1px solid #e5eaf0;background:#f9fafb}
+td{padding:10px;border-bottom:1px solid #f0f3f7;color:#333;vertical-align:middle}
+tr:last-child td{border-bottom:none}
+.badge{display:inline-block;padding:3px 8px;border-radius:20px;font-size:11px;font-weight:600}
+.badge-green{background:#e1f5ee;color:#0f6e56}
+.badge-blue{background:#e6f1fb;color:#185fa5}
+.badge-gray{background:#f1eff8;color:#5a5a6a}
+.badge-orange{background:#faeeda;color:#854f0b}
+.badge-red{background:#fcebeb;color:#a32d2d}
+.btn{padding:7px 14px;border-radius:8px;border:none;cursor:pointer;font-size:12px;font-weight:600}
+.btn-primary{background:#1b3a5c;color:#fff}
+.btn-outline{background:#fff;color:#1b3a5c;border:1px solid #1b3a5c}
+.btn-sm{padding:4px 10px;font-size:11px;border-radius:6px}
+.search-bar{display:flex;gap:8px;margin-bottom:14px}
+.search-bar input{flex:1;height:36px;border:1px solid #e5eaf0;border-radius:8px;padding:0 12px;font-size:13px;outline:none}
+.search-bar input:focus{border-color:#1b3a5c}
+.chart-bar{display:flex;align-items:flex-end;gap:4px;height:60px}
+.bar{background:#378add;border-radius:3px 3px 0 0;min-width:20px;flex:1}
+.bar.orange{background:#ed7d31}
+.filter-row{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap}
+.filter-row select{height:34px;border:1px solid #e5eaf0;border-radius:8px;padding:0 10px;font-size:12px;outline:none;background:#fff;cursor:pointer}
+</style>
+</head>
+<body>
+<div class="admin-wrap">
+  <div class="sidebar">
+    <div class="sb-logo">
+      <div class="lt">JOIN CHART</div>
+      <div class="ls">어드민 패널</div>
+    </div>
+    <div class="sb-menu">
+      <div class="sb-item on" onclick="showPage('dashboard',this)"><span class="sb-icon">📊</span>대시보드</div>
+      <div class="sb-item" onclick="showPage('members',this)"><span class="sb-icon">👥</span>회원 관리</div>
+      <div class="sb-item" onclick="showPage('payments',this)"><span class="sb-icon">💳</span>결제 내역</div>
+      <div class="sb-item" onclick="showPage('stats',this)"><span class="sb-icon">📈</span>접속 통계</div>
+      <div class="sb-item" onclick="showPage('drawing',this)"><span class="sb-icon">✏️</span>작도 도구</div>
+    </div>
+  </div>
+
+  <div class="content">
+    <div class="topbar">
+      <h1 id="page-title">대시보드</h1>
+      <span class="tdate" id="today-date"></span>
+    </div>
+
+    <!-- 대시보드 -->
+    <div class="page on" id="page-dashboard">
+      <div class="stat-grid">
+        <div class="stat-card">
+          <div class="sl">전체 회원</div>
+          <div class="sv" id="s-total">—</div>
+          <div class="sd" id="s-total-d">이번 주 +0명</div>
+        </div>
+        <div class="stat-card">
+          <div class="sl">유료 구독자</div>
+          <div class="sv" id="s-paid">—</div>
+          <div class="sd" id="s-paid-d">베이직 + 프리미엄</div>
+        </div>
+        <div class="stat-card">
+          <div class="sl">오늘 방문자</div>
+          <div class="sv" id="s-today">—</div>
+          <div class="sd" id="s-today-d">종목 조회 0회</div>
+        </div>
+        <div class="stat-card">
+          <div class="sl">이번 달 매출</div>
+          <div class="sv" id="s-revenue">—</div>
+          <div class="sd" id="s-revenue-d">전월 대비 —</div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+        <div class="card">
+          <div class="card-title">최근 7일 방문자</div>
+          <div class="chart-bar" id="visit-chart"></div>
+          <div style="display:flex;gap:4px;margin-top:4px" id="visit-labels"></div>
+        </div>
+        <div class="card">
+          <div class="card-title">플랜 분포</div>
+          <div id="plan-dist"></div>
+        </div>
+      </div>
+      <div class="card" style="margin-top:16px">
+        <div class="card-title">최근 가입 회원</div>
+        <table>
+          <thead><tr><th>이메일</th><th>플랜</th><th>가입일</th><th>마지막 접속</th><th>조회수</th></tr></thead>
+          <tbody id="recent-members"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 회원 관리 -->
+    <div class="page" id="page-members">
+      <div class="search-bar">
+        <input type="text" id="member-search" placeholder="이메일, 이름 검색" oninput="filterMembers()">
+        <select id="member-plan-filter" onchange="filterMembers()">
+          <option value="">전체 플랜</option>
+          <option value="free">무료</option>
+          <option value="basic">베이직</option>
+          <option value="premium">프리미엄</option>
+        </select>
+        <select id="member-status-filter" onchange="filterMembers()">
+          <option value="">전체 상태</option>
+          <option value="active">활성</option>
+          <option value="expired">만료</option>
+          <option value="trial">체험중</option>
+        </select>
+      </div>
+      <div class="card">
+        <div class="card-title">
+          <span>회원 목록 <span id="member-count" style="font-size:11px;color:#888;font-weight:400"></span></span>
+          <button class="btn btn-primary btn-sm">CSV 내보내기</button>
+        </div>
+        <table>
+          <thead><tr><th>이메일</th><th>이름</th><th>플랜</th><th>상태</th><th>가입일</th><th>만료일</th><th>조회수</th><th>관리</th></tr></thead>
+          <tbody id="member-table"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 결제 내역 -->
+    <div class="page" id="page-payments">
+      <div class="filter-row">
+        <select id="pay-month">
+          <option>2026년 6월</option><option>2026년 5월</option><option>2026년 4월</option>
+        </select>
+        <select id="pay-plan">
+          <option value="">전체 플랜</option>
+          <option value="basic">베이직</option>
+          <option value="premium">프리미엄</option>
+        </select>
+      </div>
+      <div class="stat-grid" style="grid-template-columns:repeat(3,1fr)">
+        <div class="stat-card"><div class="sl">이번 달 매출</div><div class="sv" id="pay-total">—</div></div>
+        <div class="stat-card"><div class="sl">결제 건수</div><div class="sv" id="pay-count">—</div></div>
+        <div class="stat-card"><div class="sl">환불 건수</div><div class="sv" id="pay-refund">0</div></div>
+      </div>
+      <div class="card">
+        <div class="card-title">결제 내역</div>
+        <table>
+          <thead><tr><th>날짜</th><th>이메일</th><th>플랜</th><th>금액</th><th>방법</th><th>상태</th></tr></thead>
+          <tbody id="pay-table"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 접속 통계 -->
+    <div class="page" id="page-stats">
+      <div class="stat-grid">
+        <div class="stat-card"><div class="sl">오늘 UV</div><div class="sv" id="st-uv">—</div></div>
+        <div class="stat-card"><div class="sl">오늘 종목 조회</div><div class="sv" id="st-search">—</div></div>
+        <div class="stat-card"><div class="sl">가장 많이 본 종목</div><div class="sv" id="st-top" style="font-size:16px">—</div></div>
+        <div class="stat-card"><div class="sl">평균 세션 시간</div><div class="sv" id="st-session">—</div></div>
+      </div>
+      <div class="card">
+        <div class="card-title">인기 종목 TOP 10</div>
+        <table>
+          <thead><tr><th>순위</th><th>종목</th><th>코드</th><th>조회수</th><th>즐겨찾기</th></tr></thead>
+          <tbody id="top-stocks"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 작도 도구 (어드민 전용) -->
+    <div class="page" id="page-drawing">
+      <div class="card">
+        <div class="card-title">작도 도구 — 라이브 방송용</div>
+        <p style="font-size:12px;color:#888;margin-bottom:14px">종목을 검색하고 차트 위에 직접 작도하세요. 방송 화면으로 공유할 수 있습니다.</p>
+        <div style="display:flex;gap:8px;margin-bottom:12px">
+          <input type="text" id="admin-stock-input" placeholder="삼성전자 · 005930 · AAPL" style="flex:1;height:38px;border:1px solid #e5eaf0;border-radius:8px;padding:0 12px;font-size:13px;outline:none">
+          <button class="btn btn-primary" onclick="adminGo()">조회</button>
+        </div>
+        <div id="admin-chart-area" style="background:#f9fafb;border-radius:10px;min-height:200px;display:flex;align-items:center;justify-content:center;color:#aaa;font-size:13px">
+          종목을 검색하면 차트가 표시됩니다
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+var today = new Date();
+document.getElementById('today-date').textContent = today.getFullYear()+'년 '+(today.getMonth()+1)+'월 '+today.getDate()+'일';
+
+function showPage(id, el) {
+  document.querySelectorAll('.page').forEach(function(p){p.classList.remove('on');});
+  document.querySelectorAll('.sb-item').forEach(function(i){i.classList.remove('on');});
+  document.getElementById('page-'+id).classList.add('on');
+  el.classList.add('on');
+  var titles = {dashboard:'대시보드',members:'회원 관리',payments:'결제 내역',stats:'접속 통계',drawing:'작도 도구'};
+  document.getElementById('page-title').textContent = titles[id]||id;
+}
+
+// 샘플 데이터 (실제 연동 전 UI 확인용)
+var MEMBERS = [
+  {email:'kim@gmail.com', name:'김민준', plan:'premium', status:'active', joined:'2026-05-12', expire:'2026-07-12', views:142},
+  {email:'lee@naver.com', name:'이서연', plan:'basic',   status:'active', joined:'2026-05-20', expire:'2026-06-20', views:87},
+  {email:'park@kakao.com',name:'박지훈', plan:'premium', status:'trial',  joined:'2026-06-18', expire:'2026-06-21', views:23},
+  {email:'choi@gmail.com',name:'최수아', plan:'free',    status:'active', joined:'2026-06-01', expire:'—',          views:6},
+  {email:'jung@naver.com',name:'정민서', plan:'basic',   status:'expired',joined:'2026-04-10', expire:'2026-05-10', views:55},
+  {email:'han@gmail.com', name:'한지우', plan:'premium', status:'active', joined:'2026-03-22', expire:'2026-07-22', views:210},
+  {email:'yoon@kakao.com',name:'윤채원', plan:'free',    status:'active', joined:'2026-06-15', expire:'—',          views:4},
+  {email:'lim@naver.com', name:'임도윤', plan:'basic',   status:'active', joined:'2026-05-30', expire:'2026-06-30', views:63},
+];
+
+var PAYMENTS = [
+  {date:'2026-06-19',email:'kim@gmail.com', plan:'프리미엄', amount:55000,method:'카카오페이',status:'완료'},
+  {date:'2026-06-18',email:'park@kakao.com',plan:'프리미엄',amount:55000,method:'카드',status:'완료'},
+  {date:'2026-06-15',email:'han@gmail.com', plan:'프리미엄',amount:55000,method:'카카오페이',status:'완료'},
+  {date:'2026-06-10',email:'lim@naver.com', plan:'베이직',  amount:33000,method:'카드',status:'완료'},
+  {date:'2026-06-01',email:'lee@naver.com', plan:'베이직',  amount:33000,method:'카카오페이',status:'완료'},
+  {date:'2026-05-30',email:'jung@naver.com',plan:'베이직',  amount:33000,method:'카드',status:'환불'},
+];
+
+var TOP_STOCKS = [
+  {rank:1,name:'삼성전자',code:'005930',views:1240,fav:45},
+  {rank:2,name:'SK하이닉스',code:'000660',views:980,fav:38},
+  {rank:3,name:'NVIDIA',code:'NVDA',views:870,fav:52},
+  {rank:4,name:'카카오',code:'035720',views:640,fav:21},
+  {rank:5,name:'APPLE',code:'AAPL',views:580,fav:34},
+  {rank:6,name:'현대차',code:'005380',views:420,fav:18},
+  {rank:7,name:'TESLA',code:'TSLA',views:390,fav:29},
+  {rank:8,name:'LG에너지솔루션',code:'373220',views:310,fav:12},
+  {rank:9,name:'NAVER',code:'035420',views:280,fav:9},
+  {rank:10,name:'포스코홀딩스',code:'005490',views:240,fav:7},
+];
+
+var VISITS = [42,55,38,71,60,88,94];
+var DAYS   = ['월','화','수','목','금','토','일'];
+
+function planBadge(p) {
+  var m = {premium:'<span class="badge badge-orange">프리미엄</span>', basic:'<span class="badge badge-blue">베이직</span>', free:'<span class="badge badge-gray">무료</span>'};
+  return m[p]||p;
+}
+function statusBadge(s) {
+  var m = {active:'<span class="badge badge-green">활성</span>', expired:'<span class="badge badge-red">만료</span>', trial:'<span class="badge badge-orange">체험중</span>'};
+  return m[s]||s;
+}
+
+// 대시보드
+function initDashboard() {
+  var paid = MEMBERS.filter(function(m){return m.plan!=='free';}).length;
+  document.getElementById('s-total').textContent   = MEMBERS.length+'명';
+  document.getElementById('s-paid').textContent    = paid+'명';
+  document.getElementById('s-today').textContent   = '94명';
+  document.getElementById('s-revenue').textContent = '231,000원';
+  document.getElementById('s-paid-d').textContent  = '베이직 '+(MEMBERS.filter(function(m){return m.plan==='basic';}).length)+'명 + 프리미엄 '+(MEMBERS.filter(function(m){return m.plan==='premium';}).length)+'명';
+
+  var vc = document.getElementById('visit-chart');
+  var max = Math.max.apply(null,VISITS);
+  vc.innerHTML = VISITS.map(function(v,i){
+    return '<div class="bar'+(i===6?' orange':'')+'" style="height:'+(v/max*56)+'px" title="'+DAYS[i]+': '+v+'명"></div>';
+  }).join('');
+  document.getElementById('visit-labels').innerHTML = DAYS.map(function(d,i){
+    return '<div style="flex:1;text-align:center;font-size:10px;color:#888">'+d+'</div>';
+  }).join('');
+
+  var pl = MEMBERS.reduce(function(a,m){a[m.plan]=(a[m.plan]||0)+1;return a;},{});
+  document.getElementById('plan-dist').innerHTML = Object.keys(pl).map(function(k){
+    var pct = Math.round(pl[k]/MEMBERS.length*100);
+    var colors = {premium:'#ed7d31',basic:'#378add',free:'#888'};
+    return '<div style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px"><span>'+(k==='premium'?'프리미엄':k==='basic'?'베이직':'무료')+'</span><span style="color:#888">'+pl[k]+'명 ('+pct+'%)</span></div><div style="height:8px;background:#f0f3f7;border-radius:4px;overflow:hidden"><div style="height:100%;width:'+pct+'%;background:'+colors[k]+';border-radius:4px"></div></div></div>';
+  }).join('');
+
+  document.getElementById('recent-members').innerHTML = MEMBERS.slice(0,5).map(function(m){
+    return '<tr><td>'+m.email+'</td><td>'+planBadge(m.plan)+'</td><td>'+m.joined+'</td><td>방금 전</td><td>'+m.views+'회</td></tr>';
+  }).join('');
+}
+
+// 회원 관리
+var filteredMembers = MEMBERS.slice();
+function filterMembers() {
+  var q = document.getElementById('member-search').value.toLowerCase();
+  var pf = document.getElementById('member-plan-filter').value;
+  var sf = document.getElementById('member-status-filter').value;
+  filteredMembers = MEMBERS.filter(function(m){
+    return (!q||(m.email+m.name).toLowerCase().includes(q))
+        && (!pf||m.plan===pf)
+        && (!sf||m.status===sf);
+  });
+  renderMembers();
+}
+function renderMembers() {
+  document.getElementById('member-count').textContent = filteredMembers.length+'명';
+  document.getElementById('member-table').innerHTML = filteredMembers.map(function(m){
+    return '<tr><td>'+m.email+'</td><td>'+m.name+'</td><td>'+planBadge(m.plan)+'</td><td>'+statusBadge(m.status)+'</td><td>'+m.joined+'</td><td>'+m.expire+'</td><td>'+m.views+'</td><td><button class="btn btn-outline btn-sm">수정</button></td></tr>';
+  }).join('');
+}
+
+// 결제
+function initPayments() {
+  var total = PAYMENTS.filter(function(p){return p.status==='완료';}).reduce(function(a,p){return a+p.amount;},0);
+  document.getElementById('pay-total').textContent = total.toLocaleString()+'원';
+  document.getElementById('pay-count').textContent = PAYMENTS.filter(function(p){return p.status==='완료';}).length+'건';
+  document.getElementById('pay-refund').textContent = PAYMENTS.filter(function(p){return p.status==='환불';}).length+'건';
+  document.getElementById('pay-table').innerHTML = PAYMENTS.map(function(p){
+    var sc = p.status==='완료'?'badge-green':'badge-red';
+    return '<tr><td>'+p.date+'</td><td>'+p.email+'</td><td>'+p.plan+'</td><td>'+p.amount.toLocaleString()+'원</td><td>'+p.method+'</td><td><span class="badge '+sc+'">'+p.status+'</span></td></tr>';
+  }).join('');
+}
+
+// 통계
+function initStats() {
+  document.getElementById('st-uv').textContent     = '94명';
+  document.getElementById('st-search').textContent = '347회';
+  document.getElementById('st-top').textContent    = '삼성전자';
+  document.getElementById('st-session').textContent= '4분 32초';
+  document.getElementById('top-stocks').innerHTML  = TOP_STOCKS.map(function(s){
+    return '<tr><td style="color:#888">'+s.rank+'</td><td>'+s.name+'</td><td style="color:#888">'+s.code+'</td><td>'+s.views+'</td><td>'+s.fav+'</td></tr>';
+  }).join('');
+}
+
+function adminGo() {
+  var v = document.getElementById('admin-stock-input').value.trim();
+  if (!v) return;
+  document.getElementById('admin-chart-area').innerHTML = '<iframe src="/index.html?code='+encodeURIComponent(v)+'" style="width:100%;height:500px;border:none;border-radius:10px;"></iframe>';
+}
+
+initDashboard();
+initPayments();
+initStats();
+filterMembers();
+</script>
+</body>
+</html>
