@@ -709,13 +709,11 @@ class handler(BaseHTTPRequestHandler):
                 for t in ts: t.join()
                 return res
             if is_us(code):
-                # ===== 미국 주식 (야후 병렬) =====
                 tkr=code.upper()
                 nm,mk=get_name_us(tkr)
                 r=_pf([(get_day_us,(tkr,)),(get_min_us,(tkr,'60m')),(get_min_us,(tkr,'15m'))])
                 day,m60,m10=r[0],r[1],r[2]
             else:
-                # ===== 한국 주식 (야후 병렬 + LS 현재가) =====
                 if not code.isdigit() or len(code)!=6:
                     self.wfile.write(json.dumps({'error':'국내는 6자리 코드, 해외는 영문 티커(AAPL 등)'}).encode()); return
                 try: tk=token(); nm,mk=get_name(tk,code)

@@ -8,65 +8,83 @@
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f5f7fa;color:#1a2a3a;font-size:14px}
 .admin-wrap{display:flex;min-height:100vh}
-.sidebar{width:220px;background:#1b3a5c;flex-shrink:0;padding:0}
-.sb-logo{padding:20px 18px 16px;border-bottom:1px solid rgba(255,255,255,.1)}
-.sb-logo .lt{color:#fff;font-size:16px;font-weight:600}
+.sidebar{width:200px;background:#1b3a5c;flex-shrink:0}
+.sb-logo{padding:18px 16px 14px;border-bottom:1px solid rgba(255,255,255,.1)}
+.sb-logo .lt{color:#fff;font-size:15px;font-weight:700}
+.sb-logo .lt span{color:#ed7d31}
 .sb-logo .ls{color:#a8bdd6;font-size:11px;margin-top:2px}
-.sb-menu{padding:10px 0}
-.sb-item{display:flex;align-items:center;gap:10px;padding:10px 18px;color:#a8bdd6;cursor:pointer;font-size:13px;border-left:3px solid transparent;transition:.15s}
+.sb-menu{padding:8px 0}
+.sb-item{display:flex;align-items:center;gap:9px;padding:10px 16px;color:#a8bdd6;cursor:pointer;font-size:13px;border-left:3px solid transparent}
 .sb-item:hover{background:rgba(255,255,255,.06);color:#fff}
 .sb-item.on{background:rgba(255,255,255,.1);color:#fff;border-left-color:#ed7d31}
-.sb-icon{font-size:16px;width:18px;text-align:center}
-.content{flex:1;overflow:auto}
-.topbar{background:#fff;border-bottom:1px solid #e5eaf0;padding:14px 24px;display:flex;align-items:center;justify-content:space-between}
-.topbar h1{font-size:16px;font-weight:600;color:#1b3a5c}
+.content{flex:1;overflow:auto;display:flex;flex-direction:column}
+.topbar{background:#fff;border-bottom:1px solid #e5eaf0;padding:12px 20px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.topbar h1{font-size:15px;font-weight:700;color:#1b3a5c}
 .topbar .tdate{font-size:12px;color:#888}
-.page{display:none;padding:24px}
+.page{display:none;padding:20px;flex:1}
 .page.on{display:block}
-.stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px}
-.stat-card{background:#fff;border-radius:12px;border:1px solid #e5eaf0;padding:16px 18px}
-.stat-card .sl{font-size:11px;color:#888;margin-bottom:6px}
-.stat-card .sv{font-size:24px;font-weight:600;color:#1b3a5c}
-.stat-card .sd{font-size:11px;color:#1d9e75;margin-top:3px}
-.card{background:#fff;border-radius:12px;border:1px solid #e5eaf0;padding:18px;margin-bottom:16px}
-.card-title{font-size:13px;font-weight:600;color:#1b3a5c;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between}
+.page.drawing-page{padding:0;display:none;flex-direction:column;}
+.page.drawing-page.on{display:flex;}
+.stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px}
+.stat-card{background:#fff;border-radius:10px;border:1px solid #e5eaf0;padding:14px 16px}
+.stat-card .sl{font-size:11px;color:#888;margin-bottom:5px}
+.stat-card .sv{font-size:22px;font-weight:700;color:#1b3a5c}
+.stat-card .sd{font-size:11px;color:#1d9e75;margin-top:2px}
+.card{background:#fff;border-radius:10px;border:1px solid #e5eaf0;padding:16px;margin-bottom:14px}
+.card-title{font-size:13px;font-weight:700;color:#1b3a5c;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between}
 table{width:100%;border-collapse:collapse;font-size:13px}
-th{text-align:left;padding:8px 10px;font-size:11px;color:#888;font-weight:600;border-bottom:1px solid #e5eaf0;background:#f9fafb}
-td{padding:10px;border-bottom:1px solid #f0f3f7;color:#333;vertical-align:middle}
+th{text-align:left;padding:8px 10px;font-size:11px;color:#888;font-weight:700;border-bottom:1px solid #e5eaf0;background:#f9fafb}
+td{padding:9px 10px;border-bottom:1px solid #f0f3f7;color:#333;vertical-align:middle}
 tr:last-child td{border-bottom:none}
 .badge{display:inline-block;padding:3px 8px;border-radius:20px;font-size:11px;font-weight:600}
-.badge-green{background:#e1f5ee;color:#0f6e56}
-.badge-blue{background:#e6f1fb;color:#185fa5}
-.badge-gray{background:#f1eff8;color:#5a5a6a}
-.badge-orange{background:#faeeda;color:#854f0b}
-.badge-red{background:#fcebeb;color:#a32d2d}
+.bg{background:#e1f5ee;color:#0f6e56}.bb{background:#e6f1fb;color:#185fa5}
+.bgr{background:#f1eff8;color:#5a5a6a}.bo{background:#faeeda;color:#854f0b}.br{background:#fcebeb;color:#a32d2d}
 .btn{padding:7px 14px;border-radius:8px;border:none;cursor:pointer;font-size:12px;font-weight:600}
-.btn-primary{background:#1b3a5c;color:#fff}
-.btn-outline{background:#fff;color:#1b3a5c;border:1px solid #1b3a5c}
+.btn-p{background:#1b3a5c;color:#fff}.btn-o{background:#fff;color:#1b3a5c;border:1px solid #1b3a5c}
 .btn-sm{padding:4px 10px;font-size:11px;border-radius:6px}
-.search-bar{display:flex;gap:8px;margin-bottom:14px}
-.search-bar input{flex:1;height:36px;border:1px solid #e5eaf0;border-radius:8px;padding:0 12px;font-size:13px;outline:none}
-.search-bar input:focus{border-color:#1b3a5c}
-.chart-bar{display:flex;align-items:flex-end;gap:4px;height:60px}
-.bar{background:#378add;border-radius:3px 3px 0 0;min-width:20px;flex:1}
-.bar.orange{background:#ed7d31}
-.filter-row{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap}
-.filter-row select{height:34px;border:1px solid #e5eaf0;border-radius:8px;padding:0 10px;font-size:12px;outline:none;background:#fff;cursor:pointer}
+.sbar{display:flex;gap:8px;margin-bottom:12px}
+.sbar input,.sbar select{height:34px;border:1px solid #e5eaf0;border-radius:8px;padding:0 10px;font-size:13px;outline:none;background:#fff}
+.sbar input{flex:1}
+/* 작도 도구 */
+.draw-topbar{background:#1b3a5c;padding:10px 16px;display:flex;align-items:center;gap:10px;flex-shrink:0}
+.draw-logo{display:flex;align-items:center;gap:7px;flex-shrink:0}
+.draw-logo .dlb{width:28px;height:28px;border-radius:7px;background:#ed7d31;display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px;font-weight:700}
+.draw-logo .dlt{color:#fff;font-size:13px;font-weight:700}
+.draw-logo .dlt span{color:#ed7d31}
+.draw-search-wrap{position:relative;flex:1}
+.draw-search-wrap input{width:100%;height:34px;border-radius:8px;border:none;padding:0 12px;font-size:14px;font-weight:600;outline:none;background:rgba(255,255,255,.15);color:#fff}
+.draw-search-wrap input::placeholder{color:#a8bdd6}
+.draw-search-wrap input:focus{background:rgba(255,255,255,.25)}
+.draw-ac{display:none;position:absolute;top:38px;left:0;right:0;background:#fff;border-radius:0 0 10px 10px;box-shadow:0 4px 12px rgba(0,0,0,.2);z-index:100;max-height:220px;overflow-y:auto}
+.draw-ac .ai{padding:9px 14px;cursor:pointer;font-size:13px;border-bottom:1px solid #f0f3f7}
+.draw-ac .ai:hover{background:#f5f7fa}
+.draw-toolbar{display:flex;align-items:center;gap:5px;padding:7px 16px;background:#132d47;border-bottom:1px solid rgba(255,255,255,.08);flex-wrap:wrap;flex-shrink:0}
+.dtool{width:30px;height:30px;border-radius:7px;border:1px solid rgba(255,255,255,.2);background:transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;color:#a8bdd6}
+.dtool.on{background:#ed7d31;color:#fff;border-color:#ed7d31}
+.dtool:hover{background:rgba(255,255,255,.1);color:#fff}
+.dtool-sep{width:1px;height:22px;background:rgba(255,255,255,.15);margin:0 2px}
+.draw-frame{flex:1;position:relative;overflow:hidden}
+.draw-frame iframe{width:100%;height:100%;border:none;display:block}
+.draw-overlay{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:10}
+.draw-overlay.active{pointer-events:all}
+.draw-tabs{display:flex;gap:6px;margin-left:8px}
+.dtab{padding:4px 10px;border-radius:6px;border:1px solid rgba(255,255,255,.2);background:transparent;color:#a8bdd6;font-size:11px;font-weight:700;cursor:pointer}
+.dtab.on{background:#ed7d31;color:#fff;border-color:#ed7d31}
 </style>
 </head>
 <body>
 <div class="admin-wrap">
   <div class="sidebar">
     <div class="sb-logo">
-      <div class="lt">JOIN CHART</div>
+      <div class="lt">JOIN <span>CHART</span></div>
       <div class="ls">어드민 패널</div>
     </div>
     <div class="sb-menu">
-      <div class="sb-item on" onclick="showPage('dashboard',this)"><span class="sb-icon">📊</span>대시보드</div>
-      <div class="sb-item" onclick="showPage('members',this)"><span class="sb-icon">👥</span>회원 관리</div>
-      <div class="sb-item" onclick="showPage('payments',this)"><span class="sb-icon">💳</span>결제 내역</div>
-      <div class="sb-item" onclick="showPage('stats',this)"><span class="sb-icon">📈</span>접속 통계</div>
-      <div class="sb-item" onclick="showPage('drawing',this)"><span class="sb-icon">✏️</span>작도 도구</div>
+      <div class="sb-item on" onclick="showPage('dashboard',this)">📊 대시보드</div>
+      <div class="sb-item" onclick="showPage('members',this)">👥 회원 관리</div>
+      <div class="sb-item" onclick="showPage('payments',this)">💳 결제 내역</div>
+      <div class="sb-item" onclick="showPage('stats',this)">📈 접속 통계</div>
+      <div class="sb-item" onclick="showPage('drawing',this)">✏️ 작도 도구</div>
     </div>
   </div>
 
@@ -79,98 +97,60 @@ tr:last-child td{border-bottom:none}
     <!-- 대시보드 -->
     <div class="page on" id="page-dashboard">
       <div class="stat-grid">
-        <div class="stat-card">
-          <div class="sl">전체 회원</div>
-          <div class="sv" id="s-total">—</div>
-          <div class="sd" id="s-total-d">이번 주 +0명</div>
-        </div>
-        <div class="stat-card">
-          <div class="sl">유료 구독자</div>
-          <div class="sv" id="s-paid">—</div>
-          <div class="sd" id="s-paid-d">베이직 + 프리미엄</div>
-        </div>
-        <div class="stat-card">
-          <div class="sl">오늘 방문자</div>
-          <div class="sv" id="s-today">—</div>
-          <div class="sd" id="s-today-d">종목 조회 0회</div>
-        </div>
-        <div class="stat-card">
-          <div class="sl">이번 달 매출</div>
-          <div class="sv" id="s-revenue">—</div>
-          <div class="sd" id="s-revenue-d">전월 대비 —</div>
-        </div>
+        <div class="stat-card"><div class="sl">전체 회원</div><div class="sv">8명</div><div class="sd">이번 주 +3명</div></div>
+        <div class="stat-card"><div class="sl">유료 구독자</div><div class="sv">5명</div><div class="sd">베이직 3 + 프리미엄 2</div></div>
+        <div class="stat-card"><div class="sl">오늘 방문자</div><div class="sv">94명</div><div class="sd">종목 조회 347회</div></div>
+        <div class="stat-card"><div class="sl">이번 달 매출</div><div class="sv">231,000원</div><div class="sd">전월 대비 +12%</div></div>
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
-        <div class="card">
-          <div class="card-title">최근 7일 방문자</div>
-          <div class="chart-bar" id="visit-chart"></div>
-          <div style="display:flex;gap:4px;margin-top:4px" id="visit-labels"></div>
-        </div>
-        <div class="card">
-          <div class="card-title">플랜 분포</div>
-          <div id="plan-dist"></div>
-        </div>
-      </div>
-      <div class="card" style="margin-top:16px">
+      <div class="card">
         <div class="card-title">최근 가입 회원</div>
         <table>
-          <thead><tr><th>이메일</th><th>플랜</th><th>가입일</th><th>마지막 접속</th><th>조회수</th></tr></thead>
-          <tbody id="recent-members"></tbody>
+          <thead><tr><th>이메일</th><th>플랜</th><th>가입일</th><th>조회수</th></tr></thead>
+          <tbody>
+            <tr><td>kim@gmail.com</td><td><span class="badge bo">프리미엄</span></td><td>2026-06-19</td><td>142</td></tr>
+            <tr><td>lee@naver.com</td><td><span class="badge bb">베이직</span></td><td>2026-06-18</td><td>87</td></tr>
+            <tr><td>park@kakao.com</td><td><span class="badge bo">프리미엄</span></td><td>2026-06-17</td><td>23</td></tr>
+            <tr><td>choi@gmail.com</td><td><span class="badge bgr">무료</span></td><td>2026-06-15</td><td>6</td></tr>
+          </tbody>
         </table>
       </div>
     </div>
 
     <!-- 회원 관리 -->
     <div class="page" id="page-members">
-      <div class="search-bar">
-        <input type="text" id="member-search" placeholder="이메일, 이름 검색" oninput="filterMembers()">
-        <select id="member-plan-filter" onchange="filterMembers()">
-          <option value="">전체 플랜</option>
-          <option value="free">무료</option>
-          <option value="basic">베이직</option>
-          <option value="premium">프리미엄</option>
-        </select>
-        <select id="member-status-filter" onchange="filterMembers()">
-          <option value="">전체 상태</option>
-          <option value="active">활성</option>
-          <option value="expired">만료</option>
-          <option value="trial">체험중</option>
-        </select>
+      <div class="sbar">
+        <input type="text" id="msearch" placeholder="이메일, 이름 검색" oninput="filterM()">
+        <select id="mplan" onchange="filterM()"><option value="">전체 플랜</option><option value="free">무료</option><option value="basic">베이직</option><option value="premium">프리미엄</option></select>
+        <select id="mstatus" onchange="filterM()"><option value="">전체 상태</option><option value="active">활성</option><option value="expired">만료</option><option value="trial">체험중</option></select>
       </div>
       <div class="card">
-        <div class="card-title">
-          <span>회원 목록 <span id="member-count" style="font-size:11px;color:#888;font-weight:400"></span></span>
-          <button class="btn btn-primary btn-sm">CSV 내보내기</button>
-        </div>
+        <div class="card-title"><span>회원 목록 <span id="mcount" style="font-size:11px;color:#888;font-weight:400"></span></span><button class="btn btn-p btn-sm">CSV 내보내기</button></div>
         <table>
-          <thead><tr><th>이메일</th><th>이름</th><th>플랜</th><th>상태</th><th>가입일</th><th>만료일</th><th>조회수</th><th>관리</th></tr></thead>
-          <tbody id="member-table"></tbody>
+          <thead><tr><th>이메일</th><th>플랜</th><th>상태</th><th>가입일</th><th>만료일</th><th>조회수</th><th>관리</th></tr></thead>
+          <tbody id="mtable"></tbody>
         </table>
       </div>
     </div>
 
     <!-- 결제 내역 -->
     <div class="page" id="page-payments">
-      <div class="filter-row">
-        <select id="pay-month">
-          <option>2026년 6월</option><option>2026년 5월</option><option>2026년 4월</option>
-        </select>
-        <select id="pay-plan">
-          <option value="">전체 플랜</option>
-          <option value="basic">베이직</option>
-          <option value="premium">프리미엄</option>
-        </select>
-      </div>
       <div class="stat-grid" style="grid-template-columns:repeat(3,1fr)">
-        <div class="stat-card"><div class="sl">이번 달 매출</div><div class="sv" id="pay-total">—</div></div>
-        <div class="stat-card"><div class="sl">결제 건수</div><div class="sv" id="pay-count">—</div></div>
-        <div class="stat-card"><div class="sl">환불 건수</div><div class="sv" id="pay-refund">0</div></div>
+        <div class="stat-card"><div class="sl">이번 달 매출</div><div class="sv">231,000원</div></div>
+        <div class="stat-card"><div class="sl">결제 건수</div><div class="sv">5건</div></div>
+        <div class="stat-card"><div class="sl">환불 건수</div><div class="sv">1건</div></div>
       </div>
       <div class="card">
         <div class="card-title">결제 내역</div>
         <table>
           <thead><tr><th>날짜</th><th>이메일</th><th>플랜</th><th>금액</th><th>방법</th><th>상태</th></tr></thead>
-          <tbody id="pay-table"></tbody>
+          <tbody>
+            <tr><td>2026-06-19</td><td>kim@gmail.com</td><td>프리미엄</td><td>55,000원</td><td>카카오페이</td><td><span class="badge bg">완료</span></td></tr>
+            <tr><td>2026-06-18</td><td>park@kakao.com</td><td>프리미엄</td><td>55,000원</td><td>카드</td><td><span class="badge bg">완료</span></td></tr>
+            <tr><td>2026-06-15</td><td>han@gmail.com</td><td>프리미엄</td><td>55,000원</td><td>카카오페이</td><td><span class="badge bg">완료</span></td></tr>
+            <tr><td>2026-06-10</td><td>lim@naver.com</td><td>베이직</td><td>33,000원</td><td>카드</td><td><span class="badge bg">완료</span></td></tr>
+            <tr><td>2026-06-01</td><td>lee@naver.com</td><td>베이직</td><td>33,000원</td><td>카카오페이</td><td><span class="badge bg">완료</span></td></tr>
+            <tr><td>2026-05-30</td><td>jung@naver.com</td><td>베이직</td><td>33,000원</td><td>카드</td><td><span class="badge br">환불</span></td></tr>
+          </tbody>
         </table>
       </div>
     </div>
@@ -178,216 +158,237 @@ tr:last-child td{border-bottom:none}
     <!-- 접속 통계 -->
     <div class="page" id="page-stats">
       <div class="stat-grid">
-        <div class="stat-card"><div class="sl">오늘 UV</div><div class="sv" id="st-uv">—</div></div>
-        <div class="stat-card"><div class="sl">오늘 종목 조회</div><div class="sv" id="st-search">—</div></div>
-        <div class="stat-card"><div class="sl">가장 많이 본 종목</div><div class="sv" id="st-top" style="font-size:16px">—</div></div>
-        <div class="stat-card"><div class="sl">평균 세션 시간</div><div class="sv" id="st-session">—</div></div>
+        <div class="stat-card"><div class="sl">오늘 UV</div><div class="sv">94명</div></div>
+        <div class="stat-card"><div class="sl">종목 조회</div><div class="sv">347회</div></div>
+        <div class="stat-card"><div class="sl">인기 종목</div><div class="sv" style="font-size:16px">삼성전자</div></div>
+        <div class="stat-card"><div class="sl">평균 세션</div><div class="sv">4분 32초</div></div>
       </div>
       <div class="card">
         <div class="card-title">인기 종목 TOP 10</div>
         <table>
-          <thead><tr><th>순위</th><th>종목</th><th>코드</th><th>조회수</th><th>즐겨찾기</th></tr></thead>
-          <tbody id="top-stocks"></tbody>
+          <thead><tr><th>순위</th><th>종목</th><th>코드</th><th>조회수</th></tr></thead>
+          <tbody>
+            <tr><td style="color:#888">1</td><td>삼성전자</td><td style="color:#888">005930</td><td>1,240</td></tr>
+            <tr><td style="color:#888">2</td><td>SK하이닉스</td><td style="color:#888">000660</td><td>980</td></tr>
+            <tr><td style="color:#888">3</td><td>NVIDIA</td><td style="color:#888">NVDA</td><td>870</td></tr>
+            <tr><td style="color:#888">4</td><td>카카오</td><td style="color:#888">035720</td><td>640</td></tr>
+            <tr><td style="color:#888">5</td><td>APPLE</td><td style="color:#888">AAPL</td><td>580</td></tr>
+          </tbody>
         </table>
       </div>
     </div>
 
-    <!-- 작도 도구 (어드민 전용) -->
-    <div class="page" id="page-drawing" style="padding:0;display:flex;flex-direction:column;height:calc(100vh - 52px);">
-      <div style="display:flex;align-items:center;gap:8px;padding:10px 16px;background:#1b3a5c;position:relative;">
-        <div style="display:flex;align-items:center;gap:7px;flex-shrink:0;">
-          <div style="width:28px;height:28px;border-radius:7px;background:#ed7d31;display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px;font-weight:700;">J</div>
-          <span style="color:#fff;font-size:13px;font-weight:700;">JOIN <span style="color:#ed7d31;">CHART</span></span>
+    <!-- 작도 도구 (방송용) -->
+    <div class="page drawing-page" id="page-drawing">
+      <div class="draw-topbar">
+        <div class="draw-logo">
+          <div class="dlb">J</div>
+          <div class="dlt">JOIN <span>CHART</span></div>
         </div>
-        <input type="text" id="drawing-search" placeholder="종목명 · 코드 검색 (예: 삼성전자, 005930, AAPL)" autocomplete="off"
-          style="flex:1;height:34px;border-radius:8px;border:none;padding:0 12px;font-size:14px;font-weight:600;outline:none;background:rgba(255,255,255,.15);color:#fff;">
-        <div id="drawing-ac" style="display:none;position:absolute;top:52px;left:60px;right:16px;background:#fff;border-radius:0 0 10px 10px;box-shadow:0 4px 12px rgba(0,0,0,.2);z-index:100;max-height:240px;overflow-y:auto;"></div>
+        <div class="draw-search-wrap">
+          <input type="text" id="draw-input" placeholder="종목명 · 코드 검색" autocomplete="off">
+          <div class="draw-ac" id="draw-ac"></div>
+        </div>
+        <div class="draw-tabs">
+          <button class="dtab on" id="dtab-10" onclick="switchTab('10',this)">단기</button>
+          <button class="dtab" id="dtab-60" onclick="switchTab('60',this)">중기</button>
+          <button class="dtab" id="dtab-" onclick="switchTab('',this)">중장기</button>
+        </div>
       </div>
-      <iframe id="admin-chart-iframe" src="/index.html?code=005930" style="flex:1;border:none;display:block;"></iframe>
+      <div class="draw-toolbar">
+        <button class="dtool on" id="tool-line" onclick="setTool('line')" title="직선">↗</button>
+        <button class="dtool" id="tool-pen" onclick="setTool('pen')" title="연필">✏</button>
+        <button class="dtool" id="tool-text" onclick="setTool('text')" title="텍스트">T</button>
+        <button class="dtool" id="tool-eraser" onclick="setTool('eraser')" title="지우개">□</button>
+        <div class="dtool-sep"></div>
+        <input type="color" id="draw-color" value="#e24b4a" title="색상" style="width:30px;height:30px;border-radius:7px;border:1px solid rgba(255,255,255,.2);padding:2px;cursor:pointer;background:transparent">
+        <div class="dtool-sep"></div>
+        <button class="dtool" onclick="doUndo()" title="Undo">↩</button>
+        <button class="dtool" onclick="doClear()" title="전체 지우기">✕</button>
+        <div class="dtool-sep"></div>
+        <span style="font-size:11px;color:#a8bdd6;margin-left:4px">드로잉 모드</span>
+      </div>
+      <div class="draw-frame">
+        <iframe id="chart-frame" src="/index.html?code=005930" allowfullscreen></iframe>
+        <canvas id="draw-canvas" class="draw-overlay active"></canvas>
+      </div>
     </div>
+
   </div>
 </div>
 
 <script>
-var today = new Date();
-document.getElementById('today-date').textContent = today.getFullYear()+'년 '+(today.getMonth()+1)+'월 '+today.getDate()+'일';
+document.getElementById('today-date').textContent = (function(){var d=new Date();return d.getFullYear()+'년 '+(d.getMonth()+1)+'월 '+d.getDate()+'일';})();
 
 function showPage(id, el) {
   document.querySelectorAll('.page').forEach(function(p){p.classList.remove('on');});
   document.querySelectorAll('.sb-item').forEach(function(i){i.classList.remove('on');});
   document.getElementById('page-'+id).classList.add('on');
   el.classList.add('on');
-  var titles = {dashboard:'대시보드',members:'회원 관리',payments:'결제 내역',stats:'접속 통계',drawing:'작도 도구'};
-  document.getElementById('page-title').textContent = titles[id]||id;
+  var titles={dashboard:'대시보드',members:'회원 관리',payments:'결제 내역',stats:'접속 통계',drawing:'작도 도구'};
+  document.getElementById('page-title').textContent=titles[id]||id;
+  if(id==='drawing') setTimeout(initCanvas,100);
 }
 
-// 샘플 데이터 (실제 연동 전 UI 확인용)
-var MEMBERS = [
-  {email:'kim@gmail.com', name:'김민준', plan:'premium', status:'active', joined:'2026-05-12', expire:'2026-07-12', views:142},
-  {email:'lee@naver.com', name:'이서연', plan:'basic',   status:'active', joined:'2026-05-20', expire:'2026-06-20', views:87},
-  {email:'park@kakao.com',name:'박지훈', plan:'premium', status:'trial',  joined:'2026-06-18', expire:'2026-06-21', views:23},
-  {email:'choi@gmail.com',name:'최수아', plan:'free',    status:'active', joined:'2026-06-01', expire:'—',          views:6},
-  {email:'jung@naver.com',name:'정민서', plan:'basic',   status:'expired',joined:'2026-04-10', expire:'2026-05-10', views:55},
-  {email:'han@gmail.com', name:'한지우', plan:'premium', status:'active', joined:'2026-03-22', expire:'2026-07-22', views:210},
-  {email:'yoon@kakao.com',name:'윤채원', plan:'free',    status:'active', joined:'2026-06-15', expire:'—',          views:4},
-  {email:'lim@naver.com', name:'임도윤', plan:'basic',   status:'active', joined:'2026-05-30', expire:'2026-06-30', views:63},
+// 회원 데이터
+var MEMBERS=[
+  {email:'kim@gmail.com',plan:'premium',status:'active',joined:'2026-06-19',expire:'2026-07-19',views:142},
+  {email:'lee@naver.com',plan:'basic',status:'active',joined:'2026-06-18',expire:'2026-07-18',views:87},
+  {email:'park@kakao.com',plan:'premium',status:'trial',joined:'2026-06-17',expire:'2026-06-20',views:23},
+  {email:'choi@gmail.com',plan:'free',status:'active',joined:'2026-06-15',expire:'—',views:6},
+  {email:'jung@naver.com',plan:'basic',status:'expired',joined:'2026-04-10',expire:'2026-05-10',views:55},
+  {email:'han@gmail.com',plan:'premium',status:'active',joined:'2026-03-22',expire:'2026-07-22',views:210},
+  {email:'lim@naver.com',plan:'basic',status:'active',joined:'2026-05-30',expire:'2026-06-30',views:63},
 ];
-
-var PAYMENTS = [
-  {date:'2026-06-19',email:'kim@gmail.com', plan:'프리미엄', amount:55000,method:'카카오페이',status:'완료'},
-  {date:'2026-06-18',email:'park@kakao.com',plan:'프리미엄',amount:55000,method:'카드',status:'완료'},
-  {date:'2026-06-15',email:'han@gmail.com', plan:'프리미엄',amount:55000,method:'카카오페이',status:'완료'},
-  {date:'2026-06-10',email:'lim@naver.com', plan:'베이직',  amount:33000,method:'카드',status:'완료'},
-  {date:'2026-06-01',email:'lee@naver.com', plan:'베이직',  amount:33000,method:'카카오페이',status:'완료'},
-  {date:'2026-05-30',email:'jung@naver.com',plan:'베이직',  amount:33000,method:'카드',status:'환불'},
-];
-
-var TOP_STOCKS = [
-  {rank:1,name:'삼성전자',code:'005930',views:1240,fav:45},
-  {rank:2,name:'SK하이닉스',code:'000660',views:980,fav:38},
-  {rank:3,name:'NVIDIA',code:'NVDA',views:870,fav:52},
-  {rank:4,name:'카카오',code:'035720',views:640,fav:21},
-  {rank:5,name:'APPLE',code:'AAPL',views:580,fav:34},
-  {rank:6,name:'현대차',code:'005380',views:420,fav:18},
-  {rank:7,name:'TESLA',code:'TSLA',views:390,fav:29},
-  {rank:8,name:'LG에너지솔루션',code:'373220',views:310,fav:12},
-  {rank:9,name:'NAVER',code:'035420',views:280,fav:9},
-  {rank:10,name:'포스코홀딩스',code:'005490',views:240,fav:7},
-];
-
-var VISITS = [42,55,38,71,60,88,94];
-var DAYS   = ['월','화','수','목','금','토','일'];
-
-function planBadge(p) {
-  var m = {premium:'<span class="badge badge-orange">프리미엄</span>', basic:'<span class="badge badge-blue">베이직</span>', free:'<span class="badge badge-gray">무료</span>'};
-  return m[p]||p;
-}
-function statusBadge(s) {
-  var m = {active:'<span class="badge badge-green">활성</span>', expired:'<span class="badge badge-red">만료</span>', trial:'<span class="badge badge-orange">체험중</span>'};
-  return m[s]||s;
-}
-
-// 대시보드
-function initDashboard() {
-  var paid = MEMBERS.filter(function(m){return m.plan!=='free';}).length;
-  document.getElementById('s-total').textContent   = MEMBERS.length+'명';
-  document.getElementById('s-paid').textContent    = paid+'명';
-  document.getElementById('s-today').textContent   = '94명';
-  document.getElementById('s-revenue').textContent = '231,000원';
-  document.getElementById('s-paid-d').textContent  = '베이직 '+(MEMBERS.filter(function(m){return m.plan==='basic';}).length)+'명 + 프리미엄 '+(MEMBERS.filter(function(m){return m.plan==='premium';}).length)+'명';
-
-  var vc = document.getElementById('visit-chart');
-  var max = Math.max.apply(null,VISITS);
-  vc.innerHTML = VISITS.map(function(v,i){
-    return '<div class="bar'+(i===6?' orange':'')+'" style="height:'+(v/max*56)+'px" title="'+DAYS[i]+': '+v+'명"></div>';
-  }).join('');
-  document.getElementById('visit-labels').innerHTML = DAYS.map(function(d,i){
-    return '<div style="flex:1;text-align:center;font-size:10px;color:#888">'+d+'</div>';
-  }).join('');
-
-  var pl = MEMBERS.reduce(function(a,m){a[m.plan]=(a[m.plan]||0)+1;return a;},{});
-  document.getElementById('plan-dist').innerHTML = Object.keys(pl).map(function(k){
-    var pct = Math.round(pl[k]/MEMBERS.length*100);
-    var colors = {premium:'#ed7d31',basic:'#378add',free:'#888'};
-    return '<div style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px"><span>'+(k==='premium'?'프리미엄':k==='basic'?'베이직':'무료')+'</span><span style="color:#888">'+pl[k]+'명 ('+pct+'%)</span></div><div style="height:8px;background:#f0f3f7;border-radius:4px;overflow:hidden"><div style="height:100%;width:'+pct+'%;background:'+colors[k]+';border-radius:4px"></div></div></div>';
-  }).join('');
-
-  document.getElementById('recent-members').innerHTML = MEMBERS.slice(0,5).map(function(m){
-    return '<tr><td>'+m.email+'</td><td>'+planBadge(m.plan)+'</td><td>'+m.joined+'</td><td>방금 전</td><td>'+m.views+'회</td></tr>';
+function planB(p){return {premium:'<span class="badge bo">프리미엄</span>',basic:'<span class="badge bb">베이직</span>',free:'<span class="badge bgr">무료</span>'}[p]||p;}
+function statusB(s){return {active:'<span class="badge bg">활성</span>',expired:'<span class="badge br">만료</span>',trial:'<span class="badge bo">체험중</span>'}[s]||s;}
+function filterM(){
+  var q=document.getElementById('msearch').value.toLowerCase();
+  var pf=document.getElementById('mplan').value;
+  var sf=document.getElementById('mstatus').value;
+  var filtered=MEMBERS.filter(function(m){return (!q||m.email.toLowerCase().includes(q))&&(!pf||m.plan===pf)&&(!sf||m.status===sf);});
+  document.getElementById('mcount').textContent=filtered.length+'명';
+  document.getElementById('mtable').innerHTML=filtered.map(function(m){
+    return '<tr><td>'+m.email+'</td><td>'+planB(m.plan)+'</td><td>'+statusB(m.status)+'</td><td>'+m.joined+'</td><td>'+m.expire+'</td><td>'+m.views+'</td><td><button class="btn btn-o btn-sm">수정</button></td></tr>';
   }).join('');
 }
+filterM();
 
-// 회원 관리
-var filteredMembers = MEMBERS.slice();
-function filterMembers() {
-  var q = document.getElementById('member-search').value.toLowerCase();
-  var pf = document.getElementById('member-plan-filter').value;
-  var sf = document.getElementById('member-status-filter').value;
-  filteredMembers = MEMBERS.filter(function(m){
-    return (!q||(m.email+m.name).toLowerCase().includes(q))
-        && (!pf||m.plan===pf)
-        && (!sf||m.status===sf);
-  });
-  renderMembers();
-}
-function renderMembers() {
-  document.getElementById('member-count').textContent = filteredMembers.length+'명';
-  document.getElementById('member-table').innerHTML = filteredMembers.map(function(m){
-    return '<tr><td>'+m.email+'</td><td>'+m.name+'</td><td>'+planBadge(m.plan)+'</td><td>'+statusBadge(m.status)+'</td><td>'+m.joined+'</td><td>'+m.expire+'</td><td>'+m.views+'</td><td><button class="btn btn-outline btn-sm">수정</button></td></tr>';
+// ===== 작도 도구 =====
+var currentCode='005930';
+var currentTool='line';
+var strokes=[];
+var drawing=false,startX=0,startY=0,lastX=0,lastY=0,pts=[];
+
+// 종목 검색 자동완성
+var STOCKS=[];
+fetch('/api/analyze?stocks=1').then(function(r){return r.json();}).then(function(d){STOCKS=d||[];}).catch(function(){});
+
+var di=document.getElementById('draw-input');
+var dac=document.getElementById('draw-ac');
+
+di.addEventListener('input',function(){
+  var q=di.value.trim().toLowerCase();
+  if(!q){dac.style.display='none';return;}
+  var hit=STOCKS.filter(function(s){return s.code.toLowerCase().includes(q)||(s.name&&s.name.toLowerCase().includes(q));}).slice(0,8);
+  if(!hit.length){dac.style.display='none';return;}
+  dac.innerHTML=hit.map(function(s){
+    return '<div class="ai" onclick="loadStock(\''+s.code+'\',\''+(s.name||'').replace(/\'/g,'')+'\')">'
+      +'<b>'+s.name+'</b> <span style="color:#888;font-size:12px">'+s.code+'</span></div>';
   }).join('');
-}
-
-// 결제
-function initPayments() {
-  var total = PAYMENTS.filter(function(p){return p.status==='완료';}).reduce(function(a,p){return a+p.amount;},0);
-  document.getElementById('pay-total').textContent = total.toLocaleString()+'원';
-  document.getElementById('pay-count').textContent = PAYMENTS.filter(function(p){return p.status==='완료';}).length+'건';
-  document.getElementById('pay-refund').textContent = PAYMENTS.filter(function(p){return p.status==='환불';}).length+'건';
-  document.getElementById('pay-table').innerHTML = PAYMENTS.map(function(p){
-    var sc = p.status==='완료'?'badge-green':'badge-red';
-    return '<tr><td>'+p.date+'</td><td>'+p.email+'</td><td>'+p.plan+'</td><td>'+p.amount.toLocaleString()+'원</td><td>'+p.method+'</td><td><span class="badge '+sc+'">'+p.status+'</span></td></tr>';
-  }).join('');
-}
-
-// 통계
-function initStats() {
-  document.getElementById('st-uv').textContent     = '94명';
-  document.getElementById('st-search').textContent = '347회';
-  document.getElementById('st-top').textContent    = '삼성전자';
-  document.getElementById('st-session').textContent= '4분 32초';
-  document.getElementById('top-stocks').innerHTML  = TOP_STOCKS.map(function(s){
-    return '<tr><td style="color:#888">'+s.rank+'</td><td>'+s.name+'</td><td style="color:#888">'+s.code+'</td><td>'+s.views+'</td><td>'+s.fav+'</td></tr>';
-  }).join('');
-}
-
-// 작도 탭 검색창
-document.addEventListener('DOMContentLoaded', function() {
-  var di = document.getElementById('drawing-search');
-  var dac = document.getElementById('drawing-ac');
-  if (!di) return;
-
-  di.addEventListener('input', function() {
-    var q = di.value.trim().toLowerCase();
-    if (!q) { dac.style.display='none'; return; }
-    var hit = STOCKS.filter(function(s){ return s.code.toLowerCase().includes(q)||(s.name&&s.name.toLowerCase().includes(q)); }).slice(0,8);
-    if (!hit.length) { dac.style.display='none'; return; }
-    dac.innerHTML = hit.map(function(s){
-      return '<div onclick="drawingPick(''+s.code+'',''+(s.name||'').replace(/'/g,'')+'')" style="padding:10px 14px;cursor:pointer;font-size:13px;border-bottom:1px solid #f0f3f7;">'
-        +'<span style="font-weight:600">'+s.name+'</span> <span style="color:#888;font-size:12px">'+s.code+'</span></div>';
-    }).join('');
-    dac.style.display = 'block';
-  });
-
-  di.addEventListener('keydown', function(e) {
-    if (e.key !== 'Enter') return;
-    dac.style.display = 'none';
-    var q = di.value.trim();
-    var m = q.match(/(\d{6})/); if (m) { drawingPick(m[1],''); return; }
-    var ql = q.toLowerCase();
-    var hit = STOCKS.find(function(s){ return s.name&&s.name.toLowerCase()===ql; })
-           || STOCKS.find(function(s){ return s.name&&s.name.toLowerCase().includes(ql); });
-    if (hit) { drawingPick(hit.code, hit.name); return; }
-    if (/^[A-Za-z][A-Za-z.\-]{0,6}$/.test(q)) drawingPick(q.toUpperCase(),'');
-  });
-
-  document.addEventListener('click', function(e) {
-    if (!e.target.closest('#page-drawing')) dac.style.display='none';
-  });
+  dac.style.display='block';
 });
 
-function drawingPick(code, name) {
-  var di = document.getElementById('drawing-search');
-  var dac = document.getElementById('drawing-ac');
-  if (di) di.value = name ? name+' ('+code+')' : code;
-  if (dac) dac.style.display = 'none';
-  var iframe = document.getElementById('admin-chart-iframe');
-  if (iframe) iframe.src = '/index.html?code='+encodeURIComponent(code);
+di.addEventListener('keydown',function(e){
+  if(e.key!=='Enter')return;
+  dac.style.display='none';
+  var q=di.value.trim();
+  var m=q.match(/(\d{6})/);if(m){loadStock(m[1],'');return;}
+  var ql=q.toLowerCase();
+  var hit=STOCKS.find(function(s){return s.name&&s.name.toLowerCase()===ql;})||STOCKS.find(function(s){return s.name&&s.name.toLowerCase().includes(ql);});
+  if(hit){loadStock(hit.code,hit.name);return;}
+  if(/^[A-Za-z][A-Za-z.\-]{0,6}$/.test(q))loadStock(q.toUpperCase(),'');
+});
+
+document.addEventListener('click',function(e){if(!e.target.closest('.draw-search-wrap'))dac.style.display='none';});
+
+function loadStock(code,name){
+  currentCode=code;
+  di.value=name?name+' ('+code+')':code;
+  dac.style.display='none';
+  doClear();
+  document.getElementById('chart-frame').src='/index.html?code='+encodeURIComponent(code);
 }
 
-initDashboard();
-initPayments();
-initStats();
-filterMembers();
+function switchTab(trk,btn){
+  document.querySelectorAll('.dtab').forEach(function(b){b.classList.remove('on');});
+  btn.classList.add('on');
+  // iframe에 postMessage로 탭 전환 요청
+  var frame=document.getElementById('chart-frame');
+  if(frame&&frame.contentWindow) frame.contentWindow.postMessage({type:'switchTab',trk:trk},'*');
+}
+
+function setTool(tool){
+  currentTool=tool;
+  document.querySelectorAll('.dtool[id^="tool-"]').forEach(function(b){b.classList.remove('on');});
+  var el=document.getElementById('tool-'+tool);
+  if(el)el.classList.add('on');
+  var cv=document.getElementById('draw-canvas');
+  cv.style.cursor=tool==='eraser'?'cell':tool==='text'?'text':'crosshair';
+}
+
+function doUndo(){if(strokes.length){strokes.pop();redraw();}}
+function doClear(){strokes=[];redraw();}
+
+function initCanvas(){
+  var cv=document.getElementById('draw-canvas');
+  var frame=document.getElementById('chart-frame');
+  cv.width=frame.offsetWidth;
+  cv.height=frame.offsetHeight;
+  cv.style.cursor='crosshair';
+
+  cv.onmousedown=function(e){
+    var r=cv.getBoundingClientRect();
+    var x=e.clientX-r.left,y=e.clientY-r.top;
+    var color=document.getElementById('draw-color').value;
+    if(currentTool==='text'){
+      var t=prompt('텍스트 입력:');
+      if(t){strokes.push({tool:'text',color:color,x0:x,y0:y,text:t});redraw();}
+      return;
+    }
+    drawing=true;startX=lastX=x;startY=lastY=y;pts=[{x:x,y:y}];
+  };
+
+  cv.onmousemove=function(e){
+    if(!drawing)return;
+    var r=cv.getBoundingClientRect();
+    var x=e.clientX-r.left,y=e.clientY-r.top;
+    pts.push({x:x,y:y});
+    redraw();
+    var ctx=cv.getContext('2d');
+    var color=document.getElementById('draw-color').value;
+    ctx.save();ctx.strokeStyle=color;ctx.lineWidth=currentTool==='eraser'?18:2;ctx.lineCap='round';ctx.lineJoin='round';
+    if(currentTool==='eraser')ctx.globalCompositeOperation='destination-out';
+    if(currentTool==='line'){ctx.beginPath();ctx.moveTo(startX,startY);ctx.lineTo(x,y);ctx.stroke();}
+    else{ctx.beginPath();ctx.moveTo(pts[0].x,pts[0].y);pts.forEach(function(p){ctx.lineTo(p.x,p.y);});ctx.stroke();}
+    ctx.restore();
+    lastX=x;lastY=y;
+  };
+
+  function endDraw(e){
+    if(!drawing)return;
+    drawing=false;
+    var r=cv.getBoundingClientRect();
+    var x=e.clientX-r.left,y=e.clientY-r.top;
+    var color=document.getElementById('draw-color').value;
+    if(currentTool==='line')strokes.push({tool:'line',color:color,x0:startX,y0:startY,x1:x,y1:y});
+    else strokes.push({tool:currentTool,color:color,pts:pts.slice()});
+    redraw();
+  }
+  cv.onmouseup=endDraw;
+  cv.onmouseleave=endDraw;
+
+  // 터치
+  cv.addEventListener('touchstart',function(e){e.preventDefault();var t=e.touches[0],r=cv.getBoundingClientRect();drawing=true;startX=lastX=t.clientX-r.left;startY=lastY=t.clientY-r.top;pts=[{x:startX,y:startY}];},{passive:false});
+  cv.addEventListener('touchmove',function(e){e.preventDefault();if(!drawing)return;var t=e.touches[0],r=cv.getBoundingClientRect(),x=t.clientX-r.left,y=t.clientY-r.top;pts.push({x:x,y:y});redraw();var ctx=cv.getContext('2d'),color=document.getElementById('draw-color').value;ctx.save();ctx.strokeStyle=color;ctx.lineWidth=2;ctx.lineCap='round';ctx.lineJoin='round';if(currentTool==='line'){ctx.beginPath();ctx.moveTo(startX,startY);ctx.lineTo(x,y);ctx.stroke();}else{ctx.beginPath();ctx.moveTo(pts[0].x,pts[0].y);pts.forEach(function(p){ctx.lineTo(p.x,p.y);});ctx.stroke();}ctx.restore();lastX=x;lastY=y;},{passive:false});
+  cv.addEventListener('touchend',function(e){if(!drawing)return;drawing=false;var color=document.getElementById('draw-color').value;if(currentTool==='line')strokes.push({tool:'line',color:color,x0:startX,y0:startY,x1:lastX,y1:lastY});else strokes.push({tool:currentTool,color:color,pts:pts.slice()});redraw();},{passive:false});
+
+  window.addEventListener('resize',function(){cv.width=frame.offsetWidth;cv.height=frame.offsetHeight;redraw();});
+}
+
+function redraw(){
+  var cv=document.getElementById('draw-canvas');
+  var ctx=cv.getContext('2d');
+  ctx.clearRect(0,0,cv.width,cv.height);
+  strokes.forEach(function(s){
+    ctx.save();ctx.strokeStyle=s.color;ctx.lineWidth=s.tool==='eraser'?18:2;ctx.lineCap='round';ctx.lineJoin='round';
+    if(s.tool==='eraser')ctx.globalCompositeOperation='destination-out';
+    if(s.tool==='line'){ctx.beginPath();ctx.moveTo(s.x0,s.y0);ctx.lineTo(s.x1,s.y1);ctx.stroke();}
+    else if(s.tool==='pen'||s.tool==='eraser'){if(s.pts&&s.pts.length>1){ctx.beginPath();ctx.moveTo(s.pts[0].x,s.pts[0].y);s.pts.forEach(function(p){ctx.lineTo(p.x,p.y);});ctx.stroke();}}
+    else if(s.tool==='text'){ctx.fillStyle=s.color;ctx.font='14px sans-serif';ctx.fillText(s.text,s.x0,s.y0);}
+    ctx.restore();
+  });
+}
 </script>
 </body>
 </html>
