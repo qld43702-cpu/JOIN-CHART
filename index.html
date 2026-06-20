@@ -633,6 +633,11 @@ function initDrawCanvas(sfx) {
 // ===== 전체화면 검색바 =====
 var fsInp = null, fsAc = null;
 document.addEventListener('DOMContentLoaded', function() {
+  // URL 파라미터로 자동 검색 (?code=005930 또는 ?code=AAPL)
+  var urlParams = new URLSearchParams(window.location.search);
+  var autoCode = urlParams.get('code');
+  if (autoCode) setTimeout(function(){ go(autoCode.toUpperCase()); }, 100);
+
   fsInp = document.getElementById('fs-input');
   fsAc  = document.getElementById('fs-ac');
   if (!fsInp) return;
