@@ -262,7 +262,7 @@ var drawing=false,startX=0,startY=0,lastX=0,lastY=0,pts=[];
 
 // 종목 검색 자동완성
 var STOCKS=[];
-fetch('/api/analyze?stocks=1').then(function(r){return r.json();}).then(function(d){STOCKS=d||[];}).catch(function(){});
+fetch('/stocks.json?t='+Date.now()).then(function(r){return r.json();}).then(function(d){STOCKS=d||[];}).catch(function(){STOCKS=[];});
 
 var di=document.getElementById('draw-input');
 var dac=document.getElementById('draw-ac');
