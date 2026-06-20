@@ -196,21 +196,23 @@ tr:last-child td{border-bottom:none}
         </div>
       </div>
       <div class="draw-toolbar">
-        <button class="dtool on" id="tool-line" onclick="setTool('line')" title="직선">↗</button>
-        <button class="dtool" id="tool-pen" onclick="setTool('pen')" title="연필">✏</button>
-        <button class="dtool" id="tool-text" onclick="setTool('text')" title="텍스트">T</button>
-        <button class="dtool" id="tool-eraser" onclick="setTool('eraser')" title="지우개">□</button>
+        <button class="dtool" id="draw-toggle" onclick="toggleDrawMode()" title="드로잉 ON/OFF" style="width:auto;padding:0 10px;font-size:11px;font-weight:700;">✏ 작도 OFF</button>
         <div class="dtool-sep"></div>
-        <input type="color" id="draw-color" value="#e24b4a" title="색상" style="width:30px;height:30px;border-radius:7px;border:1px solid rgba(255,255,255,.2);padding:2px;cursor:pointer;background:transparent">
+        <button class="dtool" id="tool-line" onclick="pmTool('line',this)" title="직선">↗</button>
+        <button class="dtool" id="tool-pen" onclick="pmTool('pen',this)" title="연필">✏</button>
+        <button class="dtool" id="tool-text" onclick="pmTool('text',this)" title="텍스트">T</button>
+        <button class="dtool" id="tool-eraser" onclick="pmTool('eraser',this)" title="지우개">□</button>
         <div class="dtool-sep"></div>
-        <button class="dtool" onclick="doUndo()" title="Undo">↩</button>
-        <button class="dtool" onclick="doClear()" title="전체 지우기">✕</button>
+        <input type="color" id="draw-color" value="#e24b4a" title="색상" oninput="pmColor(this.value)" style="width:30px;height:30px;border-radius:7px;border:1px solid rgba(255,255,255,.2);padding:2px;cursor:pointer;background:transparent">
         <div class="dtool-sep"></div>
-        <span style="font-size:11px;color:#a8bdd6;margin-left:4px">드로잉 모드</span>
+        <button class="dtool" onclick="pm({type:'drawUndo',sfx:currentSfx})" title="Undo">↩</button>
+        <button class="dtool" onclick="pm({type:'drawClear',sfx:currentSfx})" title="전체 지우기">✕</button>
+        <div class="dtool-sep"></div>
+        <button class="dtool" onclick="toggleFullscreen()" title="전체화면" style="width:auto;padding:0 10px;font-size:11px;font-weight:700;" id="fs-btn">⛶ 전체화면</button>
       </div>
       <div class="draw-frame">
-        <iframe id="chart-frame" src="/index.html?code=005930" allowfullscreen></iframe>
-        <canvas id="draw-canvas" class="draw-overlay active"></canvas>
+        <iframe id="chart-frame" src="/chart.html?code=005930" allowfullscreen></iframe>
+        <canvas id="draw-canvas" class="draw-overlay"></canvas>
       </div>
     </div>
 
@@ -292,33 +294,54 @@ di.addEventListener('keydown',function(e){
 
 document.addEventListener('click',function(e){if(!e.target.closest('.draw-search-wrap'))dac.style.display='none';});
 
+var drawMode=false;
+var currentSfx='';
+
+function pm(msg){
+  var frame=document.getElementById('chart-frame');
+  if(frame&&frame.contentWindow) frame.contentWindow.postMessage(msg,'*');
+}
+function pmTool(tool,btn){
+  document.querySelectorAll('.dtool[id^="tool-"]').forEach(function(b){b.classList.remove('on');});
+  if(btn)btn.classList.add('on');
+  pm({type:'drawTool',tool:tool,sfx:currentSfx});
+}
+function pmColor(color){ pm({type:'drawColor',color:color,sfx:currentSfx}); }
+function toggleDrawMode(){
+  drawMode=!drawMode;
+  var btn=document.getElementById('draw-toggle');
+  btn.classList.toggle('on',drawMode);
+  btn.innerHTML=drawMode?'✏ 작도 ON':'✏ 작도 OFF';
+  pm({type:'drawToggle',sfx:currentSfx});
+}
+
+function toggleFullscreen(){
+  var page=document.getElementById('page-drawing');
+  var btn=document.getElementById('fs-btn');
+  if(!document.fullscreenElement){
+    page.requestFullscreen&&page.requestFullscreen();
+    btn.innerHTML='✕ 닫기';
+  } else {
+    document.exitFullscreen&&document.exitFullscreen();
+    btn.innerHTML='⛶ 전체화면';
+  }
+}
+
 function loadStock(code,name){
   currentCode=code;
   di.value=name?name+' ('+code+')':code;
   dac.style.display='none';
-  doClear();
-  document.getElementById('chart-frame').src='/index.html?code='+encodeURIComponent(code);
+  document.getElementById('chart-frame').src='/chart.html?code='+encodeURIComponent(code);
 }
 
 function switchTab(trk,btn){
   document.querySelectorAll('.dtab').forEach(function(b){b.classList.remove('on');});
   btn.classList.add('on');
-  // iframe에 postMessage로 탭 전환 요청
-  var frame=document.getElementById('chart-frame');
-  if(frame&&frame.contentWindow) frame.contentWindow.postMessage({type:'switchTab',trk:trk},'*');
+  currentSfx = trk;
+  pm({type:'switchTab',trk:trk});
 }
 
-function setTool(tool){
-  currentTool=tool;
-  document.querySelectorAll('.dtool[id^="tool-"]').forEach(function(b){b.classList.remove('on');});
-  var el=document.getElementById('tool-'+tool);
-  if(el)el.classList.add('on');
-  var cv=document.getElementById('draw-canvas');
-  cv.style.cursor=tool==='eraser'?'cell':tool==='text'?'text':'crosshair';
-}
-
-function doUndo(){if(strokes.length){strokes.pop();redraw();}}
-function doClear(){strokes=[];redraw();}
+// 드로잉 제어는 postMessage로 처리
 
 function initCanvas(){
   var cv=document.getElementById('draw-canvas');

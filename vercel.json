@@ -16,6 +16,14 @@
     {
       "source": "/admin.html",
       "destination": "/admin.html"
+    },
+    {
+      "source": "/chart",
+      "destination": "/chart.html"
+    },
+    {
+      "source": "/chart.html",
+      "destination": "/chart.html"
     }
   ]
 }
