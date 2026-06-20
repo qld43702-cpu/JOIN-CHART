@@ -193,18 +193,8 @@ tr:last-child td{border-bottom:none}
     </div>
 
     <!-- 작도 도구 (어드민 전용) -->
-    <div class="page" id="page-drawing">
-      <div class="card">
-        <div class="card-title">작도 도구 — 라이브 방송용</div>
-        <p style="font-size:12px;color:#888;margin-bottom:14px">종목을 검색하고 차트 위에 직접 작도하세요. 방송 화면으로 공유할 수 있습니다.</p>
-        <div style="display:flex;gap:8px;margin-bottom:12px">
-          <input type="text" id="admin-stock-input" placeholder="삼성전자 · 005930 · AAPL" style="flex:1;height:38px;border:1px solid #e5eaf0;border-radius:8px;padding:0 12px;font-size:13px;outline:none">
-          <button class="btn btn-primary" onclick="adminGo()">조회</button>
-        </div>
-        <div id="admin-chart-area" style="background:#f9fafb;border-radius:10px;min-height:200px;display:flex;align-items:center;justify-content:center;color:#aaa;font-size:13px">
-          종목을 검색하면 차트가 표시됩니다
-        </div>
-      </div>
+    <div class="page" id="page-drawing" style="padding:0;height:calc(100vh - 52px);">
+      <iframe id="admin-chart-iframe" src="/index.html" style="width:100%;height:100%;border:none;display:block;"></iframe>
     </div>
   </div>
 </div>
@@ -341,11 +331,7 @@ function initStats() {
   }).join('');
 }
 
-function adminGo() {
-  var v = document.getElementById('admin-stock-input').value.trim();
-  if (!v) return;
-  document.getElementById('admin-chart-area').innerHTML = '<iframe src="/index.html?code='+encodeURIComponent(v)+'" style="width:100%;height:500px;border:none;border-radius:10px;"></iframe>';
-}
+// adminGo 제거 - 작도 탭은 바로 iframe으로 표시
 
 initDashboard();
 initPayments();
