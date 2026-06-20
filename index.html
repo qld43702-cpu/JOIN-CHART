@@ -295,6 +295,8 @@ header{display:flex;align-items:center;gap:11px;margin-bottom:16px}
 <script>
 var STOCKS=[];
 fetch('stocks.json?t='+Date.now()).then(function(r){return r.json();}).then(function(s){STOCKS=s||[];}).catch(function(){STOCKS=[];});
+// URL 파라미터 자동 검색
+(function(){var p=new URLSearchParams(window.location.search),c=p.get('code');if(c)setTimeout(function(){go(c.toUpperCase());},300);})();
 var inp=document.getElementById('codeInput'), ac=document.getElementById('acList');
 inp.addEventListener('input',function(){
   var q=inp.value.trim().toLowerCase();
