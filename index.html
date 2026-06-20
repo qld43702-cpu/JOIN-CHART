@@ -54,6 +54,33 @@ header{display:flex;align-items:center;gap:11px;margin-bottom:16px}
 .dtool-sep{width:1px;height:22px;background:var(--line);margin:0 2px;}
 .draw-toggle{display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:8px;border:1px solid var(--line);background:var(--card);cursor:pointer;font-size:12px;font-weight:600;color:var(--ink);margin-bottom:6px;}
 .draw-toggle.on{background:#1b3a5c;color:#fff;border-color:#1b3a5c;}
+.fs-btn{display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:8px;border:1px solid var(--line);background:var(--card);cursor:pointer;font-size:12px;font-weight:600;color:var(--ink);margin-bottom:6px;margin-left:6px;}
+.fs-btn:hover{background:#1b3a5c;color:#fff;border-color:#1b3a5c;}
+.chart-fullscreen{position:fixed!important;top:0!important;left:0!important;width:100vw!important;height:100vh!important;z-index:9999!important;background:var(--bg)!important;border-radius:0!important;padding:0!important;margin:0!important;}
+.chart-fullscreen canvas{height:calc(100vh - 88px)!important;}
+.fs-searchbar{display:none;position:fixed;top:0;left:0;width:100%;background:#1b3a5c;z-index:10000;flex-direction:column;box-shadow:0 2px 8px rgba(0,0,0,.3);}
+.fs-searchbar.show{display:flex;}
+.fs-top{display:flex;align-items:center;gap:10px;padding:8px 14px;}
+.fs-logo{display:flex;align-items:center;gap:7px;flex-shrink:0;}
+.fs-logo .fl-box{width:28px;height:28px;border-radius:7px;background:#ed7d31;display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px;font-weight:700;}
+.fs-logo .fl-txt{color:#fff;font-size:13px;font-weight:700;white-space:nowrap;}
+.fs-logo .fl-txt span{color:#ed7d31;}
+.fs-searchbar input{flex:1;height:34px;border-radius:8px;border:none;padding:0 12px;font-size:14px;font-weight:600;outline:none;background:rgba(255,255,255,.15);color:#fff;}
+.fs-searchbar input::placeholder{color:#a8bdd6;}
+.fs-searchbar input:focus{background:rgba(255,255,255,.25);}
+.fs-bottom{display:flex;align-items:center;justify-content:space-between;padding:4px 14px 8px;gap:10px;}
+.fs-tabs{display:flex;gap:5px;}
+.fs-tab{padding:4px 12px;border-radius:6px;border:1px solid rgba(255,255,255,.2);background:transparent;color:#a8bdd6;font-size:12px;font-weight:700;cursor:pointer;}
+.fs-tab.on{background:#ed7d31;color:#fff;border-color:#ed7d31;}
+.fs-legend{display:flex;gap:10px;flex-wrap:wrap;}
+.fs-legend span{font-size:11px;color:#a8bdd6;display:flex;align-items:center;gap:4px;}
+.fs-legend i{display:inline-block;width:12px;height:3px;vertical-align:middle;border-radius:2px;}
+.fs-ac{position:absolute;top:100%;left:14px;right:14px;background:#fff;border-radius:0 0 10px 10px;box-shadow:0 4px 12px rgba(0,0,0,.2);z-index:10001;max-height:240px;overflow-y:auto;}
+.fs-ac .ac-item{padding:10px 14px;cursor:pointer;font-size:13px;border-bottom:1px solid #f0f3f7;}
+.fs-ac .ac-item:hover{background:#f5f7fa;}
+.fs-close{color:#a8bdd6;font-size:18px;cursor:pointer;padding:4px 6px;background:none;border:none;flex-shrink:0;}
+.fs-crosshair-btn{padding:4px 10px;border-radius:6px;border:1px solid rgba(255,255,255,.2);background:transparent;color:#a8bdd6;font-size:11px;font-weight:600;cursor:pointer;}
+.fs-crosshair-btn.on{background:rgba(255,255,255,.2);color:#fff;}
 .legend{display:flex;gap:12px;flex-wrap:wrap;margin-top:8px;font-size:12px;color:#5a6b7d}
 .legend i{display:inline-block;width:14px;height:3px;vertical-align:middle;margin-right:3px}
 .draws-info{margin-top:10px;font-size:13px;color:#555;line-height:1.8}
@@ -299,6 +326,32 @@ header{display:flex;align-items:center;gap:11px;margin-bottom:16px}
   </div>
   <div class="guide-foot2"><svg viewBox="0 0 24 24" fill="none" stroke="#9a6b4a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9l-8 14A2 2 0 004 21h16a2 2 0 001.7-3l-8-14a2 2 0 00-3.4 0z"/></svg><span>모든 분석은 통계·작도 기반 <b>참고 자료</b>이며 매수·매도 추천이 아닙니다. 방향 판단은 추세 유지 시에만 유효하며 전환점은 잡지 못합니다.</span></div>
 </div>
+<div id="fs-searchbar" class="fs-searchbar">
+  <div class="fs-top">
+    <div class="fs-logo"><div class="fl-box">J</div><div class="fl-txt">JOIN <span>CHART</span></div></div>
+    <div style="position:relative;flex:1;">
+      <input type="text" id="fs-input" placeholder="종목명 · 코드 검색" autocomplete="off">
+      <div class="fs-ac" id="fs-ac"></div>
+    </div>
+    <button class="fs-close" onclick="closeFsSearch()" title="전체화면 닫기">&#x2715;</button>
+  </div>
+  <div class="fs-bottom">
+    <div class="fs-tabs" id="fs-tabs">
+      <button class="fs-tab on" onclick="fsSwitchTab('10',this)">단기<br><span style="font-size:10px;font-weight:400;">15분봉</span></button>
+      <button class="fs-tab" onclick="fsSwitchTab('60',this)">중기<br><span style="font-size:10px;font-weight:400;">60분봉</span></button>
+      <button class="fs-tab" onclick="fsSwitchTab('',this)">중장기<br><span style="font-size:10px;font-weight:400;">일봉</span></button>
+    </div>
+    <div class="fs-legend">
+      <span><i style="background:#000"></i>2일선</span>
+      <span><i style="background:#1d9e75"></i>상승목표</span>
+      <span><i style="background:#5a6473"></i>상승잠재</span>
+      <span><i style="background:#d4537e"></i>공방선</span>
+      <span><i style="background:#8a98a8"></i>삼각수렴</span>
+      <span><i style="background:#e8743b"></i>매물집중</span>
+    </div>
+    <button class="fs-crosshair-btn" id="fs-crosshair-btn" onclick="toggleFsCrosshair()">&#x271B; 가격선</button>
+  </div>
+</div>
 <div id="result"></div>
 </div>
 <script>
@@ -346,6 +399,35 @@ function getDraw(sfx) {
     drawing: false, startX: 0, startY: 0, lastX: 0, lastY: 0, currentPath: []
   };
   return drawState[sfx];
+}
+
+function toggleFullscreen(sfx) {
+  var host = document.getElementById('dcv'+sfx);
+  if (!host) return;
+  var chartHost = host.closest('.chart-host') || host.parentElement;
+  var btn = document.getElementById('fsbtn'+sfx);
+  var fsbar = document.getElementById('fs-searchbar');
+  if (chartHost.classList.contains('chart-fullscreen')) {
+    chartHost.classList.remove('chart-fullscreen');
+    if (btn) btn.innerHTML = '&#x26F6; 전체화면';
+    if (fsbar) fsbar.classList.remove('show');
+    document.body.style.overflow = '';
+  } else {
+    chartHost.classList.add('chart-fullscreen');
+    if (btn) btn.innerHTML = '&#x2715; 닫기';
+    if (fsbar) {
+      fsbar.classList.add('show'); fsbar.dataset.sfx=sfx;
+      // 현재 활성 탭 동기화
+      var activeTrk = '';
+      document.querySelectorAll('.trk-tab.on').forEach(function(t){ activeTrk=t.getAttribute('data-trk')||''; });
+      document.querySelectorAll('.fs-tab').forEach(function(b){ b.classList.remove('on'); });
+      var fsTabMatch = document.querySelector('.fs-tab[onclick*="\''+activeTrk+'\',"]');
+      if (fsTabMatch) fsTabMatch.classList.add('on');
+      else document.querySelectorAll('.fs-tab')[0] && document.querySelectorAll('.fs-tab')[0].classList.add('on');
+    }
+    document.body.style.overflow = 'hidden';
+  }
+  setTimeout(function(){ lay(); draw(null,null); redrawCanvas(sfx); }, 100);
 }
 
 function toggleDraw(sfx) {
@@ -548,6 +630,72 @@ function initDrawCanvas(sfx) {
 }
 // ===== 드로잉 레이어 끝 =====
 
+// ===== 전체화면 검색바 =====
+var fsInp = null, fsAc = null;
+document.addEventListener('DOMContentLoaded', function() {
+  fsInp = document.getElementById('fs-input');
+  fsAc  = document.getElementById('fs-ac');
+  if (!fsInp) return;
+  fsInp.addEventListener('input', function() {
+    var q = fsInp.value.trim().toLowerCase();
+    if (!q) { fsAc.classList.remove('show'); return; }
+    var hit = STOCKS.filter(function(s){ return s.code.toLowerCase().includes(q)||(s.name&&s.name.toLowerCase().includes(q)); }).slice(0,8);
+    if (!hit.length) { fsAc.classList.remove('show'); return; }
+    fsAc.innerHTML = hit.map(function(s){
+      return '<div class="ac-item" onclick="fsPick(''+s.code+'',''+(s.name||'').replace(/'/g,'')+'')">'
+        +'<span style="font-weight:600">'+s.name+'</span> <span style="color:#888;font-size:12px">'+s.code+'</span></div>';
+    }).join('');
+    fsAc.classList.add('show');
+  });
+  fsInp.addEventListener('keydown', function(e) {
+    if (e.key !== 'Enter') return;
+    e.preventDefault();
+    fsAc.classList.remove('show');
+    var q = fsInp.value.trim();
+    var m = q.match(/(\d{6})/); if (m) { go(m[1]); return; }
+    var ql = q.toLowerCase();
+    var hit = STOCKS.find(function(s){ return s.name&&s.name.toLowerCase()===ql; })
+           || STOCKS.find(function(s){ return s.name&&s.name.toLowerCase().includes(ql); });
+    if (hit) { fsPick(hit.code, hit.name); return; }
+    if (/^[A-Za-z][A-Za-z.\-]{0,6}$/.test(q)) { go(q.toUpperCase()); }
+  });
+  document.addEventListener('click', function(e) {
+    if (!e.target.closest('#fs-searchbar')) fsAc.classList.remove('show');
+  });
+});
+function fsPick(code, name) {
+  if (fsInp) fsInp.value = name + ' (' + code + ')';
+  if (fsAc)  fsAc.classList.remove('show');
+  go(code);
+}
+function fsSwitchTab(trk, btn) {
+  // 전체화면에서 탭 전환 — 실제 trk-tab 클릭과 연동
+  document.querySelectorAll('.fs-tab').forEach(function(b){ b.classList.remove('on'); });
+  btn.classList.add('on');
+  var realTab = document.querySelector('.trk-tab[data-trk="'+trk+'"]');
+  if (realTab) realTab.click();
+}
+
+var fsCrosshairOn = true;
+function toggleFsCrosshair() {
+  fsCrosshairOn = !fsCrosshairOn;
+  var btn = document.getElementById('fs-crosshair-btn');
+  if (btn) btn.classList.toggle('on', fsCrosshairOn);
+  // 가격선 숨기기 — lastMx/lastMy 초기화로 크로스헤어 끔
+  if (!fsCrosshairOn) {
+    document.querySelectorAll('[id^="tip"]').forEach(function(t){ t.style.display='none'; });
+  }
+}
+
+function closeFsSearch() {
+  var fsbar = document.getElementById('fs-searchbar');
+  if (fsbar) fsbar.classList.remove('show');
+  document.querySelectorAll('.chart-host').forEach(function(h){ h.classList.remove('chart-fullscreen'); });
+  document.querySelectorAll('.fs-btn').forEach(function(b){ b.innerHTML = '&#x26F6; 전체화면'; });
+  document.body.style.overflow = '';
+}
+// ===== 전체화면 검색바 끝 =====
+
 function pick(code,name){inp.value=name+' ('+code+')';ac.classList.remove('show');inp.blur();go(code);}
 
 function mkMethodLabel(val,nm,col,methods){
@@ -585,6 +733,7 @@ function trackHtml(sfx, label, hint, isUS){
   h+='</div>';
   h+='<div class="zoombar"><button id="zin'+sfx+'">+ 확대</button><button id="zout'+sfx+'">− 축소</button><button id="zall'+sfx+'">전체</button></div>';
   h+='<button class="draw-toggle" id="dtoggle'+sfx+'" onclick="toggleDraw(\''+sfx+'\')">&#9998; 작도</button>';
+  h+='<button class="fs-btn" onclick="toggleFullscreen(\''+sfx+'\')" id="fsbtn'+sfx+'">&#x26F6; 전체화면</button>';
   h+='<div class="draw-toolbar" id="dtbar'+sfx+'">';
   h+='<button class="dtool on" id="dtLine'+sfx+'" onclick="setDTool(\'line\',\''+sfx+'\')" title="직선">&#8599;</button>';
   h+='<button class="dtool" id="dtPen'+sfx+'" onclick="setDTool(\'pen\',\''+sfx+'\')" title="연필">&#9998;</button>';
