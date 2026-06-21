@@ -196,8 +196,6 @@ tr:last-child td{border-bottom:none}
         </div>
       </div>
       <div class="draw-toolbar">
-        <button class="dtool" id="draw-toggle" onclick="toggleDrawMode()" title="드로잉 ON/OFF" style="width:auto;padding:0 10px;font-size:11px;font-weight:700;">✏ 작도 OFF</button>
-        <div class="dtool-sep"></div>
         <button class="dtool" id="tool-line" onclick="pmTool('line',this)" title="직선">↗</button>
         <button class="dtool" id="tool-pen" onclick="pmTool('pen',this)" title="연필">✏</button>
         <button class="dtool" id="tool-text" onclick="pmTool('text',this)" title="텍스트">T</button>
@@ -302,18 +300,19 @@ function pm(msg){
   if(frame&&frame.contentWindow) frame.contentWindow.postMessage(msg,'*');
 }
 function pmTool(tool,btn){
+  var isOn = btn && btn.classList.contains('on');
   document.querySelectorAll('.dtool[id^="tool-"]').forEach(function(b){b.classList.remove('on');});
-  if(btn)btn.classList.add('on');
-  pm({type:'drawTool',tool:tool,sfx:currentSfx});
+  if(isOn){
+    // 이미 ON 상태 → 버튼 끄고 드로잉 OFF
+    pm({type:'drawOff',sfx:currentSfx});
+  } else {
+    // OFF 상태 → 버튼 켜고 드로잉 ON + 툴 설정
+    if(btn)btn.classList.add('on');
+    pm({type:'drawOn',tool:tool,sfx:currentSfx});
+  }
 }
 function pmColor(color){ pm({type:'drawColor',color:color,sfx:currentSfx}); }
-function toggleDrawMode(){
-  drawMode=!drawMode;
-  var btn=document.getElementById('draw-toggle');
-  btn.classList.toggle('on',drawMode);
-  btn.innerHTML=drawMode?'✏ 작도 ON':'✏ 작도 OFF';
-  pm({type:'drawToggle',sfx:currentSfx});
-}
+// toggleDrawMode 제거 - 툴 버튼으로 통합
 
 function toggleFullscreen(){
   var page=document.getElementById('page-drawing');

@@ -1217,6 +1217,15 @@ function initDrawCanvas(sfx){
 // postMessage로 드로잉 제어 (어드민에서)
 window.addEventListener('message',function(e){
   if(!e.data) return;
+  if(e.data.type==='drawOn'){
+    var ds=_ds(e.data.sfx||'');
+    if(!ds.active){toggleDraw(e.data.sfx||'');}
+    setDTool(e.data.tool||'line', e.data.sfx||'');
+  }
+  if(e.data.type==='drawOff'){
+    var ds2=_ds(e.data.sfx||'');
+    if(ds2.active){toggleDraw(e.data.sfx||'');}
+  }
   if(e.data.type==='drawToggle') toggleDraw(e.data.sfx||'');
   if(e.data.type==='drawTool')   setDTool(e.data.tool, e.data.sfx||'');
   if(e.data.type==='drawUndo')   drawUndo(e.data.sfx||'');
