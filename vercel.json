@@ -1,29 +1,3 @@
 {
-  "functions": {
-    "api/analyze.py": {
-      "maxDuration": 60
-    }
-  },
-  "rewrites": [
-    {
-      "source": "/stocks.json",
-      "destination": "/stocks.json"
-    },
-    {
-      "source": "/admin",
-      "destination": "/admin.html"
-    },
-    {
-      "source": "/admin.html",
-      "destination": "/admin.html"
-    },
-    {
-      "source": "/chart",
-      "destination": "/chart.html"
-    },
-    {
-      "source": "/chart.html",
-      "destination": "/chart.html"
-    }
-  ]
+  "functions": { "api/analyze.py": { "maxDuration": 60 } }
 }
