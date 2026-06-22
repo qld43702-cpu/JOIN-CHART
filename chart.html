@@ -420,6 +420,9 @@ function render(x){
   requestAnimationFrame(function(){requestAnimationFrame(function(){
     if(has60){ try{ mkChart(t60, t60.projection, '60'); }catch(e){console.error('60분봉:',e); mkChart(d,pj,'');} }
     else { mkChart(d,pj,''); }
+    // 나머지 트랙도 드로잉 초기화를 위해 백그라운드 렌더
+    if(has10){ try{ mkChart(t10, t10.projection, '10'); }catch(e){} }
+    if(has60){ try{ mkChart(d, pj, ''); }catch(e){} }
   });});
 }
 
@@ -1203,6 +1206,8 @@ function _renderStroke(ctx,s){
 function initDrawCanvas(sfx){
   var dcv=document.getElementById('dcv'+sfx),cv=document.getElementById('cv'+sfx);
   if(!dcv||!cv)return;
+  if(dcv._drawInit)return;  // 이미 초기화된 경우 중복 등록 방지
+  dcv._drawInit=true;
   dcv.width=cv.clientWidth;dcv.height=cv.clientHeight;
   function pos(e){var r=dcv.getBoundingClientRect();return{x:e.clientX-r.left,y:e.clientY-r.top};}
   dcv.addEventListener('mousedown',function(e){
