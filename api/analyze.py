@@ -741,6 +741,18 @@ class handler(BaseHTTPRequestHandler):
                 except Exception: tk=None; sj=_load_stocks().get(code,{}); nm=sj.get('name',code); mk=sj.get('market','코스피')
                 r=_pf([(get_day_kr,(code,)),(get_60m_kr,(code,)),(get_15m_kr,(code,))])
                 day,m60,m10=r[0],r[1],r[2]
+                # 야후 15분봉 실패 시 LS로 폴백
+                if not m10 or len(m10)<5:
+                    try: m10=get_min(tk,code,15) if tk else None
+                    except: m10=None
+                # 야후 60분봉 실패 시 LS로 폴백
+                if not m60 or len(m60)<5:
+                    try: m60=get_60m(tk,code) if tk else None
+                    except: m60=None
+                # 야후 일봉 실패 시 LS로 폴백
+                if not day or len(day)<5:
+                    try: day=get_day(tk,code) if tk else None
+                    except: day=None
                 if tk and day:
                     today_bar=get_today_bar_ls(tk,code)
                     if today_bar:
