@@ -190,8 +190,8 @@ tr:last-child td{border-bottom:none}
           <div class="draw-ac" id="draw-ac"></div>
         </div>
         <div class="draw-tabs">
-          <button class="dtab on" id="dtab-10" onclick="switchTab('10',this)">단기</button>
-          <button class="dtab" id="dtab-60" onclick="switchTab('60',this)">중기</button>
+          <button class="dtab" id="dtab-10" onclick="switchTab('10',this)">단기</button>
+          <button class="dtab on" id="dtab-60" onclick="switchTab('60',this)">중기</button>
           <button class="dtab" id="dtab-" onclick="switchTab('',this)">중장기</button>
         </div>
       </div>
@@ -293,7 +293,24 @@ di.addEventListener('keydown',function(e){
 document.addEventListener('click',function(e){if(!e.target.closest('.draw-search-wrap'))dac.style.display='none';});
 
 var drawMode=false;
-var currentSfx='';
+var currentSfx='60';  // chart.html 기본 탭(중기/60분봉)과 맞춤
+
+// chart.html 로드 완료 시 현재 활성 sfx 동기화
+document.getElementById('chart-frame').addEventListener('load', function(){
+  // 로드 후 약간 대기 후 현재 sfx 질의
+  setTimeout(function(){ pm({type:'getActiveSfx'}); }, 500);
+});
+
+// chart.html에서 activeSfx 응답 수신
+window.addEventListener('message', function(e){
+  if(e.data && e.data.type==='activeSfx'){
+    currentSfx = e.data.sfx;
+    // 탭 버튼 UI 동기화
+    document.querySelectorAll('.dtab').forEach(function(b){ b.classList.remove('on'); });
+    var matchBtn = document.getElementById('dtab-'+currentSfx);
+    if(matchBtn) matchBtn.classList.add('on');
+  }
+});
 
 function pm(msg){
   var frame=document.getElementById('chart-frame');
