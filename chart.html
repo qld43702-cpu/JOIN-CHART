@@ -407,7 +407,11 @@ function render(x){
       pnls.forEach(function(p){p.style.display = (p.getAttribute('data-pnl')===key)?'block':'none';});
       // 보이게 된 트랙 차트 다시 그림
       var td=trackData[key];
-      if(td){ requestAnimationFrame(function(){ try{ mkChart(td.d, td.pj, key); }catch(e){console.error('차트 재렌더:',e);} }); }
+      if(td){ requestAnimationFrame(function(){
+        try{ mkChart(td.d, td.pj, key); }catch(e){console.error('차트 재렌더:',e);}
+        // 차트 재렌더 후 드로잉 스트로크 복원
+        requestAnimationFrame(function(){ _redraw(key); });
+      }); }
       // 부모(어드민)에 현재 활성 sfx 알림
       if(window.parent!==window) window.parent.postMessage({type:'activeSfx',sfx:key},'*');
     });
@@ -1192,7 +1196,8 @@ function _redraw(sfx){
   if(!dcv||!cv)return;
   dcv.width=cv.clientWidth;dcv.height=cv.clientHeight;
   var ctx=dcv.getContext('2d');ctx.clearRect(0,0,dcv.width,dcv.height);
-  var ds=_ds(sfx);if(!ds.active)return;
+  var ds=_ds(sfx);
+  // 스트로크는 active 여부 관계없이 항상 복원 (탭 전환 후에도 유지)
   ds.strokes.forEach(function(s){_renderStroke(ctx,s);});
 }
 function _renderStroke(ctx,s){
