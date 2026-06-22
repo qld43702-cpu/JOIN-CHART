@@ -73,9 +73,11 @@ def get_today_bar_ls(tk,code):
             headers={"Content-Type":"application/json; charset=UTF-8","authorization":f"Bearer {tk}","tr_cd":"t1102","tr_cont":"N"},
             json={"t1102InBlock":{"shcode":code}})
         b=r.json().get("t1102OutBlock",{})
-        o=float(b.get("open") or b.get("price") or 0)
-        h=float(b.get("high") or b.get("price") or 0)
-        l=float(b.get("low")  or b.get("price") or 0)
+        import sys; print("[t1102 keys]", list(b.keys())[:20], file=sys.stderr)
+        # LS t1102 실제 필드명: opnprice=시가, hgprice=고가, lwprice=저가, price=현재가
+        o=float(b.get("opnprice") or b.get("open") or b.get("price") or 0)
+        h=float(b.get("hgprice") or b.get("high") or b.get("price") or 0)
+        l=float(b.get("lwprice") or b.get("low")  or b.get("price") or 0)
         c=float(b.get("price") or b.get("jnilclose") or 0)
         if c<=0: return None
         today=now.strftime("%Y%m%d")
