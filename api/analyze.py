@@ -7,6 +7,14 @@ from http.server import BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
 import os, json, requests
 
+
+import datetime as _dt
+_KST = _dt.timezone(_dt.timedelta(hours=9))
+def _now_kst(): return _dt.datetime.now(_KST)
+def _is_market_open():
+    now = _now_kst()
+    return now.weekday() < 5 and (9 <= now.hour < 15 or (now.hour == 15 and now.minute <= 30))
+
 BASE="https://openapi.ls-sec.co.kr:8080"
 YBASE="https://query1.finance.yahoo.com/v8/finance/chart"
 YHEAD={"User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
@@ -51,10 +59,8 @@ def get_60m_kr(code): return _yahoo_fetch(code+_load_kr_market(code),"2y","60m")
 def get_15m_kr(code): return _yahoo_fetch(code+_load_kr_market(code),"60d","15m")
 
 def get_cur_ls(tk,code):
-    import datetime as _dt
     try:
-        now=_dt.datetime.now()
-        if not (9<=now.hour<15 or (now.hour==15 and now.minute<=30)): return None
+        if not _is_market_open(): return None
         r=requests.post(f"{BASE}/stock/market-data",verify=False,timeout=5,
             headers={"Content-Type":"application/json; charset=UTF-8","authorization":f"Bearer {tk}","tr_cd":"t1102","tr_cont":"N"},
             json={"t1102InBlock":{"shcode":code}})
@@ -64,23 +70,20 @@ def get_cur_ls(tk,code):
     except: return None
 
 def get_today_bar_ls(tk,code):
-    """장중 오늘 봉(시가/고가/저가/현재가)을 LS에서 가져옴"""
-    import datetime as _dt
+    """장중 오늘 봉(시가/고가/저가/현재가)을 LS t1102에서 — 야후 시세에 씌우기용"""
     try:
-        now=_dt.datetime.now()
-        if not (9<=now.hour<15 or (now.hour==15 and now.minute<=30)): return None
+        if not _is_market_open(): return None
         r=requests.post(f"{BASE}/stock/market-data",verify=False,timeout=5,
             headers={"Content-Type":"application/json; charset=UTF-8","authorization":f"Bearer {tk}","tr_cd":"t1102","tr_cont":"N"},
             json={"t1102InBlock":{"shcode":code}})
         b=r.json().get("t1102OutBlock",{})
-        import sys; print("[t1102 keys]", list(b.keys())[:20], file=sys.stderr)
         # LS t1102 실제 필드명: opnprice=시가, hgprice=고가, lwprice=저가, price=현재가
         o=float(b.get("opnprice") or b.get("open") or b.get("price") or 0)
         h=float(b.get("hgprice") or b.get("high") or b.get("price") or 0)
         l=float(b.get("lwprice") or b.get("low")  or b.get("price") or 0)
         c=float(b.get("price") or b.get("jnilclose") or 0)
         if c<=0: return None
-        today=now.strftime("%Y%m%d")
+        today=_now_kst().strftime("%Y%m%d")
         return {'d':today,'t':'0900','o':o or c,'h':h or c,'l':l or c,'c':c}
     except: return None
 def get_min_us(ticker,interval="60m"):
@@ -733,28 +736,28 @@ class handler(BaseHTTPRequestHandler):
                 if not code.isdigit() or len(code)!=6:
                     self.wfile.write(json.dumps({'error':'국내는 6자리 코드, 해외는 영문 티커(AAPL 등)'}).encode()); return
                 tk=token(); nm,mk=get_name(tk,code)
-                day=get_day(tk,code)
-                try: m60=get_60m(tk,code)
+                # 일봉/60분/15분 = 야후 (지연 낮음), 오늘 현재가만 LS t1102로 씌우기
+                day=get_day_kr(code)
+                try: m60=get_60m_kr(code)
                 except Exception: m60=None
-                try: m10=get_min(tk,code,15)
+                try: m10=get_15m_kr(code)
                 except Exception: m10=None
-                if tk and day:
-                    today_bar=get_today_bar_ls(tk,code)
-                    if today_bar:
-                        import datetime as _dt
-                        today_str=_dt.datetime.now().strftime("%Y%m%d")
-                        # 오늘 봉이 야후 데이터에 없으면 추가
-                        if not day or day[-1].get('d','')!=today_str:
+                # LS t1102로 오늘 봉(시가/고가/저가/현재가) 씌우기
+                today_bar=get_today_bar_ls(tk,code)
+                if today_bar:
+                    today_str=_now_kst().strftime("%Y%m%d")
+                    # 일봉에 씌우기
+                    if day:
+                        if day[-1].get('d','')!=today_str:
                             day.append(today_bar)
                         else:
-                            # 있으면 현재가만 업데이트
                             day[-1]['c']=today_bar['c']
                             if today_bar['h']>day[-1].get('h',0): day[-1]['h']=today_bar['h']
                             if today_bar['l']>0 and today_bar['l']<day[-1].get('l',999999999): day[-1]['l']=today_bar['l']
-                    # 15분봉도 오늘 봉 주입
-                    if m10 and today_bar:
-                        today_str=_dt.datetime.now().strftime("%Y%m%d")
-                        if not m10 or m10[-1].get('d','')!=today_str:
+                            if today_bar['o']>0 and day[-1].get('o',0)==0: day[-1]['o']=today_bar['o']
+                    # 15분봉에 씌우기
+                    if m10:
+                        if m10[-1].get('d','')!=today_str:
                             m10.append(today_bar)
                         else:
                             m10[-1]['c']=today_bar['c']
@@ -831,11 +834,8 @@ class handler(BaseHTTPRequestHandler):
             out={'종목코드':code,'종목명':nm,'시장':mk,'일봉':dd,'60분':mm,'10분':tt}
             _payload=json.dumps(out,ensure_ascii=False).encode()
             # 캐시 저장 (30분)
-            import datetime as _now_dt
-_now=_now_dt.datetime.now()
-_is_market=(_now.weekday()<5 and (9<=_now.hour<15 or (_now.hour==15 and _now.minute<=30)))
-_ttl=300 if _is_market else 1800  # 장중 5분, 장외 30분
-_RESULT_CACHE[_ck]={"data":_payload,"exp":_t.time()+_ttl}
+            _ttl=300 if _is_market_open() else 1800  # 장중 5분, 장외 30분
+            _RESULT_CACHE[_ck]={"data":_payload,"exp":_t.time()+_ttl}
             self.wfile.write(_payload)
         except Exception as ex:
             self.wfile.write(json.dumps({'error':'분석 실패: '+str(ex)}).encode())
