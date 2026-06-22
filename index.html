@@ -713,8 +713,11 @@ function mkChart(data,pj,sfx){
     var vs=Math.max(0,viewS), ve=Math.min(TOTAL-1,viewE);
     var lo=1e18, hi=-1e18;
     for(var i=vs;i<=Math.min(ve,n-1);i++){lo=Math.min(lo,ch[i].l);hi=Math.max(hi,ch[i].h);}
-    if(ve>=n&&pj){hi=Math.max(hi,pj.up_target||hi);lo=Math.min(lo,pj.dn_target||lo);}
-    risks.forEach(function(r){if(r.yc)lo=Math.min(lo,r.yc);});
+    // 미래 목표선은 현재가 ±40% 이내만 Y축에 반영 (공방선은 제외)
+    if(ve>=n&&pj){
+      if(pj.up_target && pj.up_target<=cur*1.4) hi=Math.max(hi,pj.up_target);
+      if(pj.dn_target && pj.dn_target>=cur*0.6) lo=Math.min(lo,pj.dn_target);
+    }
     if(lo>hi){lo=Math.min.apply(null,c);hi=Math.max.apply(null,c);}
     lo*=0.97; hi*=1.03;
     plot={lo:lo,hi:hi,x0:padL,x1:W-padR,y0:padT,y1:H-padB};

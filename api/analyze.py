@@ -719,40 +719,25 @@ class handler(BaseHTTPRequestHandler):
             _hit=_RESULT_CACHE.get(_ck)
             if _hit and _t.time() < _hit["exp"]:
                 self.wfile.write(_hit["data"]); return
-            import threading
-            def _pf(tasks):
-                res=[None]*len(tasks)
-                def _r(i,fn,a):
-                    try: res[i]=fn(*a)
-                    except: res[i]=None
-                ts=[threading.Thread(target=_r,args=(i,f,a)) for i,(f,a) in enumerate(tasks)]
-                for t in ts: t.start()
-                for t in ts: t.join()
-                return res
             if is_us(code):
+                # ===== 미국 주식 (야후) =====
                 tkr=code.upper()
                 nm,mk=get_name_us(tkr)
-                r=_pf([(get_day_us,(tkr,)),(get_min_us,(tkr,'60m')),(get_min_us,(tkr,'15m'))])
-                day,m60,m10=r[0],r[1],r[2]
+                day=get_day_us(tkr)
+                try: m60=get_min_us(tkr,"60m")
+                except Exception: m60=None
+                try: m10=get_min_us(tkr,"15m")
+                except Exception: m10=None
             else:
+                # ===== 한국 주식 (LS) =====
                 if not code.isdigit() or len(code)!=6:
                     self.wfile.write(json.dumps({'error':'국내는 6자리 코드, 해외는 영문 티커(AAPL 등)'}).encode()); return
-                try: tk=token(); nm,mk=get_name(tk,code)
-                except Exception: tk=None; sj=_load_stocks().get(code,{}); nm=sj.get('name',code); mk=sj.get('market','코스피')
-                r=_pf([(get_day_kr,(code,)),(get_60m_kr,(code,)),(get_15m_kr,(code,))])
-                day,m60,m10=r[0],r[1],r[2]
-                # 야후 15분봉 실패 시 LS로 폴백
-                if not m10 or len(m10)<5:
-                    try: m10=get_min(tk,code,15) if tk else None
-                    except: m10=None
-                # 야후 60분봉 실패 시 LS로 폴백
-                if not m60 or len(m60)<5:
-                    try: m60=get_60m(tk,code) if tk else None
-                    except: m60=None
-                # 야후 일봉 실패 시 LS로 폴백
-                if not day or len(day)<5:
-                    try: day=get_day(tk,code) if tk else None
-                    except: day=None
+                tk=token(); nm,mk=get_name(tk,code)
+                day=get_day(tk,code)
+                try: m60=get_60m(tk,code)
+                except Exception: m60=None
+                try: m10=get_min(tk,code,15)
+                except Exception: m10=None
                 if tk and day:
                     today_bar=get_today_bar_ls(tk,code)
                     if today_bar:
