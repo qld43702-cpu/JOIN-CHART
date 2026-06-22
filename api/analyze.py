@@ -38,7 +38,7 @@ def _yahoo_fetch(ticker, rng, interval):
         out=[]
         for i in range(len(ts)):
             if i>=len(c) or c[i] is None: continue
-            dt=datetime.datetime.fromtimestamp(ts[i], datetime.timezone.utc)
+            dt=datetime.datetime.fromtimestamp(ts[i], _KST)
             row={'d':dt.strftime("%Y%m%d"),'o':float(o[i] or c[i]),'h':float(h[i] or c[i]),
                  'l':float(l[i] or c[i]),'c':float(c[i]),'v':float(v[i] or 0)}
             if interval!="1d": row['t']=dt.strftime("%H%M%S")
