@@ -107,7 +107,7 @@ function trackHtml(sfx, label, hint, isUS){
   h+='</div>';
   h+='<div class="zoombar"><button id="zin'+sfx+'">+ 확대</button><button id="zout'+sfx+'">− 축소</button><button id="zall'+sfx+'">전체</button></div>';
   h+='<div class="chart-host" style="position:relative;"><canvas id="cv'+sfx+'"></canvas><canvas class="draw-canvas" id="dcv'+sfx+'"></canvas><div class="linetip" id="tip'+sfx+'"></div></div>';
-  h+='<div class="legend"><span><i style="background:#000"></i>2일선</span><span><i style="background:#1d9e75"></i>상승목표</span><span><i style="background:#5a6473"></i>상승잠재</span><span><i style="background:#d4537e"></i>공방선</span></div>';
+  h+='<div class="legend"><span><i style="background:#1d9e75"></i>상승목표</span><span><i style="background:#5a6473"></i>상승잠재</span><span><i style="background:#d4537e"></i>공방선</span></div>';
   h+='<div class="scen-btns">';
   h+='<button class="scen-btn up" data-scen="up"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 15l5-6 4 3 7-8"/></svg>상승 시나리오</button>';
   h+='<button class="scen-btn dn" data-scen="dn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 9l5 6 4-3 7 8"/></svg>하락 시나리오</button>';
@@ -555,17 +555,18 @@ function mkChart(data,pj,sfx){
     }
     // ===== 매물대/매물집중 제거됨 =====
 
-    // 캔들
-    var cw=Math.max(1.5,(plot.x1-plot.x0)/getSpan()*0.6);
+    // 캔들 (증권사처럼 진하게)
+    var cw=Math.max(1.5,(plot.x1-plot.x0)/getSpan()*0.62);
     for(var i=Math.max(0,viewS);i<=Math.min(viewE,n-1);i++){
       var r=ch[i],x=xOf(i),u=r.c>=r.o;
-      ctx.strokeStyle=u?'rgba(226,75,74,.5)':'rgba(55,138,221,.5)';ctx.lineWidth=1;
+      ctx.strokeStyle=u?'#e02f2f':'#1f6fd0';ctx.lineWidth=1.2;
       ctx.beginPath();ctx.moveTo(x,yOf(r.h));ctx.lineTo(x,yOf(r.l));ctx.stroke();
-      ctx.fillStyle=u?'rgba(226,75,74,.45)':'rgba(55,138,221,.45)';
+      ctx.fillStyle=u?'#e02f2f':'#1f6fd0';
       var yo=yOf(r.o),yc2=yOf(r.c);
       ctx.fillRect(x-cw/2,Math.min(yo,yc2),cw,Math.max(1.5,Math.abs(yc2-yo)));
     }
-    // 2일선
+    // 2일선 — 화면 표시 숨김 (계산은 유지)
+    if(false){
     ctx.strokeStyle='#222';ctx.lineWidth=1;ctx.beginPath();var st=false;
     for(var i=Math.max(0,viewS);i<=Math.min(viewE,n-1);i++){
       if(ma2[i]==null)continue;
@@ -573,6 +574,7 @@ function mkChart(data,pj,sfx){
       if(!st){ctx.moveTo(x,y);st=true;}else{ctx.lineTo(x,y);}
     }
     ctx.stroke();
+    }
     // 위험선
     risks.forEach(function(d){
       if(!d.price_only){
