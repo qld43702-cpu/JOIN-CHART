@@ -777,7 +777,7 @@ function mkChart(data,pj,sfx){
   });
   // ===== 모바일 터치 =====
   // 한 손가락: 가격선(크로스헤어) 표시 + 좌우 스크롤 / 두 손가락: 핀치 확대축소
-  var tStartX=0, tDvs=0, tMoved=false;
+  var tStartX=0, tStartY=0, tDvs=0, tMoved=false, tVScroll=false;
   var pinchD0=0, pinchSp0=0, pinchCenter=0, pinching=false;
   function touchDist(t0,t1){var dx=t0.clientX-t1.clientX,dy=t0.clientY-t1.clientY;return Math.sqrt(dx*dx+dy*dy);}
   cv.addEventListener('touchstart',function(e){
@@ -793,7 +793,7 @@ function mkChart(data,pj,sfx){
     }
     if(e.touches.length!==1)return;
     var t=e.touches[0], r=cv.getBoundingClientRect();
-    tStartX=t.clientX; tDvs=viewS; tMoved=false;
+    tStartX=t.clientX; tStartY=t.clientY; tDvs=viewS; tMoved=false; tVScroll=false;
     lastMx=t.clientX-r.left; lastMy=(t.clientY-r.top)-44;
     draw(lastMx,lastMy);
   },{passive:true});
@@ -813,12 +813,17 @@ function mkChart(data,pj,sfx){
       return;
     }
     if(e.touches.length!==1)return;
-    e.preventDefault();
     var t=e.touches[0], r=cv.getBoundingClientRect();
-    lastMx=t.clientX-r.left; lastMy=(t.clientY-r.top)-44;  // 손가락 가림 방지: 44px 위로
     var dx=t.clientX-tStartX;
-    // 좌우로 많이 움직이면 스크롤, 그 외엔 가격선만
-    if(Math.abs(dx)>10){
+    var dyAbs=Math.abs(t.clientY-tStartY);
+    var dxAbs=Math.abs(dx);
+    // 세로 움직임이 더 크면 = 페이지 스크롤 의도 → 차트가 가로채지 않음
+    if(!tMoved && dyAbs>dxAbs && dyAbs>8){ tVScroll=true; }
+    if(tVScroll) return;  // 세로 스크롤 중이면 차트 조작 안 함 (페이지 스크롤 허용)
+    // 가로 움직임 = 차트 기간 이동
+    e.preventDefault();
+    lastMx=t.clientX-r.left; lastMy=(t.clientY-r.top)-44;  // 손가락 가림 방지: 44px 위로
+    if(dxAbs>10){
       tMoved=true;
       var per=(plot.x1-plot.x0)/getSpan();
       var sh=Math.round(-dx/per), sp=getSpan(), s=tDvs+sh;
@@ -832,7 +837,14 @@ function mkChart(data,pj,sfx){
     risks.forEach(function(d){if(Math.abs(lastMy-yOf(d.yc))<8){tip.style.display='block';tip.style.background='#d4537e';tip.textContent='공방선 '+fmtP(d.yc);tip.style.left=Math.min(lastMx+12,W-110)+'px';tip.style.top=(yOf(d.yc)-28)+'px';}});
   },{passive:false});
   cv.addEventListener('touchend',function(e){
-    if(e.touches.length<2)pinching=false;
+    if(e.touches.length<2){
+      pinching=false;
+      // 핀치 끝나고 한 손가락 남아도 드래그로 튀지 않게: 남은 터치를 새 기준점으로
+      if(e.touches.length===1){
+        tStartX=e.touches[0].clientX; tStartY=e.touches[0].clientY; tDvs=viewS; tMoved=false; tVScroll=true;
+      }
+    }
+    if(e.touches.length===0){ tVScroll=false; }
     // 손 떼면 잠시 후 가격선·툴팁 정리
     setTimeout(function(){ lastMx=lastMy=null; draw(null,null); tip.style.display='none'; }, 1500);
   },{passive:true});

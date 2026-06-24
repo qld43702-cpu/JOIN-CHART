@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<!-- BUILD:1782269325 -->
+<!-- BUILD:1782269979 -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>JOIN CHART — 차트</title>
@@ -60,7 +60,7 @@ header{display:flex;align-items:center;gap:11px;margin-bottom:16px}
 .methods label{display:flex;align-items:center;gap:6px;font-size:14px;cursor:pointer;padding:6px 11px;background:#fff;border:1px solid #e3e8ee;border-radius:8px}
 .methods .up{color:var(--green);font-weight:700}.methods .dn{color:var(--pink);font-weight:700}
 .chart-host{position:relative;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:10px}
-.chart-host canvas{width:100%;height:440px;display:block;cursor:crosshair}
+.chart-host canvas{width:100%;height:440px;display:block;cursor:crosshair;touch-action:pan-y}
 .zoombar{display:flex;gap:6px;margin-bottom:8px}
 .zoombar button{font-size:13px;font-weight:700;padding:5px 12px;border:1px solid #d5dce4;border-radius:8px;background:#fff;color:var(--navy);cursor:pointer}
 .linetip{position:absolute;display:none;padding:5px 9px;border-radius:6px;font-size:13px;font-weight:600;color:#fff;pointer-events:none;white-space:nowrap;z-index:5}
@@ -268,14 +268,15 @@ header{display:flex;align-items:center;gap:11px;margin-bottom:16px}
   .methods{gap:5px;padding:8px}.methods label{font-size:13px;padding:5px 9px;gap:4px}
   .result-head .rp{font-size:17px}
   .legend{font-size:11px;gap:8px}
-  /* 모바일: 텍스트는 여백 유지, 차트만 화면 끝까지 꽉 채움 */
-  .body-pad{padding:0 12px}
-  .chart-host{padding:0;border:none;border-radius:0;background:transparent;margin:0 -12px}
+  /* 모바일: 차트는 화면 끝까지, 텍스트만 여백 */
+  .body-pad{padding:0}
+  .chart-host{padding:0;border:none;border-radius:0;background:transparent}
   .chart-host canvas{height:380px;cursor:default}
   .track{padding:0}
+  .result-head,.trk-tabs,.methods,.zoombar,.legend,.scen-btns,.scen-hint,.report-btn,.empty,.loading{padding-left:12px;padding-right:12px}
+  .trk-tabs{margin-left:0;margin-right:0}
 }
 
-body{background:var(--bg);color:var(--ink);font-family:-apple-system,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;padding:0;margin:0;font-size:16px;overflow-x:hidden;}
 #result{padding:8px 12px;}
 .result-head{margin:8px 0 6px;}
 
@@ -298,6 +299,6 @@ body{background:var(--bg);color:var(--ink);font-family:-apple-system,"Apple SD G
 <div class="wrap"><div class="body-pad">
 <div id="result"></div>
 </div></div>
-<script src="/chart-core.js?v=1782269325"></script>
+<script src="/chart-core.js?v=1782269979"></script>
 </body>
 </html>
