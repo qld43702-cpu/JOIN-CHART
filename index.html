@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<!-- BUILD:1782265439 -->
+<!-- BUILD:1782266637 -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>JOIN CHART</title>
@@ -376,10 +376,9 @@ function trackHtml(sfx, label, hint, isUS){
   h+='</div>';
   h+='<div class="zoombar"><button id="zin'+sfx+'">+ 확대</button><button id="zout'+sfx+'">− 축소</button><button id="zall'+sfx+'">전체</button></div>';
   h+='<div class="chart-host"><canvas id="cv'+sfx+'"></canvas><div class="linetip" id="tip'+sfx+'"></div></div>';
-  h+='<div class="legend"><span><i style="background:#000"></i>2일선</span><span><i style="background:#1d9e75"></i>상승목표</span><span><i style="background:#5a6473"></i>상승잠재</span><span><i style="background:#d4537e"></i>공방선</span><span><i style="background:#8a98a8"></i>삼각수렴</span><span><i style="background:#e8743b"></i>매물집중</span></div>';
+  h+='<div class="legend"><span><i style="background:#000"></i>2일선</span><span><i style="background:#1d9e75"></i>상승목표</span><span><i style="background:#5a6473"></i>상승잠재</span><span><i style="background:#d4537e"></i>공방선</span></div>';
   h+='<div class="scen-btns">';
   h+='<button class="scen-btn up" data-scen="up"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 15l5-6 4 3 7-8"/></svg>상승 시나리오</button>';
-  h+='<button class="scen-btn flat" data-scen="flat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 12h16"/></svg>횡보 시나리오</button>';
   h+='<button class="scen-btn dn" data-scen="dn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 9l5 6 4-3 7 8"/></svg>하락 시나리오</button>';
   h+='</div>';
   h+='<div class="scen-hint">'+hint+'</div>';
@@ -399,7 +398,13 @@ function render(x){
   var minName='15분봉';
   var html='';
   var priceStr = IS_US ? ('$'+(d.cur||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})) : ((d.cur||0).toLocaleString()+'원');
-  html+='<div class="result-head"><span class="rn">'+(x['종목명']||'')+'</span><span class="rc">'+x['종목코드']+' · '+(x['시장']||'')+'</span><span class="rp">'+priceStr+'</span></div>';
+  var _prevClose = (d.chart&&d.chart.length>=2)?d.chart[d.chart.length-2].c:((d.chart&&d.chart.length)?d.chart[d.chart.length-1].o:d.cur);
+  var _chg = (d.cur||0)-_prevClose;
+  var _chgPct = _prevClose>0?(_chg/_prevClose*100):0;
+  var _upColor = _chg>0?'#e24b4a':(_chg<0?'#378add':'#5a6b7d');
+  var _arrow = _chg>0?'▲':(_chg<0?'▼':'-');
+  var _chgStr = (IS_US?('$'+Math.abs(_chg).toFixed(2)):(Math.abs(Math.round(_chg)).toLocaleString()))+' '+Math.abs(_chgPct).toFixed(2)+'%';
+  html+='<div class="result-head"><span class="rn">'+(x['종목명']||'')+'</span><span class="rc">'+x['종목코드']+' · '+(x['시장']||'')+'</span><span class="rp" style="color:'+_upColor+'">'+priceStr+'<span style="font-size:12px;font-weight:600;margin-left:6px">'+_arrow+' '+_chgStr+'</span></span></div>';
 
   // ===== 탭 =====
   html+='<div class="trk-tabs">';
@@ -790,49 +795,7 @@ function mkChart(data,pj,sfx){
       ctx.beginPath();ctx.moveTo(nowX,plot.y0);ctx.lineTo(nowX,plot.y1);ctx.stroke();ctx.setLineDash([]);
       ctx.fillStyle='#8a98a8';ctx.fillText('현재',nowX,plot.y0+12);
     }
-    // ===== 매물대 (Volume Profile) — 왼쪽 가로 막대 =====
-    (function(){
-      var BINS=24;
-      var binVol=new Array(BINS).fill(0);
-      var range=plot.hi-plot.lo;
-      if(range<=0)return;
-      // 보이는 구간의 각 봉 거래량을 고가~저가에 고르게 분산
-      for(var i=Math.max(0,viewS);i<=Math.min(viewE,n-1);i++){
-        var r=ch[i];
-        var vol=r.v||0;
-        if(vol<=0)continue;
-        var hi=r.h, lo=r.l;
-        if(hi<lo){var tmp=hi;hi=lo;lo=tmp;}
-        // 이 봉이 걸치는 bin 범위
-        var b0=Math.floor((lo-plot.lo)/range*BINS);
-        var b1=Math.floor((hi-plot.lo)/range*BINS);
-        b0=Math.max(0,Math.min(BINS-1,b0));
-        b1=Math.max(0,Math.min(BINS-1,b1));
-        var nb=b1-b0+1;
-        var per=vol/nb;
-        for(var b=b0;b<=b1;b++){binVol[b]+=per;}
-      }
-      var maxVol=Math.max.apply(null,binVol);
-      if(maxVol<=0)return;
-      var pocBin=binVol.indexOf(maxVol);  // 가장 물량 많은 가격대
-      var maxBarW=(plot.x1-plot.x0)*0.22;  // 막대 최대 길이(차트 폭의 22%)
-      var binH=(plot.y1-plot.y0)/BINS;
-      for(var b=0;b<BINS;b++){
-        if(binVol[b]<=0)continue;
-        var bw=binVol[b]/maxVol*maxBarW;
-        var by=plot.y1-(b+1)*binH;
-        var isPoc=(b===pocBin);
-        ctx.fillStyle=isPoc?'rgba(232,116,59,.45)':'rgba(138,152,168,.20)';
-        ctx.fillRect(plot.x0,by,bw,binH-1);
-      }
-      // POC(매물 집중) 라벨 + 가로 점선
-      var pocPrice=plot.lo+(pocBin+0.5)/BINS*range;
-      var pocY=yOf(pocPrice);
-      ctx.strokeStyle='rgba(232,116,59,.55)';ctx.lineWidth=1;ctx.setLineDash([2,3]);
-      ctx.beginPath();ctx.moveTo(plot.x0,pocY);ctx.lineTo(plot.x1,pocY);ctx.stroke();ctx.setLineDash([]);
-      ctx.fillStyle='#e8743b';ctx.font='11px '+FF();ctx.textAlign='left';
-      ctx.fillText('매물집중 '+fmtP(pocPrice),plot.x0+4,pocY-3);
-    })();
+    // ===== 매물대/매물집중 제거됨 =====
 
     // 캔들
     var cw=Math.max(1.5,(plot.x1-plot.x0)/getSpan()*0.6);
@@ -890,8 +853,7 @@ function mkChart(data,pj,sfx){
       // 기본 틀: 교차점 기준부터 — 직선
       fwave(ctx,function(t,b){return b+(upT-b)*t;},'rgba(29,158,117,.95)',2.4,[6,4],false);       // 상승목표(녹색 35%)
       fwave(ctx,function(t,b){return b+(dnT-b)*t;},'rgba(212,83,126,.9)',2.4,[6,4],false);         // 위험(분홍)
-      fwave(ctx,function(t,b){return b+b*0.10*(1-t);},'rgba(138,152,168,.6)',1.3,[],false);        // 삼각수렴 상단
-      fwave(ctx,function(t,b){return b-b*0.10*(1-t);},'rgba(138,152,168,.6)',1.3,[],false);        // 삼각수렴 하단
+      // 삼각수렴 제거됨
       // 체크박스 기법: 전부 교차점 기준부터 직선
       var checked=getChecked();
       var TT=pj.tech_targets||{};
@@ -1059,8 +1021,10 @@ function mkChart(data,pj,sfx){
       ctx.strokeStyle='rgba(26,58,92,.5)';ctx.lineWidth=1;ctx.setLineDash([4,4]);
       ctx.beginPath();ctx.moveTo(mx,plot.y0);ctx.lineTo(mx,plot.y1);ctx.stroke();
       ctx.beginPath();ctx.moveTo(plot.x0,my);ctx.lineTo(plot.x1,my);ctx.stroke();ctx.setLineDash([]);
-      ctx.fillStyle='#1a3a5c';ctx.fillRect(plot.x1,my-11,padR-2,22);
-      ctx.fillStyle='#fff';ctx.font='13px '+FF();ctx.textAlign='left';ctx.fillText(fmtP(vOf(my)),plot.x1+5,my+4);
+      var crossV=vOf(my);
+      var boxCol=(crossV>=cur)?'#e24b4a':'#378add';
+      ctx.fillStyle=boxCol;ctx.fillRect(plot.x1,my-11,padR-2,22);
+      ctx.fillStyle='#fff';ctx.font='13px '+FF();ctx.textAlign='left';ctx.fillText(fmtP(crossV),plot.x1+5,my+4);
       var idx=iOfX(mx), L=lbl(idx);
       if(L){var tw=ctx.measureText(L).width+12;ctx.fillStyle='#1a3a5c';ctx.fillRect(mx-tw/2,plot.y1+2,tw,18);ctx.fillStyle='#fff';ctx.textAlign='center';ctx.fillText(L,mx,plot.y1+14);}
     }
@@ -1095,9 +1059,20 @@ function mkChart(data,pj,sfx){
     viewS=s;viewE=s+sp-1;lay();draw(lastMx,lastMy);
   });
   // ===== 모바일 터치 =====
-  // 한 손가락: 가격선(크로스헤어) 표시 + 좌우 스크롤
+  // 한 손가락: 크로스헤어+좌우스크롤 / 두 손가락: 핀치 확대축소
   var tStartX=0, tDvs=0, tMoved=false;
+  var pinchD0=0, pinchSp0=0, pinchCenter=0, pinching=false;
+  function touchDist(t0,t1){var dx=t0.clientX-t1.clientX,dy=t0.clientY-t1.clientY;return Math.sqrt(dx*dx+dy*dy);}
   cv.addEventListener('touchstart',function(e){
+    if(e.touches.length===2){
+      pinching=true;
+      pinchD0=touchDist(e.touches[0],e.touches[1]);
+      pinchSp0=getSpan();
+      var r=cv.getBoundingClientRect();
+      var midX=((e.touches[0].clientX+e.touches[1].clientX)/2)-r.left;
+      pinchCenter=iOfX(midX);
+      return;
+    }
     if(e.touches.length!==1)return;
     var t=e.touches[0], r=cv.getBoundingClientRect();
     tStartX=t.clientX; tDvs=viewS; tMoved=false;
@@ -1105,12 +1080,24 @@ function mkChart(data,pj,sfx){
     draw(lastMx,lastMy);
   },{passive:true});
   cv.addEventListener('touchmove',function(e){
+    if(e.touches.length===2&&pinching){
+      e.preventDefault();
+      var d=touchDist(e.touches[0],e.touches[1]);
+      if(pinchD0>0){
+        var scale=pinchD0/d;
+        var ns=Math.max(15,Math.min(TOTAL,Math.round(pinchSp0*scale)));
+        var ratio=(pinchCenter-viewS)/Math.max(1,getSpan());
+        var s=Math.round(pinchCenter-ns*ratio), en=s+ns-1;
+        if(s<0){s=0;en=ns-1;}if(en>TOTAL-1){en=TOTAL-1;s=Math.max(0,en-ns+1);}
+        viewS=s;viewE=en;lay();draw(lastMx,lastMy);
+      }
+      return;
+    }
     if(e.touches.length!==1)return;
     e.preventDefault();
     var t=e.touches[0], r=cv.getBoundingClientRect();
-    lastMx=t.clientX-r.left; lastMy=(t.clientY-r.top)-44;  // 손가락 가림 방지: 44px 위로
+    lastMx=t.clientX-r.left; lastMy=(t.clientY-r.top)-44;
     var dx=t.clientX-tStartX;
-    // 좌우로 많이 움직이면 스크롤, 그 외엔 가격선만
     if(Math.abs(dx)>10){
       tMoved=true;
       var per=(plot.x1-plot.x0)/getSpan();
@@ -1119,13 +1106,12 @@ function mkChart(data,pj,sfx){
       viewS=s;viewE=s+sp-1;lay();
     }
     draw(lastMx,lastMy);
-    // 교차점/위험 툴팁
     tip.style.display='none';
     draws.forEach(function(d){if(Math.abs(lastMy-yOf(d.yc))<8){tip.style.display='block';tip.style.background='#7f77dd';tip.textContent='교차점 '+fmtP(d.yc);tip.style.left=Math.min(lastMx+12,W-90)+'px';tip.style.top=(yOf(d.yc)-28)+'px';}});
     risks.forEach(function(d){if(Math.abs(lastMy-yOf(d.yc))<8){tip.style.display='block';tip.style.background='#d4537e';tip.textContent='공방선 '+fmtP(d.yc);tip.style.left=Math.min(lastMx+12,W-110)+'px';tip.style.top=(yOf(d.yc)-28)+'px';}});
   },{passive:false});
-  cv.addEventListener('touchend',function(){
-    // 손 떼면 잠시 후 가격선·툴팁 정리
+  cv.addEventListener('touchend',function(e){
+    if(e.touches.length<2)pinching=false;
     setTimeout(function(){ lastMx=lastMy=null; draw(null,null); tip.style.display='none'; }, 1500);
   },{passive:true});
   document.getElementById('zin'+sfx).onclick=function(){var sp=getSpan(),ns=Math.max(15,Math.round(sp*0.7)),md=Math.round((viewS+viewE)/2);viewS=Math.max(0,md-Math.round(ns/2));viewE=Math.min(TOTAL-1,viewS+ns-1);lay();draw();};
