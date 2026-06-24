@@ -461,7 +461,7 @@ function mkChart(data,pj,sfx){
   }
   var fdates=futDates();
   function lbl(i){return i<n?ch[i].d:(fdates[i-n]||'');}
-  function lay(){
+  function lay(keepY){
     W=cv.clientWidth; H=cv.clientHeight;
     if(!W||!H){W=cv.clientWidth||cv.parentElement.clientWidth-20||900;H=cv.clientHeight||440;}
     isMob=W<480;
@@ -469,13 +469,17 @@ function mkChart(data,pj,sfx){
     FONT_SM=isMob?9:11; FONT_MD=isMob?10:12;
     cv.width=W*DPR; cv.height=H*DPR;
     cv.getContext('2d').setTransform(DPR,0,0,DPR,0,0);
+    // keepY=true면 기존 세로 범위 유지 (좌우 스크롤 시 출렁임 방지)
+    if(keepY && plot){
+      plot={lo:plot.lo,hi:plot.hi,x0:padL,x1:W-padR,y0:padT,y1:H-padB};
+      return;
+    }
     var vs=Math.max(0,viewS), ve=Math.min(TOTAL-1,viewE);
     var lo=1e18, hi=-1e18;
     for(var i=vs;i<=Math.min(ve,n-1);i++){lo=Math.min(lo,ch[i].l);hi=Math.max(hi,ch[i].h);}
     // 캔들이 하나도 안 보이면 종가 기준
     if(lo>hi){lo=Math.min.apply(null,c);hi=Math.max.apply(null,c);}
     // 증권사 방식: 가격 범위는 오직 보이는 캔들에만 맞춤.
-    // 미래 타겟/공방선/위험선은 범위에 넣지 않음 → 화면 밖이면 그냥 잘림(캔들이 항상 꽉 참)
     lo*=0.99; hi*=1.01;
     plot={lo:lo,hi:hi,x0:padL,x1:W-padR,y0:padT,y1:H-padB};
   }
@@ -811,7 +815,7 @@ function mkChart(data,pj,sfx){
     var dx=e.clientX-dx0, per=(plot.x1-plot.x0)/getSpan();
     var sh=Math.round(-dx/per), sp=getSpan(), s=dvs+sh;
     if(s<0)s=0;if(s+sp>TOTAL)s=TOTAL-sp;
-    viewS=s;viewE=s+sp-1;lay();draw(lastMx,lastMy);
+    viewS=s;viewE=s+sp-1;lay(true);draw(lastMx,lastMy);
   });
   // ===== 모바일 터치 =====
   // 한 손가락: 가격선(크로스헤어) 표시 + 좌우 스크롤 / 두 손가락: 핀치 확대축소
@@ -868,7 +872,7 @@ function mkChart(data,pj,sfx){
     var per=(plot.x1-plot.x0)/getSpan();
     var sh=Math.round(-dx/per), sp=getSpan(), s=tDvs+sh;
     if(s<0)s=0;if(s+sp>TOTAL)s=TOTAL-sp;
-    viewS=s;viewE=s+sp-1;lay();
+    viewS=s;viewE=s+sp-1;lay(true);
     draw(lastMx,lastMy);
     // 교차점/위험 툴팁
     tip.style.display='none';
