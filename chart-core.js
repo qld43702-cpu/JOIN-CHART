@@ -404,14 +404,12 @@ function mkChart(data,pj,sfx){
   var SCEN=null;
   var scenFade=0;
   var srLevels=(pj&&pj.sr_levels)||[];
-  // 초기 뷰: 시작점(anchor) 약간 앞부터 미래 끝까지 — 보기 편하게(사진1처럼)
+  // 초기 뷰: 현재 봉 기준 과거 25개 + 미래 15개 (증권사처럼 캔들 굵게)
   (function(){
-    var aI=(pj&&pj.anchor_idx!=null)?pj.anchor_idx:(n-1);
-    // 시작점 앞쪽으로 약간의 맥락(전체 보이는 구간의 15%)만 남기고 그 앞 과거는 자름
-    var futLen=TOTAL-1-aI;            // 시작점부터 미래끝까지 길이
-    var pad=Math.round(futLen*0.25);  // 시작점 앞 여유(맥락)
-    viewS=Math.max(0, aI-pad);
-    viewE=TOTAL-1;
+    var PAST=25, FUTV=15;
+    var curI=n-1;                      // 현재(마지막 실제) 봉
+    viewS=Math.max(0, curI-PAST);
+    viewE=Math.min(TOTAL-1, curI+FUTV);
   })();
   function futDates(){
     var last=ch[n-1].d; // "MM/DD" 또는 "MM/DD HH시"
@@ -502,7 +500,7 @@ function mkChart(data,pj,sfx){
     var startI=ANCHOR_I;
     var baseP=ANCHOR_P;
     var totalSpan=ANCHOR_SPAN;
-    var endI=Math.min(viewE,TOTAL-1);
+    var endI=TOTAL-1;  // 끝점을 미래 마지막 봉에 고정 (줌해도 안 흔들림)
     if(startI>endI)return;
     ctx.strokeStyle=color;ctx.lineWidth=wid;ctx.setLineDash(dash||[]);
     ctx.beginPath();
@@ -565,21 +563,19 @@ function mkChart(data,pj,sfx){
       var yo=yOf(r.o),yc2=yOf(r.c);
       ctx.fillRect(x-cw/2,Math.min(yo,yc2),cw,Math.max(1.5,Math.abs(yc2-yo)));
     }
-    // 2일선 — 화면 표시 숨김 (계산은 유지)
-    if(false){
-    ctx.strokeStyle='#222';ctx.lineWidth=1;ctx.beginPath();var st=false;
+    // 2일선 — 얇고 연하게 (갭 등락 시 흐름 이어주기)
+    ctx.strokeStyle='rgba(90,100,115,.35)';ctx.lineWidth=0.8;ctx.beginPath();var st=false;
     for(var i=Math.max(0,viewS);i<=Math.min(viewE,n-1);i++){
       if(ma2[i]==null)continue;
       var x=xOf(i),y=yOf(ma2[i]);
       if(!st){ctx.moveTo(x,y);st=true;}else{ctx.lineTo(x,y);}
     }
     ctx.stroke();
-    }
     // 위험선
     risks.forEach(function(d){
       if(!d.price_only){
         seg(ctx,d.A_t1-1,ma2[d.A_t1-1]||d.A_y1,d.A_t1,d.A_y1,'#d4537e',2.4);
-        seg(ctx,d.B_t1,d.B_y1,Math.round(d.xc),d.yc,'rgba(212,83,126,.6)',1.2,[4,3]);
+        // 교차점까지 역방향 점선 — 제거됨(오해 방지)
       }
       ctx.strokeStyle='rgba(212,83,126,.85)';ctx.lineWidth=1.4;ctx.setLineDash(d.price_only?[6,4]:[]);
       ctx.beginPath();ctx.moveTo(plot.x0,yOf(d.yc));ctx.lineTo(plot.x1,yOf(d.yc));ctx.stroke();ctx.setLineDash([]);
@@ -592,9 +588,8 @@ function mkChart(data,pj,sfx){
     draws.forEach(function(d){
       var al=d.alive?1:.32;
       seg(ctx,d.A_t1-1,ma2[d.A_t1-1]||d.A_y1,d.A_t1,d.A_y1,'rgba(226,75,74,'+al+')',2.4);
-      seg(ctx,d.A_t1,d.A_y1,Math.round(d.xc),d.yc,'rgba(226,75,74,'+(al*.5)+')',1,[4,3]);
       seg(ctx,d.B_t1-1,ma2[d.B_t1-1]||d.B_y1,d.B_t1,d.B_y1,'rgba(55,138,221,'+al+')',2.4);
-      seg(ctx,d.B_t1,d.B_y1,Math.round(d.xc),d.yc,'rgba(55,138,221,'+(al*.5)+')',1,[4,3]);
+      // 교차점까지 역방향 점선 연장 — 화면 제거됨(오해 방지), 계산은 유지
       if(false&&d.entry>=viewS&&d.entry<=viewE&&d.entry<n){
         ctx.fillStyle=d.alive?'#e8743b':'rgba(232,116,59,.4)';
         var ex=xOf(d.entry),ey=yOf(c[d.entry]);
@@ -645,7 +640,7 @@ function mkChart(data,pj,sfx){
           var lv=fibLevels[fi].p, up=lv>cur;
           ctx.strokeStyle=up?'rgba(29,158,117,.55)':'rgba(212,83,126,.55)';
           ctx.setLineDash([3,3]);ctx.lineWidth=1.2;
-          ctx.beginPath();ctx.moveTo(xOf(ANCHOR_I),yOf(lv));ctx.lineTo(xOf(Math.min(viewE,TOTAL-1)),yOf(lv));ctx.stroke();ctx.setLineDash([]);
+          ctx.beginPath();ctx.moveTo(xOf(ANCHOR_I),yOf(lv));ctx.lineTo(xOf(TOTAL-1),yOf(lv));ctx.stroke();ctx.setLineDash([]);
           // 라벨 겹침 방지: 이전 라벨과 14px 이내면 건너뜀
           var ly=yOf(lv);
           var tooClose=fibLabelYs.some(function(y){return Math.abs(y-ly)<14;});
@@ -663,7 +658,7 @@ function mkChart(data,pj,sfx){
       // 기준점: 최근 교차점 직후. 없으면 현재
       var anchorI=(pj.anchor_idx!=null)?pj.anchor_idx:(n-1);
       var anchorP=(pj.anchor_price!=null)?pj.anchor_price:cur;
-      var startI=anchorI, endI=Math.min(viewE,TOTAL-1);
+      var startI=anchorI, endI=TOTAL-1;
       var startV=anchorP;
       var TT2=pj.tech_targets||{};
       // 천장/바닥 = 현실적 목표 (up_target은 이미 녹색의 35% 현실선)
