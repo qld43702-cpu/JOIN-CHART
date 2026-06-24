@@ -436,14 +436,9 @@ function mkChart(data,pj,sfx){
     for(var i=vs;i<=Math.min(ve,n-1);i++){lo=Math.min(lo,ch[i].l);hi=Math.max(hi,ch[i].h);}
     // 캔들이 하나도 안 보이면 종가 기준
     if(lo>hi){lo=Math.min.apply(null,c);hi=Math.max.apply(null,c);}
-    // 증권사 방식: 보이는 캔들에 꽉 맞춤. 미래 타겟/공방선은 캔들 범위의 ±18%까지만 반영(그 밖은 화면 밖으로 잘림)
-    var capLo=lo-(hi-lo)*0.18, capHi=hi+(hi-lo)*0.18;
-    if(ve>=n&&pj){
-      if(pj.up_target&&pj.up_target<=capHi) hi=Math.max(hi,pj.up_target);
-      if(pj.dn_target&&pj.dn_target>=capLo) lo=Math.min(lo,pj.dn_target);
-    }
-    risks.forEach(function(r){if(r.yc&&r.yc>=capLo&&r.yc<=capHi)lo=Math.min(lo,r.yc);});
-    lo*=0.985; hi*=1.015;
+    // 증권사 방식: 가격 범위는 오직 보이는 캔들에만 맞춤.
+    // 미래 타겟/공방선/위험선은 범위에 넣지 않음 → 화면 밖이면 그냥 잘림(캔들이 항상 꽉 참)
+    lo*=0.99; hi*=1.01;
     plot={lo:lo,hi:hi,x0:padL,x1:W-padR,y0:padT,y1:H-padB};
   }
   function getSpan(){return viewE-viewS+1;}
