@@ -434,10 +434,16 @@ function mkChart(data,pj,sfx){
     var vs=Math.max(0,viewS), ve=Math.min(TOTAL-1,viewE);
     var lo=1e18, hi=-1e18;
     for(var i=vs;i<=Math.min(ve,n-1);i++){lo=Math.min(lo,ch[i].l);hi=Math.max(hi,ch[i].h);}
-    if(ve>=n&&pj){hi=Math.max(hi,pj.up_target||hi);lo=Math.min(lo,pj.dn_target||lo);}
-    risks.forEach(function(r){if(r.yc)lo=Math.min(lo,r.yc);});
+    // 캔들이 하나도 안 보이면 종가 기준
     if(lo>hi){lo=Math.min.apply(null,c);hi=Math.max.apply(null,c);}
-    lo*=0.97; hi*=1.03;
+    // 증권사 방식: 보이는 캔들에 꽉 맞춤. 미래 타겟/공방선은 캔들 범위의 ±18%까지만 반영(그 밖은 화면 밖으로 잘림)
+    var capLo=lo-(hi-lo)*0.18, capHi=hi+(hi-lo)*0.18;
+    if(ve>=n&&pj){
+      if(pj.up_target&&pj.up_target<=capHi) hi=Math.max(hi,pj.up_target);
+      if(pj.dn_target&&pj.dn_target>=capLo) lo=Math.min(lo,pj.dn_target);
+    }
+    risks.forEach(function(r){if(r.yc&&r.yc>=capLo&&r.yc<=capHi)lo=Math.min(lo,r.yc);});
+    lo*=0.985; hi*=1.015;
     plot={lo:lo,hi:hi,x0:padL,x1:W-padR,y0:padT,y1:H-padB};
   }
   function getSpan(){return viewE-viewS+1;}
