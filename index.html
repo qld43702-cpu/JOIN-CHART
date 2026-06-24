@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<!-- BUILD:1782271889 -->
+<!-- BUILD:1782273424 -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>JOIN CHART</title>
@@ -43,6 +43,8 @@ header{display:flex;align-items:center;gap:11px;margin-bottom:16px}
 .methods label{display:flex;align-items:center;gap:6px;font-size:14px;cursor:pointer;padding:6px 11px;background:#fff;border:1px solid #e3e8ee;border-radius:8px}
 .methods .up{color:var(--green);font-weight:700}.methods .dn{color:var(--pink);font-weight:700}
 .chart-host{position:relative;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:10px}
+.draw-canvas{position:absolute;top:10px;left:10px;right:10px;bottom:10px;pointer-events:none;z-index:10;border-radius:10px;}
+.draw-canvas.active{pointer-events:all;}
 .chart-host canvas{width:100%;height:440px;display:block;cursor:crosshair;touch-action:pan-y}
 .zoombar{display:flex;gap:6px;margin-bottom:8px}
 .zoombar button{font-size:13px;font-weight:700;padding:5px 12px;border:1px solid #d5dce4;border-radius:8px;background:#fff;color:var(--navy);cursor:pointer}
@@ -298,7 +300,7 @@ header{display:flex;align-items:center;gap:11px;margin-bottom:16px}
 </div>
 <div id="result"></div>
 </div>
-<script src="/chart-core.js?v=1782271889"></script>
+<script src="/chart-core.js?v=1782273424"></script>
 </div>
 </body>
 </html>
