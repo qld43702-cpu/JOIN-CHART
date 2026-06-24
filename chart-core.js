@@ -9,7 +9,7 @@ fetch('/stocks.json?t='+Date.now()).then(function(r){return r.json();}).then(fun
 var inp=document.getElementById('codeInput'), ac=document.getElementById('acList');
 inp.addEventListener('input',function(){
   var q=inp.value.trim().toLowerCase();
-  if(!q){ac.classList.remove('show');return;}
+  if(!q){ showRecent(); return; }
   var hit=STOCKS.filter(function(s){return s.code.toLowerCase().includes(q)||(s.name&&s.name.toLowerCase().includes(q));}).slice(0,8);
   if(!hit.length){ac.classList.remove('show');return;}
   ac.innerHTML=hit.map(function(s){return '<div class="ai" onclick="pick(\''+s.code+'\',\''+((s.name||'').replace(/\'/g,''))+'\')"><span class="an">'+s.name+'</span><span class="acode">'+s.code+'</span><span class="amk">'+s.market+'</span></div>';}).join('');
@@ -30,7 +30,46 @@ inp.addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault(
 var _searchIcon=document.getElementById('hdSearchIcon')||document.querySelector('.hs-ic');
 if(_searchIcon) _searchIcon.addEventListener('click',doSearch);
 document.addEventListener('click',function(e){if(!e.target.closest('.hd-search')&&!e.target.closest('.hero-search'))ac.classList.remove('show');});
-function pick(code,name){inp.value=name+' ('+code+')';ac.classList.remove('show');inp.blur();go(code);}
+function pick(code,name){inp.value=name+' ('+code+')';ac.classList.remove('show');inp.blur();saveRecent(code,name);go(code);}
+
+// ===== 최근 검색 (localStorage, 기기별) =====
+function getRecent(){
+  try{ return JSON.parse(localStorage.getItem('jc_recent')||'[]'); }catch(e){ return []; }
+}
+function saveRecent(code,name){
+  try{
+    var list=getRecent().filter(function(x){return x.code!==code;});
+    list.unshift({code:code,name:name||code});
+    list=list.slice(0,8);  // 최대 8개
+    localStorage.setItem('jc_recent',JSON.stringify(list));
+  }catch(e){}
+}
+function removeRecent(code){
+  try{
+    var list=getRecent().filter(function(x){return x.code!==code;});
+    localStorage.setItem('jc_recent',JSON.stringify(list));
+  }catch(e){}
+  showRecent();
+}
+function clearRecent(){
+  try{ localStorage.removeItem('jc_recent'); }catch(e){}
+  ac.classList.remove('show');
+}
+function showRecent(){
+  var list=getRecent();
+  if(!list.length){ ac.classList.remove('show'); return; }
+  var chips=list.map(function(x){
+    var nm=(x.name||x.code).replace(/'/g,'');
+    return '<span class="rchip" onclick="pick(\''+x.code+'\',\''+nm+'\')">'+
+      '<span class="rc-nm">'+(x.name||x.code)+'</span>'+
+      '<span class="rc-x" onclick="event.stopPropagation();removeRecent(\''+x.code+'\')">×</span></span>';
+  }).join('');
+  ac.innerHTML='<div class="rc-head"><span>최근 검색</span><span class="rc-clear" onclick="clearRecent()">전체삭제</span></div>'+
+    '<div class="rc-wrap">'+chips+'</div>';
+  ac.classList.add('show');
+}
+// 검색창 포커스 시 입력이 비어있으면 최근 검색 표시
+inp.addEventListener('focus',function(){ if(!inp.value.trim()) showRecent(); });
 
 function mkMethodLabel(val,nm,col,methods){
   return '<label><input type="checkbox" class="mtd" value="'+val+'" checked style="accent-color:'+col+'"> '+nm+'</label>';
@@ -44,6 +83,7 @@ async function go(code){
   try{
     var x=await fetch('/api/analyze?code='+code).then(function(r){return r.json();});
     if(x.error){box.innerHTML='<div class="empty">'+x.error+'</div>';return;}
+    if(x['종목명']) saveRecent(x['종목코드']||code, x['종목명']);
     render(x);
   }catch(e){box.innerHTML='<div class="empty">분석 실패. 잠시 후 다시 시도하세요.</div>';}
 }
