@@ -777,7 +777,7 @@ function mkChart(data,pj,sfx){
   });
   // ===== 모바일 터치 =====
   // 한 손가락: 가격선(크로스헤어) 표시 + 좌우 스크롤 / 두 손가락: 핀치 확대축소
-  var tStartX=0, tStartY=0, tDvs=0, tMoved=false, tVScroll=false;
+  var tStartX=0, tStartY=0, tDvs=0, tMoved=false, tVScroll=false, tHoriz=false;
   var pinchD0=0, pinchSp0=0, pinchCenter=0, pinching=false;
   function touchDist(t0,t1){var dx=t0.clientX-t1.clientX,dy=t0.clientY-t1.clientY;return Math.sqrt(dx*dx+dy*dy);}
   cv.addEventListener('touchstart',function(e){
@@ -793,7 +793,7 @@ function mkChart(data,pj,sfx){
     }
     if(e.touches.length!==1)return;
     var t=e.touches[0], r=cv.getBoundingClientRect();
-    tStartX=t.clientX; tStartY=t.clientY; tDvs=viewS; tMoved=false; tVScroll=false;
+    tStartX=t.clientX; tStartY=t.clientY; tDvs=viewS; tMoved=false; tVScroll=false; tHoriz=false;
     lastMx=t.clientX-r.left; lastMy=(t.clientY-r.top)-44;
     draw(lastMx,lastMy);
   },{passive:true});
@@ -815,21 +815,22 @@ function mkChart(data,pj,sfx){
     if(e.touches.length!==1)return;
     var t=e.touches[0], r=cv.getBoundingClientRect();
     var dx=t.clientX-tStartX;
-    var dyAbs=Math.abs(t.clientY-tStartY);
-    var dxAbs=Math.abs(dx);
-    // 세로 움직임이 더 크면 = 페이지 스크롤 의도 → 차트가 가로채지 않음
-    if(!tMoved && dyAbs>dxAbs && dyAbs>8){ tVScroll=true; }
-    if(tVScroll) return;  // 세로 스크롤 중이면 차트 조작 안 함 (페이지 스크롤 허용)
-    // 가로 움직임 = 차트 기간 이동
-    e.preventDefault();
-    lastMx=t.clientX-r.left; lastMy=(t.clientY-r.top)-44;  // 손가락 가림 방지: 44px 위로
-    if(dxAbs>10){
-      tMoved=true;
-      var per=(plot.x1-plot.x0)/getSpan();
-      var sh=Math.round(-dx/per), sp=getSpan(), s=tDvs+sh;
-      if(s<0)s=0;if(s+sp>TOTAL)s=TOTAL-sp;
-      viewS=s;viewE=s+sp-1;lay();
+    var dy=t.clientY-tStartY;
+    // 방향 미확정이면 판단: 세로가 크면 페이지스크롤(차트 안건드림), 가로가 크면 차트이동
+    if(!tMoved && !tHoriz){
+      if(Math.abs(dy)>Math.abs(dx) && Math.abs(dy)>6){ tVScroll=true; }
+      else if(Math.abs(dx)>6){ tHoriz=true; }
     }
+    if(tVScroll) return;        // 세로 = 페이지 스크롤 (차트 손 뗌)
+    if(!tHoriz){ return; }      // 아직 방향 미확정이면 아무것도 안 함
+    // 여기부터 가로 드래그 = 차트 기간 이동
+    e.preventDefault();
+    lastMx=t.clientX-r.left; lastMy=(t.clientY-r.top)-44;
+    tMoved=true;
+    var per=(plot.x1-plot.x0)/getSpan();
+    var sh=Math.round(-dx/per), sp=getSpan(), s=tDvs+sh;
+    if(s<0)s=0;if(s+sp>TOTAL)s=TOTAL-sp;
+    viewS=s;viewE=s+sp-1;lay();
     draw(lastMx,lastMy);
     // 교차점/위험 툴팁
     tip.style.display='none';
@@ -841,7 +842,7 @@ function mkChart(data,pj,sfx){
       pinching=false;
       // 핀치 끝나고 한 손가락 남아도 드래그로 튀지 않게: 남은 터치를 새 기준점으로
       if(e.touches.length===1){
-        tStartX=e.touches[0].clientX; tStartY=e.touches[0].clientY; tDvs=viewS; tMoved=false; tVScroll=true;
+        tStartX=e.touches[0].clientX; tStartY=e.touches[0].clientY; tDvs=viewS; tMoved=false; tVScroll=true; tHoriz=false;
       }
     }
     if(e.touches.length===0){ tVScroll=false; }
