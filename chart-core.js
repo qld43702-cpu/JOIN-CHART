@@ -69,7 +69,10 @@ function showRecent(){
   ac.classList.add('show');
 }
 // 검색창 포커스 시 입력이 비어있으면 최근 검색 표시
-inp.addEventListener('focus',function(){ if(!inp.value.trim()) showRecent(); });
+inp.addEventListener('focus',function(){
+  inp.value='';      // 클릭 순간 입력값 비움 (바로 새로 칠 수 있게)
+  showRecent();      // 최근 검색 표시
+});
 
 function mkMethodLabel(val,nm,col,methods){
   return '<label><input type="checkbox" class="mtd" value="'+val+'" checked style="accent-color:'+col+'"> '+nm+'</label>';
