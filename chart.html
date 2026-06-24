@@ -640,11 +640,11 @@ function mkChart(data,pj,sfx){
   var green_base=(c[GREEN_START]!=null)?c[GREEN_START]:cur;
   var green_span=Math.max(1,TOTAL-1-GREEN_START);
   var DPR=window.devicePixelRatio||1;
-  var padR=64,padL=8,padT=14,padB=38;
   var W,H,plot,viewS=0,viewE=TOTAL-1;
-  var SCEN=null;        // 현재 시나리오 'up'/'flat'/'dn'/null
-  var scenFade=0;       // 페이드 0~1
-  var srLevels=(pj&&pj.sr_levels)||[];  // 60분봉 지지/저항 가격들
+  var isMob=false,padR=64,padL=8,padT=14,padB=38,FONT_SM=11,FONT_MD=12;
+  var SCEN=null;
+  var scenFade=0;
+  var srLevels=(pj&&pj.sr_levels)||[];
   // 초기 뷰: 시작점(anchor) 약간 앞부터 미래 끝까지 — 보기 편하게(사진1처럼)
   (function(){
     var aI=(pj&&pj.anchor_idx!=null)?pj.anchor_idx:(n-1);
@@ -707,6 +707,9 @@ function mkChart(data,pj,sfx){
   function lay(){
     W=cv.clientWidth; H=cv.clientHeight;
     if(!W||!H){W=cv.clientWidth||cv.parentElement.clientWidth-20||900;H=cv.clientHeight||440;}
+    isMob=W<480;
+    padR=isMob?50:64; padL=isMob?4:8; padT=isMob?10:14; padB=isMob?28:38;
+    FONT_SM=isMob?9:11; FONT_MD=isMob?10:12;
     cv.width=W*DPR; cv.height=H*DPR;
     cv.getContext('2d').setTransform(DPR,0,0,DPR,0,0);
     var vs=Math.max(0,viewS), ve=Math.min(TOTAL-1,viewE);
@@ -753,19 +756,34 @@ function mkChart(data,pj,sfx){
   function draw(mx,my){
     var ctx=cv.getContext('2d');
     ctx.clearRect(0,0,W,H);
-    ctx.font='12px '+FF();
+    ctx.font=FONT_MD+'px '+FF();
     // 격자
     ctx.strokeStyle='#eef1f5';ctx.lineWidth=1;ctx.fillStyle='#9aa6b2';ctx.textAlign='left';
-    for(var g=0;g<=4;g++){
-      var v=plot.lo+(plot.hi-plot.lo)*g/4, y=yOf(v);
+    var gridCnt=isMob?3:4;
+    for(var g=0;g<=gridCnt;g++){
+      var v=plot.lo+(plot.hi-plot.lo)*g/gridCnt, y=yOf(v);
       ctx.beginPath();ctx.moveTo(plot.x0,y);ctx.lineTo(plot.x1,y);ctx.stroke();
-      ctx.fillText(fmtP(v),plot.x1+6,y+4);
+      ctx.font=FONT_SM+'px '+FF();
+      // 모바일: 숫자 축약 (75,000 → 75K 또는 그대로 짧게)
+      var lv=isMob?fmtP(v).replace(',000','K'):fmtP(v);
+      ctx.fillText(lv,plot.x1+4,y+4);
     }
-    // X축 날짜
-    ctx.fillStyle='#5a6b7d';ctx.textAlign='center';ctx.font='12px '+FF();
-    for(var t=0;t<6;t++){
-      var idx=viewS+Math.round((getSpan()-1)*t/5);
-      var L=lbl(idx);if(L)ctx.fillText(L,xOf(idx),plot.y1+16);
+    // X축 날짜 — 모바일은 3개, PC는 6개, 겹침 방지
+    ctx.fillStyle='#5a6b7d';ctx.textAlign='center';ctx.font=FONT_SM+'px '+FF();
+    var xCnt=isMob?3:6;
+    var lastXEnd=-999;
+    for(var t=0;t<xCnt;t++){
+      var idx=viewS+Math.round((getSpan()-1)*t/(xCnt-1));
+      var L=lbl(idx);
+      if(!L)continue;
+      // 모바일: 날짜만 (HH시 제거), 일봉은 MM/DD만
+      if(isMob) L=L.replace(/ \d+시/,'');
+      var lx=xOf(idx);
+      var tw=ctx.measureText(L).width;
+      if(lx-tw/2>lastXEnd+4){
+        ctx.fillText(L,lx,plot.y1+(isMob?14:16));
+        lastXEnd=lx+tw/2;
+      }
     }
     // 현재선
     var nowX=xOf(n-1);
@@ -773,7 +791,7 @@ function mkChart(data,pj,sfx){
       ctx.fillStyle='rgba(120,140,160,.05)';ctx.fillRect(nowX,plot.y0,plot.x1-nowX,plot.y1-plot.y0);
       ctx.strokeStyle='rgba(26,58,92,.3)';ctx.setLineDash([5,4]);ctx.lineWidth=1;
       ctx.beginPath();ctx.moveTo(nowX,plot.y0);ctx.lineTo(nowX,plot.y1);ctx.stroke();ctx.setLineDash([]);
-      ctx.fillStyle='#8a98a8';ctx.fillText('현재',nowX,plot.y0+12);
+      if(!isMob){ctx.fillStyle='#8a98a8';ctx.font=FONT_SM+'px '+FF();ctx.fillText('현재',nowX,plot.y0+10);}
     }
     // ===== 매물대 (Volume Profile) — 왼쪽 가로 막대 =====
     (function(){
@@ -815,8 +833,9 @@ function mkChart(data,pj,sfx){
       var pocY=yOf(pocPrice);
       ctx.strokeStyle='rgba(232,116,59,.55)';ctx.lineWidth=1;ctx.setLineDash([2,3]);
       ctx.beginPath();ctx.moveTo(plot.x0,pocY);ctx.lineTo(plot.x1,pocY);ctx.stroke();ctx.setLineDash([]);
-      ctx.fillStyle='#e8743b';ctx.font='11px '+FF();ctx.textAlign='left';
-      ctx.fillText('매물집중 '+fmtP(pocPrice),plot.x0+4,pocY-3);
+      ctx.fillStyle='#e8743b';ctx.font=FONT_SM+'px '+FF();ctx.textAlign='left';
+      var pocLbl=isMob?'▶'+fmtP(pocPrice):'매물집중 '+fmtP(pocPrice);
+      ctx.fillText(pocLbl,plot.x0+4,pocY-3);
     })();
 
     // 캔들
@@ -848,7 +867,7 @@ function mkChart(data,pj,sfx){
       var glbl='공방선 '+fmtP(d.yc); ctx.font='11px '+FF();
       var glw=ctx.measureText(glbl).width+10;
       ctx.fillStyle='#d4537e';ctx.fillRect(plot.x0+4,yOf(d.yc)-9,glw,18);
-      ctx.fillStyle='#fff';ctx.fillText(glbl,plot.x0+9,yOf(d.yc)+3);
+      ctx.font=FONT_SM+'px '+FF();ctx.fillStyle='#fff';ctx.fillText(glbl,plot.x0+6,yOf(d.yc)+3);
     });
     // 작도선
     draws.forEach(function(d){
@@ -946,8 +965,8 @@ function mkChart(data,pj,sfx){
       if(startI>=viewS&&startI<=viewE){
         ctx.strokeStyle='rgba(232,116,59,'+(0.6*scenFade)+')';ctx.lineWidth=1.5;ctx.setLineDash([4,3]);
         ctx.beginPath();ctx.moveTo(xOf(startI),plot.y0);ctx.lineTo(xOf(startI),plot.y1);ctx.stroke();ctx.setLineDash([]);
-        ctx.fillStyle='#e8743b';ctx.font='bold 11px '+FF();ctx.textAlign='left';
-        ctx.fillText('기준 '+(ch[startI]?ch[startI].d:''),xOf(startI)+3,plot.y0+24);
+        if(!isMob){ctx.fillStyle='#e8743b';ctx.font='bold '+FONT_SM+'px '+FF();ctx.textAlign='left';
+        ctx.fillText('기준 '+(ch[startI]?ch[startI].d:''),xOf(startI)+3,plot.y0+18);}
       }
       // 지지/저항 수평선 표시
       allLv.forEach(function(lv){
@@ -1045,9 +1064,9 @@ function mkChart(data,pj,sfx){
       ctx.beginPath();ctx.moveTo(mx,plot.y0);ctx.lineTo(mx,plot.y1);ctx.stroke();
       ctx.beginPath();ctx.moveTo(plot.x0,my);ctx.lineTo(plot.x1,my);ctx.stroke();ctx.setLineDash([]);
       ctx.fillStyle='#1a3a5c';ctx.fillRect(plot.x1,my-11,padR-2,22);
-      ctx.fillStyle='#fff';ctx.font='13px '+FF();ctx.textAlign='left';ctx.fillText(fmtP(vOf(my)),plot.x1+5,my+4);
+      ctx.fillStyle='#fff';ctx.font=FONT_SM+'px '+FF();ctx.textAlign='left';ctx.fillText(fmtP(vOf(my)),plot.x1+3,my+4);
       var idx=iOfX(mx), L=lbl(idx);
-      if(L){var tw=ctx.measureText(L).width+12;ctx.fillStyle='#1a3a5c';ctx.fillRect(mx-tw/2,plot.y1+2,tw,18);ctx.fillStyle='#fff';ctx.textAlign='center';ctx.fillText(L,mx,plot.y1+14);}
+      if(L){var xl=isMob?L.replace(/ \d+시/,''):L;var tw=ctx.measureText(xl).width+10;ctx.fillStyle='#1a3a5c';ctx.fillRect(mx-tw/2,plot.y1+2,tw,16);ctx.fillStyle='#fff';ctx.textAlign='center';ctx.font=FONT_SM+'px '+FF();ctx.fillText(xl,mx,plot.y1+13);}
     }
   }
   var lastMx=null, lastMy=null;
