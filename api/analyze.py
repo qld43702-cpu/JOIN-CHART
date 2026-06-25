@@ -501,11 +501,11 @@ def build_projection(bars, draws, risk_level, fut=63, market='', period='quarter
     cap_detail = {}
     # 최근 살아있는 작도의 녹색 시작 인덱스
     green_start = alive[-1].get('M_t1') if alive else (draws[-1].get('M_t1') if draws else None)
-    # ===== 시나리오 기준점: 가장 최근 분기 시작(1,4,7,10월) 이후 첫 거래일 =====
-    # chart의 d는 "MM/DD" 형식 → 월로 분기 판정. 7월 되면 자동 리셋.
+    # ===== 시나리오 기준점: ZigZag 변곡점 (period별 임계: 주간10%/월간20%/중장기30%) =====
+    # 마지막으로 확정된 큰 변곡점을 시작점으로. 그 이상 움직임만 변곡점 인정.
+    # (작도/교차점 계산과 무관 — 시나리오선이 '어디서 시작해 보이는지'만 결정)
     anchor_idx=None; anchor_price=None
     try:
-        # 시작점 = 날짜 기준. 주간=가장 최근 월요일, 월간=가장 최근 매월1일, 분기=가장 최근 분기첫날(1/4/7/10월 1일).
         import datetime as _dt
         def _date_of(b):
             d=b.get('rawd','') or b.get('d','')
@@ -513,37 +513,46 @@ def build_projection(bars, draws, risk_level, fut=63, market='', period='quarter
                 try: return _dt.date(int(d[:4]),int(d[4:6]),int(d[6:8]))
                 except: return None
             return None
-        # 뒤(최근)에서부터: 그 주/달/분기가 바뀌는 '첫 거래일' = 시작점
-        cand=None
-        def _period_key(dd):
-            if dd is None: return None
-            if period=='week':
-                # ISO 주차
-                iso=dd.isocalendar(); return (iso[0],iso[1])
-            if period=='month':
-                return (dd.year, dd.month)
-            return (dd.year, (dd.month-1)//3)  # 분기
-        # 가장 최근 봉의 주/달/분기와 같은 구간의 '첫 봉'을 찾음
+        # period별 변곡 임계
+        THR = {'week':0.10, 'month':0.20, 'quarter':0.30}.get(period, 0.20)
+        # ZigZag: 마지막 피벗 대비 THR 이상 반대로 가면 새 피벗 확정
+        cc=[b['c'] for b in bars]
+        piv_i=[0]; trend=0; ext=cc[0]; ext_i=0
+        for i in range(1,len(cc)):
+            p=cc[i]
+            if trend>=0:
+                if p>ext: ext=p; ext_i=i
+                if ext>0 and (ext-p)/ext>=THR:
+                    piv_i.append(ext_i); trend=-1; ext=p; ext_i=i
+            if trend<=0:
+                if p<ext: ext=p; ext_i=i
+                if ext>0 and (p-ext)/ext>=THR:
+                    piv_i.append(ext_i); trend=1; ext=p; ext_i=i
+        # 마지막 확정 변곡점 = 시작점 (현재 진행중 극값 ext_i는 미확정이라 제외)
+        last_pivot = piv_i[-1] if len(piv_i)>=2 else None
+        if last_pivot is not None and last_pivot < len(bars)-2:
+            anchor_idx = last_pivot
+        else:
+            # 변곡점 없음(한 방향 추세) → 날짜 기준 폴백
+            def _period_key(dd):
+                if dd is None: return None
+                if period=='week':
+                    iso=dd.isocalendar(); return (iso[0],iso[1])
+                if period=='month': return (dd.year, dd.month)
+                return (dd.year,(dd.month-1)//3)
+            last_d0=_date_of(bars[-1]); last_key=_period_key(last_d0); cand=None
+            if last_key is not None:
+                for i in range(len(bars)-1,-1,-1):
+                    if _period_key(_date_of(bars[i]))!=last_key:
+                        cand=i+1; break
+                if cand is None: cand=0
+            anchor_idx = cand if cand is not None else max(0,len(bars)-fut)
+        anchor_price=round(bars[anchor_idx].get('o',bars[anchor_idx]['c']),2)
+        # ── 끝(미래) = 변곡점~현재 봉 밀도로 추정 (기존 달력 로직 유지) ──
         last_d=_date_of(bars[-1])
-        last_key=_period_key(last_d)
-        if last_key is not None:
-            for i in range(len(bars)-1,-1,-1):
-                dd=_date_of(bars[i])
-                if _period_key(dd)!=last_key:
-                    cand=i+1  # 구간 바뀌는 첫 봉
-                    break
-            if cand is None: cand=0  # 데이터 전체가 같은 구간이면 처음
-        if cand is None:
-            cand=max(0,len(bars)-fut if fut<len(bars) else len(bars)//2)
-        anchor_idx=cand
-        anchor_price=round(bars[cand].get('o',bars[cand]['c']),2)
-        # ── 끝(미래) = 이번 기간 말일까지 ──
-        # 시작점(첫 거래일)부터 이번 기간 전체 봉 수를 추정 → 그만큼이 기간 길이.
-        # 미래 봉 수(fut) = 기간 전체 봉 수 - 이미 지난 봉 수(시작점~현재).
         if last_d is not None:
-            # 이번 기간 말일(달력상)
             if period=='week':
-                end_cal=last_d + _dt.timedelta(days=(4-last_d.weekday()))  # 그 주 금요일
+                end_cal=last_d + _dt.timedelta(days=(4-last_d.weekday()))
             elif period=='month':
                 if last_d.month==12: end_cal=_dt.date(last_d.year,12,31)
                 else: end_cal=_dt.date(last_d.year,last_d.month+1,1)-_dt.timedelta(days=1)
@@ -551,13 +560,11 @@ def build_projection(bars, draws, risk_level, fut=63, market='', period='quarter
                 qend_month=((last_d.month-1)//3)*3+3
                 if qend_month==12: end_cal=_dt.date(last_d.year,12,31)
                 else: end_cal=_dt.date(last_d.year,qend_month+1,1)-_dt.timedelta(days=1)
-            # 시작점~현재 봉 수 / 그 사이 달력일수 → 하루당 봉 밀도
             passed_bars=len(bars)-1-anchor_idx
             start_d=_date_of(bars[anchor_idx])
             cal_passed=max(1,(last_d-start_d).days) if start_d else 1
             dens=passed_bars/cal_passed if cal_passed>0 else 1
             cal_remain=max(0,(end_cal-last_d).days)
-            # 주말 제외 비율(영업일 5/7) 적용
             fut_calc=int(round(cal_remain*dens*(5/7))) if dens>0 else int(round(cal_remain*5/7))
             fut=max(1, fut_calc)
     except: pass

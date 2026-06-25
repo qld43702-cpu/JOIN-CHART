@@ -409,7 +409,7 @@ function mkChart(data,pj,sfx){
   var srLevels=(pj&&pj.sr_levels)||[];
   // 초기 뷰: 현재 봉 기준 과거 25개 + 미래 15개 (증권사처럼 캔들 굵게)
   (function(){
-    var PAST=25, FUTV=15;
+    var PAST=50, FUTV=30;
     var curI=n-1;                      // 현재(마지막 실제) 봉
     viewS=Math.max(0, curI-PAST);
     viewE=Math.min(TOTAL-1, curI+FUTV);
