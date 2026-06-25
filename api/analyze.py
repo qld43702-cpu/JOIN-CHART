@@ -16,6 +16,7 @@ def _is_market_open():
     now = _now_kst()
     return now.weekday() < 5 and (9 <= now.hour < 15 or (now.hour == 15 and now.minute <= 30))
 
+BASE="https://openapi.ls-sec.co.kr:8080"
 YBASE="https://query1.finance.yahoo.com/v8/finance/chart"
 YHEAD={"User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
 
@@ -58,86 +59,34 @@ def get_day_kr(code): return _yahoo_fetch(code+_load_kr_market(code),"2y","1d")
 def get_60m_kr(code): return _yahoo_fetch(code+_load_kr_market(code),"2y","60m")
 def get_15m_kr(code): return _yahoo_fetch(code+_load_kr_market(code),"60d","15m")
 
-# ===== 토스증권 Open API =====
-TOSS_BASE="https://openapi.tossinvest.com"
-_toss_token_cache={"tk":None,"exp":0}
-def toss_token():
-    import time as _t
-    now=_t.time()
-    if _toss_token_cache["tk"] and now < _toss_token_cache["exp"]:
-        return _toss_token_cache["tk"]
-    cid=os.environ.get("TOSS_CLIENT_ID","").strip()
-    sec=os.environ.get("TOSS_CLIENT_SECRET","").strip()
-    if not cid or not sec:
-        raise RuntimeError("환경변수 미설정 (TOSS_CLIENT_ID/TOSS_CLIENT_SECRET)")
-    r=requests.post(f"{TOSS_BASE}/oauth2/token",timeout=8,
-        headers={"Content-Type":"application/x-www-form-urlencoded"},
-        data={"grant_type":"client_credentials","client_id":cid,"client_secret":sec})
-    j=r.json()
-    if "access_token" not in j:
-        raise RuntimeError("토스 토큰 발급 실패: "+str(j)[:200])
-    _toss_token_cache["tk"]=j["access_token"]
-    _toss_token_cache["exp"]=now + int(j.get("expires_in",3600)) - 60
-    return _toss_token_cache["tk"]
-
-def _toss_get(tk, path, params):
-    return requests.get(f"{TOSS_BASE}{path}", timeout=8,
-        headers={"Authorization":f"Bearer {tk}"}, params=params)
-
-def get_cur_toss(tk, code):
-    """현재가 (lastPrice)"""
+def get_cur_ls(tk,code):
     try:
-        r=_toss_get(tk,"/api/v1/prices",{"symbols":code})
-        arr=r.json().get("result",[])
-        if not arr: return None
-        p=float(arr[0].get("lastPrice") or 0)
+        if not _is_market_open(): return None
+        r=requests.post(f"{BASE}/stock/market-data",verify=False,timeout=5,
+            headers={"Content-Type":"application/json; charset=UTF-8","authorization":f"Bearer {tk}","tr_cd":"t1102","tr_cont":"N"},
+            json={"t1102InBlock":{"shcode":code}})
+        b=r.json().get("t1102OutBlock",{})
+        p=float(b.get("price") or b.get("jnilclose") or 0)
         return p if p>0 else None
     except: return None
 
-def get_day_toss(tk, code, count=200):
-    """일봉 (1d). 토스 candles, 오름차순 [{d:YYYYMMDD,o,h,l,c,v}]"""
-    try:
-        r=_toss_get(tk,"/api/v1/candles",{"symbol":code,"interval":"1d","count":count,"adjusted":"true"})
-        rows=r.json().get("result",{}).get("candles",[])
-        if not rows: return None
-        out=[]
-        for b in rows:
-            ymd=b.get("timestamp","")[:10].replace("-","")  # YYYYMMDD
-            out.append({'d':ymd,'o':float(b.get("openPrice") or 0),'h':float(b.get("highPrice") or 0),
-                        'l':float(b.get("lowPrice") or 0),'c':float(b.get("closePrice") or 0),'v':float(b.get("volume") or 0)})
-        out.reverse()  # 토스는 최신순 → 오름차순으로
-        return out if out else None
-    except: return None
-
-def get_today_bar_toss(tk, code):
-    """오늘 봉: 일봉의 오늘 봉(시/고/저) + 현재가(lastPrice)로 종가 갱신. d=YYYYMMDD"""
+def get_today_bar_ls(tk,code):
+    """장중 오늘 봉(시가/고가/저가/현재가)을 LS t1102에서 — 야후 시세에 씌우기용"""
     try:
         if not _is_market_open(): return None
-        cur=get_cur_toss(tk,code)
-        day=get_day_toss(tk,code,count=3)
-        if not day: return None
-        last=day[-1]
+        r=requests.post(f"{BASE}/stock/market-data",verify=False,timeout=5,
+            headers={"Content-Type":"application/json; charset=UTF-8","authorization":f"Bearer {tk}","tr_cd":"t1102","tr_cont":"N"},
+            json={"t1102InBlock":{"shcode":code}})
+        b=r.json().get("t1102OutBlock",{})
+        # LS t1102 실제 필드명: opnprice=시가, hgprice=고가, lwprice=저가, price=현재가
+        o=float(b.get("opnprice") or b.get("open") or b.get("price") or 0)
+        h=float(b.get("hgprice") or b.get("high") or b.get("price") or 0)
+        l=float(b.get("lwprice") or b.get("low")  or b.get("price") or 0)
+        c=float(b.get("price") or b.get("jnilclose") or 0)
+        if c<=0: return None
         today=_now_kst().strftime("%Y%m%d")
-        if last.get('d')!=today:
-            if cur is None: return None
-            return {'d':today,'t':'0900','o':cur,'h':cur,'l':cur,'c':cur}
-        c=cur if cur else last['c']
-        return {'d':today,'t':'0900','o':last['o'] or c,'h':max(last['h'],c) or c,'l':last['l'] or c,'c':c}
+        return {'d':today,'t':'0900','o':o or c,'h':h or c,'l':l or c,'c':c}
     except: return None
-
-def get_name_toss(tk, code):
-    """종목명/시장 — stocks.json 우선, 없으면 토스 stocks"""
-    sj=_load_stocks().get(code)
-    if sj: return sj['name'], sj['market']
-    try:
-        r=_toss_get(tk,"/api/v1/stocks",{"symbols":code})
-        arr=r.json().get("result",[])
-        if arr:
-            s=arr[0]
-            return s.get("name",code), s.get("market","코스피")
-    except: pass
-    return code,"코스피"
-
 def get_min_us(ticker,interval="60m"):
     return _yahoo_fetch(ticker, "2y" if interval=="60m" else "60d", interval)
 def get_name_us(ticker):
@@ -150,6 +99,80 @@ def get_name_us(ticker):
 
 _token_cache={"tk":None,"exp":0}
 _RESULT_CACHE={}   # 종목별 분석 결과 캐시 (30분)
+def token():
+    import time
+    now=time.time()
+    # 캐시된 토큰이 살아있으면 재사용 (LS 토큰 24h 유효 → 23h 캐싱)
+    if _token_cache["tk"] and now < _token_cache["exp"]:
+        return _token_cache["tk"]
+    key=os.environ.get("LS_APP_KEY","").strip()
+    secret=os.environ.get("LS_APP_SECRET","").strip()
+    if not key or not secret:
+        raise RuntimeError("환경변수 미설정 (LS_APP_KEY/LS_APP_SECRET)")
+    r=requests.post(f"{BASE}/oauth2/token",verify=False,timeout=8,
+        headers={"Content-Type":"application/x-www-form-urlencoded"},
+        params={"grant_type":"client_credentials","appkey":key,"appsecretkey":secret,"scope":"oob"})
+    j=r.json()
+    if "access_token" not in j:
+        raise RuntimeError("토큰 발급 실패: "+str(j.get("error_description") or j.get("error") or j))
+    tk=j["access_token"]
+    _token_cache["tk"]=tk
+    _token_cache["exp"]=now + 23*3600  # 23시간 캐싱
+    return tk
+
+def get_day(tk,code):
+    r=requests.post(f"{BASE}/stock/chart",verify=False,timeout=8,
+        headers={"Content-Type":"application/json; charset=UTF-8","authorization":f"Bearer {tk}","tr_cd":"t8410","tr_cont":"N"},
+        json={"t8410InBlock":{"shcode":code,"gubun":"2","qrycnt":150,"sdate":"20240101","edate":"20991231","cts_date":"","comp_yn":"N","sujung":"Y"}})
+    rows=r.json().get("t8410OutBlock1",[])
+    if not rows: return None
+    out=[{'d':x['date'],'o':float(x['open']),'h':float(x['high']),'l':float(x['low']),'c':float(x['close']),
+          'v':float(x.get('volume') or x.get('value') or x.get('jdiff_vol') or 0)} for x in rows]
+    out.sort(key=lambda z:z['d']); return out
+
+def get_60m(tk,code):
+    rows=[]; cd=""; ct=""
+    for _ in range(2):
+        r=requests.post(f"{BASE}/stock/chart",verify=False,timeout=8,
+            headers={"Content-Type":"application/json; charset=UTF-8","authorization":f"Bearer {tk}","tr_cd":"t8412","tr_cont":"N" if cd=="" else "Y"},
+            json={"t8412InBlock":{"shcode":code,"ncnt":60,"qrycnt":500,"nday":"0","sdate":"20250101","edate":"20991231","cts_date":cd,"cts_time":ct,"comp_yn":"N"}})
+        j=r.json(); rr=j.get("t8412OutBlock1",[])
+        if not rr: break
+        rows.extend(rr)
+        ob=j.get("t8412OutBlock",{}); nd=ob.get("cts_date","").strip(); nt=ob.get("cts_time","").strip()
+        if (nd==cd and nt==ct) or nd=="": break
+        cd,ct=nd,nt
+    if not rows: return None
+    seen=set(); out=[]
+    for x in rows:
+        k=(x['date'],x['time'])
+        if k in seen: continue
+        seen.add(k)
+        out.append({'d':x['date'],'t':x['time'],'o':float(x['open']),'h':float(x['high']),'l':float(x['low']),'c':float(x['close'])})
+    out.sort(key=lambda z:(z['d'],z['t'])); return out
+
+def get_min(tk,code,ncnt):
+    """분봉 받기. ncnt=주기(분): 10=10분봉, 60=60분봉"""
+    rows=[]; cd=""; ct=""
+    for _ in range(2):
+        r=requests.post(f"{BASE}/stock/chart",verify=False,timeout=8,
+            headers={"Content-Type":"application/json; charset=UTF-8","authorization":f"Bearer {tk}","tr_cd":"t8412","tr_cont":"N" if cd=="" else "Y"},
+            json={"t8412InBlock":{"shcode":code,"ncnt":ncnt,"qrycnt":500,"nday":"0","sdate":"20250101","edate":"20991231","cts_date":cd,"cts_time":ct,"comp_yn":"N"}})
+        j=r.json(); rr=j.get("t8412OutBlock1",[])
+        if not rr: break
+        rows.extend(rr)
+        ob=j.get("t8412OutBlock",{}); nd=ob.get("cts_date","").strip(); nt=ob.get("cts_time","").strip()
+        if (nd==cd and nt==ct) or nd=="": break
+        cd,ct=nd,nt
+    if not rows: return None
+    seen=set(); out=[]
+    for x in rows:
+        k=(x['date'],x['time'])
+        if k in seen: continue
+        seen.add(k)
+        out.append({'d':x['date'],'t':x['time'],'o':float(x['open']),'h':float(x['high']),'l':float(x['low']),'c':float(x['close'])})
+    out.sort(key=lambda z:(z['d'],z['t'])); return out
+
 _STOCKS_CACHE=None
 def _load_stocks():
     """stocks.json에서 code→market 매핑 (t8436 기반이라 정확). 1회 캐시."""
@@ -169,6 +192,25 @@ def _load_stocks():
             if _STOCKS_CACHE: break
         except: continue
     return _STOCKS_CACHE
+
+def get_name(tk,code):
+    # 1순위: stocks.json (t8436 기반 — 시장 구분 정확)
+    sj=_load_stocks().get(code)
+    nm_j = sj['name'] if sj else ''
+    mk_j = sj['market'] if sj else ''
+    # 2순위: t1102 API (이름 보강용, 시장은 stocks.json 우선)
+    try:
+        r=requests.post(f"{BASE}/stock/market-data",verify=False,timeout=8,
+            headers={"Content-Type":"application/json; charset=UTF-8","authorization":f"Bearer {tk}","tr_cd":"t1102","tr_cont":"N"},
+            json={"t1102InBlock":{"shcode":code}})
+        b=r.json().get("t1102OutBlock",{})
+        nm_api=b.get("hname","").strip()
+        nm = nm_j or nm_api
+        # 시장: stocks.json이 있으면 그걸 신뢰, 없으면 API gubun 폴백
+        mk = mk_j if mk_j else ("코스닥" if b.get("gubun","")=="2" else "코스피")
+        return nm, mk
+    except:
+        return nm_j, mk_j
 
 def ma(a,w):
     o=[None]*len(a)
@@ -691,35 +733,32 @@ class handler(BaseHTTPRequestHandler):
                 try: m10=get_min_us(tkr,"15m")
                 except Exception: m10=None
             else:
-                # ===== 한국 주식 =====
-                # 일봉·현재가 = 토스(실시간/정확), 15·60분봉 = 야후(속도)
+                # ===== 한국 주식 (LS) =====
                 if not code.isdigit() or len(code)!=6:
                     self.wfile.write(json.dumps({'error':'국내는 6자리 코드, 해외는 영문 티커(AAPL 등)'}).encode()); return
-                tk=toss_token(); nm,mk=get_name_toss(tk,code)
-                # 일봉 = 토스
-                day=get_day_toss(tk,code)
-                # 야후 일봉 폴백 (토스 실패 시)
-                if not day: day=get_day_kr(code)
+                tk=token(); nm,mk=get_name(tk,code)
+                # 일봉/60분/15분 = 야후 (지연 낮음), 오늘 현재가만 LS t1102로 씌우기
+                day=get_day_kr(code)
                 try: m60=get_60m_kr(code)
                 except Exception: m60=None
                 try: m10=get_15m_kr(code)
                 except Exception: m10=None
-                # 토스 현재가로 오늘 봉(시/고/저/현재가) 씌우기
-                today_bar=get_today_bar_toss(tk,code)
+                # LS t1102로 오늘 봉(시가/고가/저가/현재가) 씌우기
+                today_bar=get_today_bar_ls(tk,code)
                 if today_bar:
-                    tymd=_now_kst().strftime("%Y%m%d")
+                    today_str=_now_kst().strftime("%Y%m%d")
                     # 일봉에 씌우기
                     if day:
-                        if day[-1].get('d','')!=tymd:
+                        if day[-1].get('d','')!=today_str:
                             day.append(today_bar)
                         else:
                             day[-1]['c']=today_bar['c']
                             if today_bar['h']>day[-1].get('h',0): day[-1]['h']=today_bar['h']
                             if today_bar['l']>0 and today_bar['l']<day[-1].get('l',999999999): day[-1]['l']=today_bar['l']
                             if today_bar['o']>0 and day[-1].get('o',0)==0: day[-1]['o']=today_bar['o']
-                    # 15분봉에 씌우기 (야후가 지연되므로 현재가 갱신)
+                    # 15분봉에 씌우기
                     if m10:
-                        if m10[-1].get('d','')!=tymd:
+                        if m10[-1].get('d','')!=today_str:
                             m10.append(today_bar)
                         else:
                             m10[-1]['c']=today_bar['c']
