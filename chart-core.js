@@ -716,123 +716,69 @@ function mkChart(data,pj,sfx){
     }
     // ===== 시나리오 웨이브 (교차점 기준점부터 — 실제 봉과 비교 가능) =====
     if(SCEN && scenFade>0){
-      // 기준점: 최근 교차점 직후. 없으면 현재
-      var anchorI=MAIN_I;
-      var anchorP=MAIN_P;
-      var startI=anchorI, endI=TOTAL-1;
-      var startV=anchorP;
-      var TT2=pj.tech_targets||{};
-      // 천장/바닥 = 현실적 목표 (up_target은 이미 녹색의 35% 현실선)
-      var ceil_ = pj.up_target||cur*1.1;   // 상승 천장 = 현실 목표선
-      var floor_ = pj.dn_target||cur*0.8;  // 하락 바닥
-      // 시나리오 변곡점 = 모든 교차점(공방/위험 구분 없이 — 다 '싸우는 자리').
-      // 현재가 위면 저항(상승시 돌파대상), 아래면 지지(하락시 이탈대상)로 자동 분류됨.
-      var allLv=[];
-      if(pj.xpoints&&pj.xpoints.length){ pj.xpoints.forEach(function(v){if(v>0)allLv.push(v);}); }
-      else { draws.forEach(function(d){if(d.yc>0)allLv.push(d.yc);}); risks.forEach(function(d){if(d.yc>0)allLv.push(d.yc);}); }
-      // 중복 근접 제거. 범위는 화면이 아니라 '시나리오 경로'(시작점~천장/바닥) 기준
-      // (화면 밖 교차점도 시나리오엔 의미 있음 — 캔들에만 맞춘 화면범위로 자르면 다 사라짐)
-      var loBound=Math.min(startV, floor_)*0.98, hiBound=Math.max(startV, ceil_)*1.02;
-      allLv=allLv.filter(function(v){return v>loBound&&v<hiBound;}).sort(function(a,b){return a-b;});
-      var clean=[]; allLv.forEach(function(v){if(!clean.length||Math.abs(v-clean[clean.length-1])>cur*0.015)clean.push(v);});
-      allLv=clean;
+      // ===== 터치 기반 시나리오 =====
+      // 목표선/위험선은 최근변곡점(MAIN_I)에서 기울기로 뻗음. 시나리오선은 현재가에서 출발,
+      // 그 기울어진 선에 '터치'하면 거기가 새 기준 → 반대 선 향해 다시.
+      var startI=MAIN_I, endI=TOTAL-1;
       var color = SCEN==='up'?'rgba(226,75,74,':SCEN==='dn'?'rgba(55,138,221,':'rgba(138,152,168,';
+      var ceil_ = pj.up_target||cur*1.1;
+      var floor_ = pj.dn_target||cur*0.8;
+      var span0=Math.max(1,(TOTAL-1)-MAIN_I);
+      function tgtAt(i){ var t=(i-MAIN_I)/span0; return MAIN_P+(ceil_-MAIN_P)*t; }
+      function rskAt(i){ var t=(i-MAIN_I)/span0; return MAIN_P+(floor_-MAIN_P)*t; }
+      var lv=[];
+      if(pj.xpoints&&pj.xpoints.length){ pj.xpoints.forEach(function(v){if(v>0)lv.push(v);}); }
+      else { draws.forEach(function(d){if(d.yc>0)lv.push(d.yc);}); risks.forEach(function(d){if(d.yc>0)lv.push(d.yc);}); }
+      var loB=Math.min(MAIN_P,floor_)*0.98, hiB=Math.max(MAIN_P,ceil_)*1.02;
+      lv=lv.filter(function(v){return v>loB&&v<hiB;}).sort(function(a,b){return a-b;});
       ctx.save();
       ctx.globalAlpha=scenFade;
-      // 기준점(교차점) 세로선
       if(startI>=viewS&&startI<=viewE){
-        ctx.strokeStyle='rgba(232,116,59,'+(0.6*scenFade)+')';ctx.lineWidth=1.5;ctx.setLineDash([4,3]);
+        ctx.strokeStyle='rgba(232,116,59,'+(0.5*scenFade)+')';ctx.lineWidth=1.4;ctx.setLineDash([4,3]);
         ctx.beginPath();ctx.moveTo(xOf(startI),plot.y0);ctx.lineTo(xOf(startI),plot.y1);ctx.stroke();ctx.setLineDash([]);
-        if(!isMob){ctx.fillStyle='#e8743b';ctx.font='bold '+FONT_SM+'px '+FF();ctx.textAlign='left';
-        ctx.fillText('기준 '+(ch[startI]?ch[startI].d:''),xOf(startI)+3,plot.y0+18);}
       }
-      // 지지/저항 수평선 표시
-      allLv.forEach(function(lv){
-        ctx.strokeStyle='rgba(127,119,221,'+(0.22*scenFade)+')';ctx.lineWidth=1;ctx.setLineDash([2,4]);
-        ctx.beginPath();ctx.moveTo(xOf(startI),yOf(lv));ctx.lineTo(xOf(endI),yOf(lv));ctx.stroke();ctx.setLineDash([]);
-      });
-
-      // ── 시나리오별 "목표 레벨 시퀀스" 만들기 (이 레벨들을 변곡점으로 왕복) ──
-      // 각 변곡점 = {price, label}. 파동이 이 가격들을 순서대로 찍으며 진행.
-      var seq=[{price:startV}];
-      var wave=pj.wave||{phase:'?'}; var phase=wave.phase;
-      if(SCEN==='up'){
-        // 현재가 위 레벨들 (천장 이하)
-        var ups=allLv.filter(function(v){return v>startV*1.005 && v<=ceil_*1.001;});
-        if(ups.length===0) ups=[ceil_];
-        if(ups[ups.length-1] < ceil_*0.97) ups.push(ceil_);  // 천장 포함
-        // 엘리엇: 레벨 돌파(상승) → 직전 레벨로 눌림(되돌림) → 다음 돌파...
-        var prev=startV;
-        for(var i=0;i<ups.length;i++){
-          seq.push({price:ups[i]});                       // 저항 돌파(상승파)
-          if(i<ups.length-1){
-            // 되돌림: 상승은 "다시 떨어질라" 두려움이 커서 깊게 눌림(더디게 감)
-            var pull=prev+(ups[i]-prev)*0.55;
-            seq.push({price:pull});                        // 조정파(깊은 되돌림)
-          }
-          prev=ups[i];
+      var nowI=Math.min(n-1,endI);
+      var dir = (SCEN==='dn')? -1 : 1;
+      var segs=[];
+      var curI=nowI, curP=cur, guard=0;
+      while(curI<endI && guard<12){
+        guard++;
+        var aimUp = dir>0;
+        var aimEndP = aimUp? tgtAt(endI) : rskAt(endI);
+        var hitI=endI, hitP=aimEndP, touched=false;
+        for(var ii=curI+1; ii<=endI; ii++){
+          var tt=(ii-curI)/Math.max(1,(endI-curI));
+          var sceP=curP+(aimEndP-curP)*tt;
+          var lineP=aimUp? tgtAt(ii) : rskAt(ii);
+          if(aimUp && sceP>=lineP){ hitI=ii; hitP=lineP; touched=true; break; }
+          if(!aimUp && sceP<=lineP){ hitI=ii; hitP=lineP; touched=true; break; }
         }
-        // 5파 막바지면 천장 찍고 살짝 꺾임 추가
-        if(phase==='5') seq.push({price:ceil_-(ceil_-startV)*0.15});
-      } else if(SCEN==='dn'){
-        var dns=allLv.filter(function(v){return v<startV*0.995 && v>=floor_*0.999;}).reverse();
-        if(dns.length===0) dns=[floor_];
-        if(dns[dns.length-1] > floor_*1.03) dns.push(floor_);
-        var prevd=startV;
-        for(var i2=0;i2<dns.length;i2++){
-          seq.push({price:dns[i2]});                       // 지지 이탈(하락파)
-          if(i2<dns.length-1){
-            // 반등: 하락은 공포라 반등 약함(얕게 튀고 급락) — 가파르게
-            var bounce=prevd+(dns[i2]-prevd)*0.30;          // 약한 반등(데드캣)
-            seq.push({price:bounce});
-          }
-          prevd=dns[i2];
+        segs.push({i0:curI,p0:curP,i1:hitI,p1:hitP});
+        if(!touched) break;
+        curI=hitI; curP=hitP; dir=-dir;
+      }
+      function drawSeg(sg, solid){
+        ctx.beginPath();
+        var STEP=Math.max(1,Math.round((sg.i1-sg.i0)/8));
+        for(var i=sg.i0;i<=sg.i1;i+=STEP){
+          var t=(i-sg.i0)/Math.max(1,(sg.i1-sg.i0));
+          var base=sg.p0+(sg.p1-sg.p0)*((1-Math.cos(t*Math.PI))/2);
+          for(var z=0;z<lv.length;z++){ if(Math.abs(base-lv[z])<cur*0.012){ base=base*0.75+lv[z]*0.25; break; } }
+          var xx=xOf(i),yy=yOf(base);
+          if(i===sg.i0)ctx.moveTo(xx,yy);else ctx.lineTo(xx,yy);
         }
-      } else {
-        // 횡보: 삼각수렴 없이 시작가 수평 유지
-        seq.push({price:startV});
+        ctx.lineTo(xOf(sg.i1),yOf(sg.p1));
+        if(solid){ ctx.strokeStyle=color+'0.95)';ctx.lineWidth=2.6;ctx.setLineDash([]); }
+        else { ctx.strokeStyle=color+'0.32)';ctx.lineWidth=1.6;ctx.setLineDash([4,4]); }
+        ctx.stroke();ctx.setLineDash([]);
       }
-
-      // ── 시퀀스를 시간축에 배치 (비대칭: 상승 더디게/하락 가파르게) ──
-      var steps=endI-startI;
-      var nSeg=seq.length-1;
-      // 각 구간의 "시간 가중치": 올라가는 구간은 길게(더디), 내려가는 구간은 짧게(가파)
-      // 두려움 원칙 — 상승은 자꾸 눌리며 더디게, 하락은 공포로 한번에.
-      var segW=[];
-      for(var q=1;q<seq.length;q++){
-        var up = seq[q].price >= seq[q-1].price;
-        segW.push(up ? 1.6 : 0.7);   // 상승 구간 시간 1.6배(더디), 하락 0.7배(가파)
-      }
-      var wsum=0; for(var wi=0;wi<segW.length;wi++) wsum+=segW[wi];
-      // 누적 t 위치 (가중치 비례)
-      seq[0].t=0; var acc=0;
-      for(var q2=1;q2<seq.length;q2++){
-        acc+=segW[q2-1];
-        seq[q2].t=acc/wsum;
-      }
-      ctx.strokeStyle=color+'0.95)';ctx.lineWidth=2.6;ctx.setLineDash([]);
-      ctx.beginPath();
-      for(var s=0;s<=steps;s++){
-        var t=s/steps;
-        var k=0; while(k<seq.length-2 && t>seq[k+1].t) k++;
-        var a0=seq[k], a1=seq[k+1];
-        var segT=(t-a0.t)/((a1.t-a0.t)||1);
-        var ease=(1-Math.cos(segT*Math.PI))/2;
-        var base=a0.price+(a1.price-a0.price)*ease;
-        // 레벨 근처 통과 시 자석처럼 끌림(지지/저항 반응 강조)
-        for(var li=0;li<allLv.length;li++){
-          if(Math.abs(base-allLv[li])<cur*0.012){ base=base*0.7+allLv[li]*0.3; break; }
+      for(var si=0;si<segs.length;si++){ drawSeg(segs[si], si===segs.length-1); }
+      for(var si2=0;si2<segs.length-1;si2++){
+        var sg=segs[si2];
+        if(sg.i1>=viewS&&sg.i1<=viewE){
+          ctx.fillStyle=color+'0.6)';
+          ctx.beginPath();ctx.arc(xOf(sg.i1),yOf(sg.p1),3,0,Math.PI*2);ctx.fill();
         }
-        var xx=xOf(startI+s), yy=yOf(base);
-        if(s===0)ctx.moveTo(xx,yy); else ctx.lineTo(xx,yy);
-      }
-      ctx.stroke();
-      // 파동 번호 (변곡점마다 1,2,3.. 또는 A,B,C..)
-      var labels = SCEN==='flat'?['A','B','C','D','E','']:['1','2','3','4','5','6','7','8'];
-      ctx.fillStyle=color+'0.9)';ctx.font='bold 12px '+FF();ctx.textAlign='center';
-      for(var ai=1;ai<seq.length;ai++){
-        var px=startI+seq[ai].t*steps;
-        if(px<=endI&&labels[ai-1]) ctx.fillText(labels[ai-1], xOf(px), yOf(seq[ai].price)-6);
       }
       ctx.restore();
     }
