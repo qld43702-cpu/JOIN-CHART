@@ -545,10 +545,15 @@ function mkChart(data,pj,sfx){
   // fn(t, basePrice) → y값. t=0(시작점) ~ t=1(미래끝)
   var ANCHOR_I=(pj.anchor_idx!=null)?pj.anchor_idx:(n-1);
   var RECENT_I=(pj.recent_pivot!=null)?pj.recent_pivot:null;
-  var ANCHOR_P=(pj.anchor_price!=null)?pj.anchor_price:cur;
-  var ANCHOR_SPAN=Math.max(1,(TOTAL-1)-ANCHOR_I);
+  // 메인 기준 = 최근 변곡점(있으면). 없으면 기존 시작점. 과거 시작점(PAST_I)은 희미한 선용.
+  var MAIN_I=(RECENT_I!=null && RECENT_I<n)?RECENT_I:ANCHOR_I;
+  var PAST_I=(RECENT_I!=null && RECENT_I<n && ANCHOR_I!==RECENT_I)?ANCHOR_I:null;
+  var MAIN_P=(ma2[MAIN_I]!=null)?ma2[MAIN_I]:((pj.anchor_price!=null&&MAIN_I===ANCHOR_I)?pj.anchor_price:(c[MAIN_I]!=null?c[MAIN_I]:cur));
+  var PAST_P=(PAST_I!=null)?((pj.anchor_price!=null)?pj.anchor_price:(c[PAST_I]!=null?c[PAST_I]:cur)):null;
+  var ANCHOR_P=MAIN_P;
+  var ANCHOR_SPAN=Math.max(1,(TOTAL-1)-MAIN_I);
   function fwave(ctx,fn,color,wid,dash,fromGreen,ovStartI,ovStartP){
-    var startI=(ovStartI!=null)?ovStartI:ANCHOR_I;
+    var startI=(ovStartI!=null)?ovStartI:MAIN_I;
     var baseP=(ovStartP!=null)?ovStartP:ANCHOR_P;
     var totalSpan=Math.max(1,(TOTAL-1)-startI);
     var endI=TOTAL-1;  // 끝점을 미래 마지막 봉에 고정 (줌해도 안 흔들림)
@@ -647,8 +652,8 @@ function mkChart(data,pj,sfx){
         ctx.beginPath();ctx.moveTo(ex,ey-6);ctx.lineTo(ex-5,ey+5);ctx.lineTo(ex+5,ey+5);ctx.closePath();ctx.fill();
       }
     });
-    // 미래 예측 (전부 직선) — 교차점 기준점부터 그림
-    if(viewE>=ANCHOR_I&&pj){
+    // 미래 예측 (전부 직선) — 메인 기준점(최근 변곡)부터 그림
+    if(viewE>=MAIN_I&&pj){
       var us=pj.up_slope||0, upT=pj.up_target, dnT=pj.dn_target, vol=pj.volatility||0.02;
       // 오리지날 상승 잠재선 (캡 없는 작도 최대치) — 진한 회색. 녹색보다 먼저(아래에) 그려 가림 방지
       // green_max 없으면 35%선 역산(up_target=35%니까 ÷0.35)
@@ -656,13 +661,13 @@ function mkChart(data,pj,sfx){
       if(gmax>upT*1.001){
         fwave(ctx,function(t,b){return b+(gmax-b)*t;},'rgba(70,80,95,.9)',2.4,[3,3],false);
       }
-      // 기본 틀: 교차점 기준부터 — 직선
+      // 기본 틀: 메인 기준부터 — 직선
       fwave(ctx,function(t,b){return b+(upT-b)*t;},'rgba(29,158,117,.95)',2.4,[6,4],false);       // 상승목표(녹색 35%)
       fwave(ctx,function(t,b){return b+(dnT-b)*t;},'rgba(212,83,126,.9)',2.4,[6,4],false);         // 위험(분홍)
-      // 최근 변곡점에서 희미한 목표선(캡 씌운것만). 다음 시작점이 되면 진해지고 잠재선도 생김.
-      if(RECENT_I!=null && RECENT_I!==ANCHOR_I && RECENT_I<n){
-        var rBase=(ma2[RECENT_I]!=null)?ma2[RECENT_I]:(c[RECENT_I]!=null?c[RECENT_I]:cur);
-        fwave(ctx,function(t,b){return b+(upT-b)*t;},'rgba(29,158,117,.30)',1.8,[5,4],false,RECENT_I,rBase);
+      // 과거 시작점(PAST_I)에서는 희미한 공방선·위험선만 (이미 지나간 기준)
+      if(PAST_I!=null){
+        fwave(ctx,function(t,b){return b+(upT-b)*t;},'rgba(29,158,117,.28)',1.6,[5,4],false,PAST_I,PAST_P);   // 희미 공방
+        fwave(ctx,function(t,b){return b+(dnT-b)*t;},'rgba(212,83,126,.28)',1.6,[5,4],false,PAST_I,PAST_P);   // 희미 위험
       }
       // 삼각수렴 제거됨
       // 체크박스 기법: 전부 교차점 기준부터 직선
@@ -696,7 +701,7 @@ function mkChart(data,pj,sfx){
           var lv=fibLevels[fi].p, up=lv>cur;
           ctx.strokeStyle=up?'rgba(29,158,117,.55)':'rgba(212,83,126,.55)';
           ctx.setLineDash([3,3]);ctx.lineWidth=1.2;
-          ctx.beginPath();ctx.moveTo(xOf(ANCHOR_I),yOf(lv));ctx.lineTo(xOf(TOTAL-1),yOf(lv));ctx.stroke();ctx.setLineDash([]);
+          ctx.beginPath();ctx.moveTo(xOf(MAIN_I),yOf(lv));ctx.lineTo(xOf(TOTAL-1),yOf(lv));ctx.stroke();ctx.setLineDash([]);
           // 라벨 겹침 방지: 이전 라벨과 14px 이내면 건너뜀
           var ly=yOf(lv);
           var tooClose=fibLabelYs.some(function(y){return Math.abs(y-ly)<14;});
@@ -704,7 +709,7 @@ function mkChart(data,pj,sfx){
             fibLabelYs.push(ly);
             ctx.fillStyle=up?'rgba(29,158,117,.85)':'rgba(212,83,126,.85)';
             ctx.font='10px '+FF();ctx.textAlign='left';
-            ctx.fillText(fmtP(lv),xOf(ANCHOR_I)+2,ly-2);
+            ctx.fillText(fmtP(lv),xOf(MAIN_I)+2,ly-2);
           }
         }
       }
@@ -712,8 +717,8 @@ function mkChart(data,pj,sfx){
     // ===== 시나리오 웨이브 (교차점 기준점부터 — 실제 봉과 비교 가능) =====
     if(SCEN && scenFade>0){
       // 기준점: 최근 교차점 직후. 없으면 현재
-      var anchorI=(pj.anchor_idx!=null)?pj.anchor_idx:(n-1);
-      var anchorP=(pj.anchor_price!=null)?pj.anchor_price:cur;
+      var anchorI=MAIN_I;
+      var anchorP=MAIN_P;
       var startI=anchorI, endI=TOTAL-1;
       var startV=anchorP;
       var TT2=pj.tech_targets||{};

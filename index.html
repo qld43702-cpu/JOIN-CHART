@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<!-- BUILD:1782575616 -->
+<!-- BUILD:1782576968 -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>JOIN CHART</title>
@@ -336,7 +336,34 @@ header{display:flex;align-items:center;gap:11px;margin-bottom:16px}
 </div>
 <div id="result"></div>
 </div>
-<script src="/chart-core.js?v=1782575616"></script>
+<script src="/chart-core.js?v=1782576968"></script>
 </div>
+<div id="exitModal" style="display:none;position:fixed;inset:0;background:rgba(15,25,40,.55);z-index:9999;align-items:center;justify-content:center">
+  <div style="background:#fff;border-radius:18px;padding:28px 24px;max-width:320px;width:86%;text-align:center;box-shadow:0 16px 50px rgba(0,0,0,.25)">
+    <div style="font-size:34px;margin-bottom:10px">👋</div>
+    <div style="font-size:17px;font-weight:800;color:#1b3a5c;margin-bottom:8px">정말 종료하시겠어요?</div>
+    <div style="font-size:13px;color:#6e7c8a;line-height:1.6;margin-bottom:20px">오늘도 성공적인 투자 되시길 응원할게요.<br>현명한 선택의 곁에 늘 함께하겠습니다.</div>
+    <div style="display:flex;gap:10px">
+      <button id="exitStay" style="flex:1;padding:11px 0;border:1px solid #d7dee6;background:#f7f9fb;border-radius:10px;font-size:14px;font-weight:700;color:#41506a;cursor:pointer">머무르기</button>
+      <button id="exitGo" style="flex:1;padding:11px 0;border:none;background:#1b3a5c;color:#fff;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer">종료</button>
+    </div>
+  </div>
+</div>
+<script>
+(function(){
+  try{ history.pushState({jc:1},'',location.href); }catch(e){}
+  var modal=document.getElementById('exitModal');
+  var armed=false;
+  window.addEventListener('popstate',function(){
+    if(armed) return;
+    modal.style.display='flex';
+    try{ history.pushState({jc:1},'',location.href); }catch(e){}
+  });
+  document.getElementById('exitStay').addEventListener('click',function(){ modal.style.display='none'; });
+  document.getElementById('exitGo').addEventListener('click',function(){
+    armed=true; modal.style.display='none'; history.back();
+  });
+})();
+</script>
 </body>
 </html>
