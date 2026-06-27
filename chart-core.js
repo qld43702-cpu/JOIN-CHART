@@ -738,63 +738,46 @@ function mkChart(data,pj,sfx){
         ctx.beginPath();ctx.moveTo(xOf(startI),plot.y0);ctx.lineTo(xOf(startI),plot.y1);ctx.stroke();ctx.setLineDash([]);
       }
       var nowI=Math.min(n-1,endI);
-      var BUF=(pj.touch_buf!=null)?pj.touch_buf:0.05;   // 완충%(단기3/중장기5)
-      // ── 과거 봉에서 목표선/위험선 터치 지점 찾기 ──
-      // 상승=고가(h)가 목표선 닿음, 하락=저가(l)가 위험선 닿음.
-      // 터치 후 BUF% 이탈했다가 다시 닿으면(복귀) = 새 시작점(교체).
-      var touches=[];   // 터치 봉 인덱스들
-      var aimUp0=(SCEN!=='dn');
-      var off=false;    // BUF% 밖으로 나갔는지
-      for(var bi=Math.max(1,MAIN_I); bi<=nowI; bi++){
-        var lineP = aimUp0? tgtAt(bi) : rskAt(bi);
-        if(lineP<=0) continue;
-        var px = aimUp0? (ch[bi]?ch[bi].h:c[bi]) : (ch[bi]?ch[bi].l:c[bi]);
-        var hit = aimUp0? (px>=lineP) : (px<=lineP);   // 선에 닿음/넘음
-        var farOff = Math.abs((aimUp0?(ch[bi]?ch[bi].l:c[bi]):(ch[bi]?ch[bi].h:c[bi]))-lineP)/lineP >= BUF;
-        if(hit && (touches.length===0 || off)){
-          touches.push(bi); off=false;   // 첫 터치 또는 이탈 후 복귀
-        } else if(!hit && farOff){
-          off=true;   // BUF% 밖으로 이탈
-        }
+      // 시나리오 시작점 = 최근 변곡점(MAIN_I). 거기서 목표선/위험선 향해 교차점들로 파동.
+      var startV=MAIN_P;
+      var dirUp=(SCEN!=='dn');
+      var aimP=dirUp? ceil_ : floor_;   // 방향별 목표(상승=목표선, 하락=위험선)
+      // 경유 레벨(교차점 lv) — 시작가와 목표 사이의 것만, 순서대로
+      var midLv;
+      if(dirUp) midLv=lv.filter(function(v){return v>startV*1.005 && v<ceil_*0.999;}).sort(function(a,b){return a-b;});
+      else      midLv=lv.filter(function(v){return v<startV*0.995 && v>floor_*1.001;}).sort(function(a,b){return b-a;});
+      // 파동 시퀀스: 시작 → (레벨 돌파 → 되돌림)* → 목표
+      var seq=[startV]; var prev=startV;
+      for(var mi=0;mi<midLv.length;mi++){
+        seq.push(midLv[mi]);
+        if(mi<midLv.length-1) seq.push(prev+(midLv[mi]-prev)*(dirUp?0.55:0.30)); // 되돌림/반등
+        prev=midLv[mi];
       }
-      // 시작점 = 가장 최근 터치(없으면 MAIN_I), 그 이전 터치들은 점선 구간 경계
-      var segs=[];
-      if(touches.length>=1){
-        // 각 터치~다음터치 = 점선, 마지막 터치~끝 = 진한
-        var pts=touches.slice();
-        for(var ti=0;ti<pts.length;ti++){
-          var s0=pts[ti], s1=(ti<pts.length-1)?pts[ti+1]:endI;
-          var p0=aimUp0?tgtAt(s0):rskAt(s0);
-          var p1=aimUp0?( (ti<pts.length-1)?tgtAt(s1):tgtAt(endI) ):( (ti<pts.length-1)?rskAt(s1):rskAt(endI) );
-          segs.push({i0:s0,p0:p0,i1:s1,p1:p1});
-        }
-      } else {
-        // 터치 없음 → MAIN_I에서 목표/위험선 향해 한 줄
-        var s0b=MAIN_I, s1b=endI;
-        segs.push({i0:s0b,p0:MAIN_P,i1:s1b,p1:aimUp0?tgtAt(endI):rskAt(endI)});
+      seq.push(aimP);
+      // 시간축 배치 (상승 더디게, 하락 가파르게)
+      var steps=endI-MAIN_I; if(steps<1)steps=1;
+      var segW=[]; for(var q=1;q<seq.length;q++){ segW.push(seq[q]>=seq[q-1]?1.6:0.7); }
+      var wsum=0; for(var wi=0;wi<segW.length;wi++)wsum+=segW[wi]; if(wsum<=0)wsum=1;
+      var tpos=[0],acc=0; for(var q2=1;q2<seq.length;q2++){ acc+=segW[q2-1]; tpos.push(acc/wsum); }
+      // 그리기
+      ctx.strokeStyle=color+'0.95)';ctx.lineWidth=2.6;ctx.setLineDash([]);
+      ctx.beginPath();
+      for(var s=0;s<=steps;s++){
+        var t=s/steps;
+        var k=0; while(k<seq.length-2 && t>tpos[k+1]) k++;
+        var segT=(t-tpos[k])/((tpos[k+1]-tpos[k])||1);
+        var ease=(1-Math.cos(segT*Math.PI))/2;
+        var base=seq[k]+(seq[k+1]-seq[k])*ease;
+        var xx=xOf(MAIN_I+s), yy=yOf(base);
+        if(s===0)ctx.moveTo(xx,yy);else ctx.lineTo(xx,yy);
       }
-      function drawSeg(sg, solid){
-        ctx.beginPath();
-        var STEP=Math.max(1,Math.round((sg.i1-sg.i0)/8));
-        for(var i=sg.i0;i<=sg.i1;i+=STEP){
-          var t=(i-sg.i0)/Math.max(1,(sg.i1-sg.i0));
-          var base=sg.p0+(sg.p1-sg.p0)*((1-Math.cos(t*Math.PI))/2);
-          for(var z=0;z<lv.length;z++){ if(Math.abs(base-lv[z])<cur*0.012){ base=base*0.75+lv[z]*0.25; break; } }
-          var xx=xOf(i),yy=yOf(base);
-          if(i===sg.i0)ctx.moveTo(xx,yy);else ctx.lineTo(xx,yy);
-        }
-        ctx.lineTo(xOf(sg.i1),yOf(sg.p1));
-        if(solid){ ctx.strokeStyle=color+'0.95)';ctx.lineWidth=2.6;ctx.setLineDash([]); }
-        else { ctx.strokeStyle=color+'0.32)';ctx.lineWidth=1.6;ctx.setLineDash([4,4]); }
-        ctx.stroke();ctx.setLineDash([]);
-      }
-      for(var si=0;si<segs.length;si++){ drawSeg(segs[si], si===segs.length-1); }
-      for(var si2=0;si2<segs.length-1;si2++){
-        var sg=segs[si2];
-        if(sg.i1>=viewS&&sg.i1<=viewE){
-          ctx.fillStyle=color+'0.6)';
-          ctx.beginPath();ctx.arc(xOf(sg.i1),yOf(sg.p1),3,0,Math.PI*2);ctx.fill();
-        }
+      ctx.stroke();
+      // 파동 번호
+      var labels=['1','2','3','4','5','6','7','8'];
+      ctx.fillStyle=color+'0.9)';ctx.font='bold 12px '+FF();ctx.textAlign='center';
+      for(var ai=1;ai<seq.length;ai++){
+        var px=MAIN_I+tpos[ai]*steps;
+        if(px<=endI&&labels[ai-1]) ctx.fillText(labels[ai-1], xOf(px), yOf(seq[ai])-6);
       }
       ctx.restore();
     }
