@@ -738,31 +738,40 @@ function mkChart(data,pj,sfx){
         ctx.beginPath();ctx.moveTo(xOf(startI),plot.y0);ctx.lineTo(xOf(startI),plot.y1);ctx.stroke();ctx.setLineDash([]);
       }
       var nowI=Math.min(n-1,endI);
-      var dir = (SCEN==='dn')? -1 : 1;
-      var BUF=(pj.touch_buf!=null)?pj.touch_buf:0.05;   // 완충%(선 위치 대비). 단기3/중장기5
-      var minGap=Math.max(2, Math.round((endI-nowI)*0.12)); // 첫 터치까지 최소 간격(즉시터치 방지)
-      var segs=[];
-      var curI=nowI, curP=cur, guard=0, lastTouchP=null;
-      while(curI<endI && guard<12){
-        guard++;
-        var aimUp = dir>0;
-        var aimEndP = aimUp? tgtAt(endI) : rskAt(endI);
-        var hitI=endI, hitP=aimEndP, touched=false;
-        for(var ii=curI+1; ii<=endI; ii++){
-          // 직전 터치점에서 최소간격 지나야 새 터치 인정 (즉시·과잉 터치 방지)
-          if(ii-curI < minGap) continue;
-          var tt=(ii-curI)/Math.max(1,(endI-curI));
-          var sceP=curP+(aimEndP-curP)*tt;
-          var lineP=aimUp? tgtAt(ii) : rskAt(ii);
-          // 직전 터치가격에서 BUF% 이상 벗어나야 함 (왕복 출렁임 무시)
-          if(lastTouchP!=null && Math.abs(sceP-lastTouchP)/lastTouchP < BUF) continue;
-          if(aimUp && sceP>=lineP){ hitI=ii; hitP=lineP; touched=true; break; }
-          if(!aimUp && sceP<=lineP){ hitI=ii; hitP=lineP; touched=true; break; }
+      var BUF=(pj.touch_buf!=null)?pj.touch_buf:0.05;   // 완충%(단기3/중장기5)
+      // ── 과거 봉에서 목표선/위험선 터치 지점 찾기 ──
+      // 상승=고가(h)가 목표선 닿음, 하락=저가(l)가 위험선 닿음.
+      // 터치 후 BUF% 이탈했다가 다시 닿으면(복귀) = 새 시작점(교체).
+      var touches=[];   // 터치 봉 인덱스들
+      var aimUp0=(SCEN!=='dn');
+      var off=false;    // BUF% 밖으로 나갔는지
+      for(var bi=Math.max(1,MAIN_I); bi<=nowI; bi++){
+        var lineP = aimUp0? tgtAt(bi) : rskAt(bi);
+        if(lineP<=0) continue;
+        var px = aimUp0? (ch[bi]?ch[bi].h:c[bi]) : (ch[bi]?ch[bi].l:c[bi]);
+        var hit = aimUp0? (px>=lineP) : (px<=lineP);   // 선에 닿음/넘음
+        var farOff = Math.abs((aimUp0?(ch[bi]?ch[bi].l:c[bi]):(ch[bi]?ch[bi].h:c[bi]))-lineP)/lineP >= BUF;
+        if(hit && (touches.length===0 || off)){
+          touches.push(bi); off=false;   // 첫 터치 또는 이탈 후 복귀
+        } else if(!hit && farOff){
+          off=true;   // BUF% 밖으로 이탈
         }
-        segs.push({i0:curI,p0:curP,i1:hitI,p1:hitP});
-        if(!touched) break;
-        curI=hitI; curP=hitP; lastTouchP=hitP; dir=-dir;
-        minGap=Math.max(2, Math.round((endI-curI)*0.12));
+      }
+      // 시작점 = 가장 최근 터치(없으면 MAIN_I), 그 이전 터치들은 점선 구간 경계
+      var segs=[];
+      if(touches.length>=1){
+        // 각 터치~다음터치 = 점선, 마지막 터치~끝 = 진한
+        var pts=touches.slice();
+        for(var ti=0;ti<pts.length;ti++){
+          var s0=pts[ti], s1=(ti<pts.length-1)?pts[ti+1]:endI;
+          var p0=aimUp0?tgtAt(s0):rskAt(s0);
+          var p1=aimUp0?( (ti<pts.length-1)?tgtAt(s1):tgtAt(endI) ):( (ti<pts.length-1)?rskAt(s1):rskAt(endI) );
+          segs.push({i0:s0,p0:p0,i1:s1,p1:p1});
+        }
+      } else {
+        // 터치 없음 → MAIN_I에서 목표/위험선 향해 한 줄
+        var s0b=MAIN_I, s1b=endI;
+        segs.push({i0:s0b,p0:MAIN_P,i1:s1b,p1:aimUp0?tgtAt(endI):rskAt(endI)});
       }
       function drawSeg(sg, solid){
         ctx.beginPath();
