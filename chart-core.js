@@ -109,7 +109,7 @@ function trackHtml(sfx, label, hint, isUS){
   h+='<label><input type="checkbox" class="mtd" value="gann" style="accent-color:#ba7517"> 갠</label>';
   h+='</div>';
   h+='<div class="zoombar"><button id="zin'+sfx+'">+ 확대</button><button id="zout'+sfx+'">− 축소</button><button id="zall'+sfx+'">전체</button></div>';
-  h+='<div class="chart-host" style="position:relative;"><canvas id="cv'+sfx+'"></canvas><canvas class="draw-canvas" id="dcv'+sfx+'"></canvas><div class="linetip" id="tip'+sfx+'"></div></div>';
+  h+='<div class="chart-host" style="position:relative;"><canvas id="cv'+sfx+'"></canvas><canvas class="draw-canvas" id="dcv'+sfx+'"></canvas><div class="linetip" id="tip'+sfx+'"></div><div class="chart-notice" id="notice'+sfx+'" style="display:none"></div></div>';
   h+='<div class="legend"><span><i style="background:#1d9e75"></i>상승목표</span><span><i style="background:#5a6473"></i>상승잠재</span><span><i style="background:#d4537e"></i>공방선</span></div>';
   h+='<div class="scen-btns">';
   h+='<button class="scen-btn up" data-scen="up"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 15l5-6 4 3 7-8"/></svg>상승 시나리오</button>';
@@ -303,6 +303,21 @@ function buildReport(x, d, pj, t10, t60){
   if(!area) return;
   if(area.innerHTML){ area.innerHTML=''; return; }  // 토글
   var IS_US=(x['시장']==='미국');
+  // 종합 판정 = 중기(60분) + 중장기(일봉). 둘 중 하나라도 분석 불가면 판정 불가.
+  var midOK = t60 && t60.projection && t60.draws && t60.draws.length>0;
+  var longOK = d && pj && d.draws && d.draws.length>0;
+  if(!midOK || !longOK){
+    var miss=[];
+    if(!longOK) miss.push('중장기(일봉)');
+    if(!midOK) miss.push('중기(60분봉)');
+    area.innerHTML='<div class="report"><div class="rep-title">최종 결과 리포트</div>'+
+      '<div class="rep-na"><div class="na-ic">⚠️</div>'+
+      '<div class="na-tt">종합 판정 불가</div>'+
+      '<div class="na-ds">'+miss.join('· ')+' 분석에 필요한 데이터가 충분하지 않아<br>종합 판정을 내릴 수 없어요.<br><br>상장 초기, 장기 거래정지, 거래량 부족 등이 원인일 수 있어요.<br>위쪽 단기·중기 차트는 참고용으로 확인하세요.</div>'+
+      '</div>'+
+      '<div class="rep-foot">본 리포트는 작도·통계 기반 참고 자료이며 매수·매도 추천이 아닙니다.</div></div>';
+    return;
+  }
   function pf(v){ return IS_US?('$'+Number(v).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})):(Math.round(v).toLocaleString()+'원'); }
   var qDir=judgeDir(pj, d, false);                                   // 분기(일봉)
   var mDir=(t60&&t60.projection)?judgeDir(t60.projection, t60, false):'flat';  // 월(60분봉)
@@ -391,6 +406,21 @@ function mkChart(data,pj,sfx){
   var cv=document.getElementById('cv'+sfx), tip=document.getElementById('tip'+sfx);
   var scope=document.getElementById('host'+sfx)||document;
   var ch=data.chart, n=ch.length, draws=data.draws||[], risks=data.risks||[];
+  // 교차점(작도) 없음 = 충분한 차트 분석 불가 → 안내 + 확인 버튼
+  var _notice=document.getElementById('notice'+sfx);
+  if(_notice){
+    if(!draws.length){
+      _notice.innerHTML='<div class="cn-box">'+
+        '<div class="cn-ic">📊</div>'+
+        '<div class="cn-tt">충분한 차트 분석이 어려워요</div>'+
+        '<div class="cn-ds">작도 패턴(추세 교차점)이 충분히 나타나지 않았어요.<br>신규 상장주, 장기 거래정지, 데이터 부족 등이 원인일 수 있어요.</div>'+
+        '<button class="cn-ok" onclick="this.closest(\'.chart-notice\').style.display=\'none\'">확인</button>'+
+        '</div>';
+      _notice.style.display='flex';
+    } else {
+      _notice.style.display='none';
+    }
+  }
   var FUT=(pj&&pj.fut)||63, TOTAL=n+FUT, cur=data.cur;
   var c=[], ma2=[];
   for(var ci=0;ci<ch.length;ci++){c.push(ch[ci].c);ma2.push(ch[ci].m2);}

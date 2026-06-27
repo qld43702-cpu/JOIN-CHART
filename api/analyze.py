@@ -513,40 +513,34 @@ def build_projection(bars, draws, risk_level, fut=63, market='', period='quarter
                 try: return _dt.date(int(d[:4]),int(d[4:6]),int(d[6:8]))
                 except: return None
             return None
-        # period별 변곡 임계
-        THR = {'week':0.10, 'month':0.20, 'quarter':0.30}.get(period, 0.20)
-        # ZigZag: 마지막 피벗 대비 THR 이상 반대로 가면 새 피벗 확정
+        # period별 변곡 임계 (주간7%/중기14%/중장기21%)
+        THR = {'week':0.07, 'month':0.14, 'quarter':0.21}.get(period, 0.14)
+        # ZigZag: 마지막 피벗 대비 THR 이상 반대로 가면 새 피벗 확정 (상승·하락 양방향)
         cc=[b['c'] for b in bars]
-        piv_i=[0]; trend=0; ext=cc[0]; ext_i=0
-        for i in range(1,len(cc)):
-            p=cc[i]
-            if trend>=0:
-                if p>ext: ext=p; ext_i=i
-                if ext>0 and (ext-p)/ext>=THR:
-                    piv_i.append(ext_i); trend=-1; ext=p; ext_i=i
-            if trend<=0:
-                if p<ext: ext=p; ext_i=i
-                if ext>0 and (p-ext)/ext>=THR:
-                    piv_i.append(ext_i); trend=1; ext=p; ext_i=i
-        # 마지막 확정 변곡점 = 시작점 (현재 진행중 극값 ext_i는 미확정이라 제외)
+        def _zigzag(thr):
+            pv=[0]; tr=1; ex=cc[0]; exi=0
+            for i in range(1,len(cc)):
+                p=cc[i]
+                if tr==1:
+                    if p>ex: ex=p; exi=i
+                    elif ex>0 and (ex-p)/ex>=thr: pv.append(exi); tr=-1; ex=p; exi=i
+                else:
+                    if p<ex: ex=p; exi=i
+                    elif ex>0 and (p-ex)/ex>=thr: pv.append(exi); tr=1; ex=p; exi=i
+            return pv
+        piv_i=_zigzag(THR)
+        # 마지막 확정 변곡점 = 시작점 (진행중 극값은 미확정이라 제외)
         last_pivot = piv_i[-1] if len(piv_i)>=2 else None
         if last_pivot is not None and last_pivot < len(bars)-2:
             anchor_idx = last_pivot
         else:
-            # 변곡점 없음(한 방향 추세) → 날짜 기준 폴백
-            def _period_key(dd):
-                if dd is None: return None
-                if period=='week':
-                    iso=dd.isocalendar(); return (iso[0],iso[1])
-                if period=='month': return (dd.year, dd.month)
-                return (dd.year,(dd.month-1)//3)
-            last_d0=_date_of(bars[-1]); last_key=_period_key(last_d0); cand=None
-            if last_key is not None:
-                for i in range(len(bars)-1,-1,-1):
-                    if _period_key(_date_of(bars[i]))!=last_key:
-                        cand=i+1; break
-                if cand is None: cand=0
-            anchor_idx = cand if cand is not None else max(0,len(bars)-fut)
+            # 임계 넘는 변곡 없음 → 임계를 점점 낮춰 가장 최근 의미있는 변곡점 탐색 (날짜 폴백 안 씀)
+            found=None
+            for thr2 in (THR*0.6, THR*0.35, THR*0.2):
+                pv=_zigzag(thr2)
+                if len(pv)>=2 and pv[-1]<len(bars)-2:
+                    found=pv[-1]; break
+            anchor_idx = found if found is not None else max(0,len(bars)-fut)
         anchor_price=round(bars[anchor_idx].get('o',bars[anchor_idx]['c']),2)
         # ── 끝(미래) = 변곡점~현재 봉 밀도로 추정 (기존 달력 로직 유지) ──
         last_d=_date_of(bars[-1])
@@ -769,11 +763,13 @@ class handler(BaseHTTPRequestHandler):
                             m10.append(today_bar)
                         else:
                             m10[-1]['c']=today_bar['c']
-            if not day or len(day)<30:
-                self.wfile.write(json.dumps({'error':'데이터를 찾을 수 없습니다 ('+code+')'}).encode()); return
-            dd = build_drawings(day) if day and len(day)>30 else {'error':'데이터 부족'}
-            mm = build_drawings(m60) if m60 and len(m60)>30 else {'error':'데이터 부족'}
-            tt = build_drawings(m10) if m10 and len(m10)>30 else {'error':'데이터 부족'}
+            # 셋 다 데이터가 없을 때만 차단. 하나라도 있으면 보여줌 (신규상장주는 단기/중기만 가능)
+            if (not day or len(day)<10) and (not m60 or len(m60)<10) and (not m10 or len(m10)<10):
+                self.wfile.write(json.dumps({'error':'아직 분석할 시세 데이터가 충분하지 않아요. 상장 초기이거나 거래가 거의 없는 종목일 수 있어요. ('+code+')'}).encode()); return
+            # 탭별 독립 판단: 봉 15개 이상이면 작도 시도, 미만이면 '데이터 부족'
+            dd = build_drawings(day) if day and len(day)>=15 else {'error':'데이터 부족'}
+            mm = build_drawings(m60) if m60 and len(m60)>=15 else {'error':'데이터 부족'}
+            tt = build_drawings(m10) if m10 and len(m10)>=15 else {'error':'데이터 부족'}
             # 일봉 위험: ①범위안 ②60분끌어옴 ③과거1개  (60분 all_risks 참조하므로 먼저)
             if 'draws' in dd:
                 resolve_risk(dd, mm if 'draws' in mm else None)
