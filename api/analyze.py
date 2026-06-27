@@ -776,8 +776,17 @@ class handler(BaseHTTPRequestHandler):
                         else:
                             m10[-1]['c']=today_bar['c']
             # 셋 다 데이터가 없을 때만 차단. 하나라도 있으면 보여줌 (신규상장주는 단기/중기만 가능)
+            _nd=len(day) if day else 0; _n60=len(m60) if m60 else 0; _n10=len(m10) if m10 else 0
             if (not day or len(day)<10) and (not m60 or len(m60)<10) and (not m10 or len(m10)<10):
-                self.wfile.write(json.dumps({'error':'아직 분석할 시세 데이터가 충분하지 않아요. 상장 초기이거나 거래가 거의 없는 종목일 수 있어요. ('+code+')'}).encode()); return
+                _msg=('아직 차트를 분석할 만큼 봉(캔들)이 형성되지 않았어요. '
+                      + nm + '은(는) 상장 초기이거나 거래가 매우 적은 종목으로 보여요.\n\n'
+                      + '차트 분석에는 봉이 일정 수 이상 쌓여야 해요:\n'
+                      + '· 단기(15분봉): 약 2~3거래일 필요\n'
+                      + '· 중기(60분봉): 약 1~2주 필요\n'
+                      + '· 중장기(일봉): 약 30거래일 필요\n\n'
+                      + '현재 형성된 봉 — 일봉 ' + str(_nd) + '개 / 60분봉 ' + str(_n60) + '개 / 15분봉 ' + str(_n10) + '개\n'
+                      + '봉이 더 쌓이면 단기부터 순차적으로 분석할 수 있어요. 며칠 후 다시 확인해 주세요.')
+                self.wfile.write(json.dumps({'error':_msg}).encode()); return
             # 탭별 독립 판단: 봉 15개 이상이면 작도 시도, 미만이면 '데이터 부족'
             dd = build_drawings(day) if day and len(day)>=15 else {'error':'데이터 부족'}
             mm = build_drawings(m60) if m60 and len(m60)>=15 else {'error':'데이터 부족'}
@@ -845,8 +854,16 @@ class handler(BaseHTTPRequestHandler):
                 except Exception as pe:
                     mm['projection'] = None
             # all_risks 정리(용량) — projection 다 만든 후
+            # 단, 시나리오 지그재그용 '모든 교차점 가격(xpoints)'은 추려서 보존
             for blk in (dd,mm,tt):
-                if isinstance(blk,dict): blk.pop('all_risks',None)
+                if isinstance(blk,dict):
+                    xpts=[]
+                    for d in blk.get('draws',[]) or []:
+                        if d.get('yc',0)>0: xpts.append(round(d['yc'],1))
+                    for d in blk.get('all_risks',[]) or []:
+                        if d.get('yc',0)>0: xpts.append(round(d['yc'],1))
+                    if xpts and isinstance(blk.get('projection'),dict): blk['projection']['xpoints']=xpts
+                    blk.pop('all_risks',None)
             out={'종목코드':code,'종목명':nm,'시장':mk,'일봉':dd,'60분':mm,'10분':tt}
             _payload=json.dumps(out,ensure_ascii=False).encode()
             # 캐시 저장 (30분)

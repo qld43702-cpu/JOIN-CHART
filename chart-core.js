@@ -82,10 +82,10 @@ async function go(code){
   var box=document.getElementById('result');
   var guide=document.getElementById('guide'); if(guide)guide.style.display='none';
   var hero=document.getElementById('heroIntro'); if(hero)hero.style.display='none';
-  box.innerHTML='<div class="loading"><div class="rtv-spin"><div class="rtv-core">RTV</div><div class="rtv-ring"></div></div><div class="ltxt">JOIN 고유 RTV 엔진 가동 중</div><div class="lsub">엘리엇 · 피보나치 · 몬테카를로 · 갠 · 공방선 교차 분석</div><div class="load-chips"><span class="lchip" style="--c:#7f77dd">엘리엇</span><span class="lchip" style="--c:#1d9e75">피보나치</span><span class="lchip" style="--c:#3f7fd0">몬테카를로</span><span class="lchip" style="--c:#ba7517">갠</span><span class="lchip" style="--c:#ed7d31">공방선</span></div></div>';
+  box.innerHTML='<div class="loading"><div class="rtv-spin"><div class="rtv-core">RTV</div><div class="rtv-ring"></div></div><div class="ltxt">차트를 정밀 분석하고 있어요</div><div class="lsub">JOIN 고유 RTV 엔진 가동 중 · 약 3~5초 정도 걸려요</div><div class="load-chips"><span class="lchip" style="--c:#7f77dd">엘리엇</span><span class="lchip" style="--c:#1d9e75">피보나치</span><span class="lchip" style="--c:#3f7fd0">몬테카를로</span><span class="lchip" style="--c:#ba7517">갠</span><span class="lchip" style="--c:#ed7d31">공방선</span></div></div>';
   try{
     var x=await fetch('/api/analyze?code='+code).then(function(r){return r.json();});
-    if(x.error){box.innerHTML='<div class="empty">'+x.error+'</div>';return;}
+    if(x.error){box.innerHTML='<div class="empty data-notice">'+String(x.error).replace(/\n/g,'<br>')+'</div>';return;}
     if(x['종목명']) saveRecent(x['종목코드']||code, x['종목명']);
     render(x);
   }catch(e){box.innerHTML='<div class="empty">분석 실패. 잠시 후 다시 시도하세요.</div>';}
@@ -542,9 +542,16 @@ function mkChart(data,pj,sfx){
     ctx.strokeStyle=color;ctx.lineWidth=wid;ctx.setLineDash(dash||[]);
     ctx.beginPath();
     ctx.moveTo(xOf(startI),yOf(baseP));
-    for(var i=startI;i<=endI;i++){
-      var t=(totalSpan>0)?(i-startI)/totalSpan:0;
-      ctx.lineTo(xOf(i),yOf(fn(t,baseP)));
+    // 시작점~현재(n-1): 실제 2일선(ma2)을 따라 지그재그 (작은 변곡점 반영)
+    var nowI=Math.min(n-1,endI);
+    for(var i=startI;i<=nowI;i++){
+      var yv=(ma2[i]!=null)?ma2[i]:(c[i]!=null?c[i]:baseP);
+      ctx.lineTo(xOf(i),yOf(yv));
+    }
+    // 현재~미래: 예측 직선 (fn으로 목표 향해)
+    for(var j=nowI+1;j<=endI;j++){
+      var t=(totalSpan>0)?(j-startI)/totalSpan:0;
+      ctx.lineTo(xOf(j),yOf(fn(t,baseP)));
     }
     ctx.stroke();ctx.setLineDash([]);
   }
@@ -701,9 +708,11 @@ function mkChart(data,pj,sfx){
       // 천장/바닥 = 현실적 목표 (up_target은 이미 녹색의 35% 현실선)
       var ceil_ = pj.up_target||cur*1.1;   // 상승 천장 = 현실 목표선
       var floor_ = pj.dn_target||cur*0.8;  // 하락 바닥
-      // 시나리오 변곡점 = 내 작도(공방선 교차점)만. 보조지표 레벨 제외.
+      // 시나리오 변곡점 = 모든 교차점(공방/위험 구분 없이 — 다 '싸우는 자리').
+      // 현재가 위면 저항(상승시 돌파대상), 아래면 지지(하락시 이탈대상)로 자동 분류됨.
       var allLv=[];
-      draws.forEach(function(d){if(d.yc>0)allLv.push(d.yc);});
+      if(pj.xpoints&&pj.xpoints.length){ pj.xpoints.forEach(function(v){if(v>0)allLv.push(v);}); }
+      else { draws.forEach(function(d){if(d.yc>0)allLv.push(d.yc);}); risks.forEach(function(d){if(d.yc>0)allLv.push(d.yc);}); }
       // 중복 근접 제거
       allLv=allLv.filter(function(v){return v>plot.lo&&v<plot.hi;}).sort(function(a,b){return a-b;});
       var clean=[]; allLv.forEach(function(v){if(!clean.length||Math.abs(v-clean[clean.length-1])>cur*0.015)clean.push(v);});
