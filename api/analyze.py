@@ -335,7 +335,8 @@ def build_drawings(bars):
         all_risks.append({
             'A_t1':A['t1'],'A_y1':round(MA2[A['t1']],1),
             'B_t1':B['t1'],'B_y1':round(MA2[B['t1']],1),
-            'xc':round(xc,2),'yc':round(yc,1)
+            'xc':round(xc,2),'yc':round(yc,1),
+            'entry':B['t1']+1
         })
 
     chart=[{'i':i,'d':(bars[i].get('d','')[4:6]+'/'+bars[i].get('d','')[6:8]+(' '+str(bars[i]['t']).zfill(6)[:2]+'시' if 't' in bars[i] else '')),
@@ -501,9 +502,10 @@ def build_projection(bars, draws, risk_level, fut=63, market='', period='quarter
     cap_detail = {}
     # 최근 살아있는 작도의 녹색 시작 인덱스
     green_start = alive[-1].get('M_t1') if alive else (draws[-1].get('M_t1') if draws else None)
-    # ===== 시나리오 기준점: ZigZag 변곡점 (period별 임계: 주간10%/월간20%/중장기30%) =====
-    # 마지막으로 확정된 큰 변곡점을 시작점으로. 그 이상 움직임만 변곡점 인정.
-    # (작도/교차점 계산과 무관 — 시나리오선이 '어디서 시작해 보이는지'만 결정)
+    # ===== 시나리오 기준점: % 임계 넘는 교차점(작도)의 entry =====
+    # 교차점(yc) 대비 그 이후 가격이 임계% 이상 움직인 '유효 작도'만 인정.
+    # 그 중 가장 최근 작도의 entry(교차점 다음 봉)를 시작점으로.
+    # (작은 변곡점들은 시작점에 영향 안 줌 → 시나리오선 지그재그에만 반영)
     anchor_idx=None; anchor_price=None
     try:
         import datetime as _dt
@@ -513,36 +515,46 @@ def build_projection(bars, draws, risk_level, fut=63, market='', period='quarter
                 try: return _dt.date(int(d[:4]),int(d[4:6]),int(d[6:8]))
                 except: return None
             return None
-        # period별 변곡 임계 (주간7%/중기14%/중장기21%)
-        THR = {'week':0.07, 'month':0.14, 'quarter':0.21}.get(period, 0.14)
-        # ZigZag: 마지막 피벗 대비 THR 이상 반대로 가면 새 피벗 확정 (상승·하락 양방향)
+        # period별 임계 (주간10%/중기20%/중장기30%)
+        THR = {'week':0.10, 'month':0.20, 'quarter':0.30}.get(period, 0.20)
         cc=[b['c'] for b in bars]
-        def _zigzag(thr):
-            pv=[0]; tr=1; ex=cc[0]; exi=0
-            for i in range(1,len(cc)):
-                p=cc[i]
-                if tr==1:
-                    if p>ex: ex=p; exi=i
-                    elif ex>0 and (ex-p)/ex>=thr: pv.append(exi); tr=-1; ex=p; exi=i
-                else:
-                    if p<ex: ex=p; exi=i
-                    elif ex>0 and (p-ex)/ex>=thr: pv.append(exi); tr=1; ex=p; exi=i
-            return pv
-        piv_i=_zigzag(THR)
-        # 마지막 확정 변곡점 = 시작점 (진행중 극값은 미확정이라 제외)
-        last_pivot = piv_i[-1] if len(piv_i)>=2 else None
-        if last_pivot is not None and last_pivot < len(bars)-2:
-            anchor_idx = last_pivot
+        hh=[b.get('h',b['c']) for b in bars]
+        ll=[b.get('l',b['c']) for b in bars]
+        N=len(bars)
+        # 각 작도: 교차점 yc 대비 entry~현재 극값 이탈률이 임계 넘는지
+        # draws(상승작도)와 all_risks(하락작도/위험선) 둘 다 시작점 후보
+        cand_draws = list(draws or []) + list(all_risks or [])
+        valid=[]
+        for d in cand_draws:
+            yc=d.get('yc',0); en=d.get('entry',None)
+            if not yc or yc<=0 or en is None or en>=N: continue
+            seg_hi=max(hh[en:]) if en<N else yc
+            seg_lo=min(ll[en:]) if en<N else yc
+            dev=max((seg_hi-yc)/yc, (yc-seg_lo)/yc)  # 위/아래 중 큰 이탈
+            if dev>=THR:
+                valid.append(en)
+        if valid:
+            anchor_idx=max(valid)  # 가장 최근 유효 작도의 entry
         else:
-            # 임계 넘는 변곡 없음 → 임계를 점점 낮춰 가장 최근 의미있는 변곡점 탐색 (날짜 폴백 안 씀)
-            found=None
-            for thr2 in (THR*0.6, THR*0.35, THR*0.2):
-                pv=_zigzag(thr2)
-                if len(pv)>=2 and pv[-1]<len(bars)-2:
-                    found=pv[-1]; break
-            anchor_idx = found if found is not None else max(0,len(bars)-fut)
+            # 임계 넘는 유효 작도 없음 → 임계 낮춰가며(60%,35%,20%) 재탐색
+            for f in (0.6,0.35,0.2):
+                t2=THR*f; cc2=[]
+                for d in cand_draws:
+                    yc=d.get('yc',0); en=d.get('entry',None)
+                    if not yc or yc<=0 or en is None or en>=N: continue
+                    seg_hi=max(hh[en:]) if en<N else yc
+                    seg_lo=min(ll[en:]) if en<N else yc
+                    dev=max((seg_hi-yc)/yc,(yc-seg_lo)/yc)
+                    if dev>=t2: cc2.append(en)
+                if cc2: anchor_idx=max(cc2); break
+            if anchor_idx is None:
+                # 작도가 아예 없으면 마지막 작도 entry 또는 절반 지점
+                _all=cand_draws
+                if _all: anchor_idx=max(d.get('entry',0) for d in _all)
+                else: anchor_idx=max(0,N-fut)
+        if anchor_idx>=N-1: anchor_idx=max(0,N-2)
         anchor_price=round(bars[anchor_idx].get('o',bars[anchor_idx]['c']),2)
-        # ── 끝(미래) = 변곡점~현재 봉 밀도로 추정 (기존 달력 로직 유지) ──
+        # ── 끝(미래) = 시작점~현재 봉 밀도로 추정 (기존 달력 로직 유지) ──
         last_d=_date_of(bars[-1])
         if last_d is not None:
             if period=='week':
