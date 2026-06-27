@@ -739,23 +739,30 @@ function mkChart(data,pj,sfx){
       }
       var nowI=Math.min(n-1,endI);
       var dir = (SCEN==='dn')? -1 : 1;
+      var BUF=(pj.touch_buf!=null)?pj.touch_buf:0.05;   // 완충%(선 위치 대비). 단기3/중장기5
+      var minGap=Math.max(2, Math.round((endI-nowI)*0.12)); // 첫 터치까지 최소 간격(즉시터치 방지)
       var segs=[];
-      var curI=nowI, curP=cur, guard=0;
+      var curI=nowI, curP=cur, guard=0, lastTouchP=null;
       while(curI<endI && guard<12){
         guard++;
         var aimUp = dir>0;
         var aimEndP = aimUp? tgtAt(endI) : rskAt(endI);
         var hitI=endI, hitP=aimEndP, touched=false;
         for(var ii=curI+1; ii<=endI; ii++){
+          // 직전 터치점에서 최소간격 지나야 새 터치 인정 (즉시·과잉 터치 방지)
+          if(ii-curI < minGap) continue;
           var tt=(ii-curI)/Math.max(1,(endI-curI));
           var sceP=curP+(aimEndP-curP)*tt;
           var lineP=aimUp? tgtAt(ii) : rskAt(ii);
+          // 직전 터치가격에서 BUF% 이상 벗어나야 함 (왕복 출렁임 무시)
+          if(lastTouchP!=null && Math.abs(sceP-lastTouchP)/lastTouchP < BUF) continue;
           if(aimUp && sceP>=lineP){ hitI=ii; hitP=lineP; touched=true; break; }
           if(!aimUp && sceP<=lineP){ hitI=ii; hitP=lineP; touched=true; break; }
         }
         segs.push({i0:curI,p0:curP,i1:hitI,p1:hitP});
         if(!touched) break;
-        curI=hitI; curP=hitP; dir=-dir;
+        curI=hitI; curP=hitP; lastTouchP=hitP; dir=-dir;
+        minGap=Math.max(2, Math.round((endI-curI)*0.12));
       }
       function drawSeg(sg, solid){
         ctx.beginPath();

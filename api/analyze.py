@@ -573,6 +573,7 @@ def build_projection(bars, draws, risk_level, fut=63, market='', period='quarter
         'fib_levels':[round(cur*f) for f in (1.236,1.382,1.618,0.786,0.618)],
         'green_start': green_start,
         'anchor_idx':anchor_idx, 'anchor_price':anchor_price, 'recent_pivot':recent_pivot,
+        'touch_buf': {'week':0.03, 'month':0.05, 'quarter':0.05}.get(period, 0.05),
     }
 
 def analyze_pattern(bars, draws):
