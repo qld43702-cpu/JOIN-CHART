@@ -545,25 +545,10 @@ def build_projection(bars, draws, risk_level, fut=63, market='', period='quarter
                 anchor_idx = max(0, N-fut)
         if anchor_idx>=N-1: anchor_idx=max(0,N-2)
         anchor_price=round(bars[anchor_idx].get('o',bars[anchor_idx]['c']),2)
-        # ── 끝(미래) = 시작점~현재 봉 밀도로 추정 (기존 달력 로직 유지) ──
-        last_d=_date_of(bars[-1])
-        if last_d is not None:
-            if period=='week':
-                end_cal=last_d + _dt.timedelta(days=(4-last_d.weekday()))
-            elif period=='month':
-                if last_d.month==12: end_cal=_dt.date(last_d.year,12,31)
-                else: end_cal=_dt.date(last_d.year,last_d.month+1,1)-_dt.timedelta(days=1)
-            else:
-                qend_month=((last_d.month-1)//3)*3+3
-                if qend_month==12: end_cal=_dt.date(last_d.year,12,31)
-                else: end_cal=_dt.date(last_d.year,qend_month+1,1)-_dt.timedelta(days=1)
-            passed_bars=len(bars)-1-anchor_idx
-            start_d=_date_of(bars[anchor_idx])
-            cal_passed=max(1,(last_d-start_d).days) if start_d else 1
-            dens=passed_bars/cal_passed if cal_passed>0 else 1
-            cal_remain=max(0,(end_cal-last_d).days)
-            fut_calc=int(round(cal_remain*dens*(5/7))) if dens>0 else int(round(cal_remain*5/7))
-            fut=max(1, fut_calc)
+        # ── 미래 길이 = 시작점~현재 길이(대칭). 날짜 한정 없음. period별 최소 보장 ──
+        passed_bars = (len(bars)-1) - anchor_idx       # 시작점부터 현재까지 봉 수
+        fut_min = {'week':10, 'month':15, 'quarter':20}.get(period, 15)
+        fut = max(fut_min, passed_bars)
     except: pass
     return {
         'fut':fut, 'cur':round(cur,2),
