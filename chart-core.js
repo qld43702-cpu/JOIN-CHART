@@ -713,8 +713,10 @@ function mkChart(data,pj,sfx){
       var allLv=[];
       if(pj.xpoints&&pj.xpoints.length){ pj.xpoints.forEach(function(v){if(v>0)allLv.push(v);}); }
       else { draws.forEach(function(d){if(d.yc>0)allLv.push(d.yc);}); risks.forEach(function(d){if(d.yc>0)allLv.push(d.yc);}); }
-      // 중복 근접 제거
-      allLv=allLv.filter(function(v){return v>plot.lo&&v<plot.hi;}).sort(function(a,b){return a-b;});
+      // 중복 근접 제거. 범위는 화면이 아니라 '시나리오 경로'(시작점~천장/바닥) 기준
+      // (화면 밖 교차점도 시나리오엔 의미 있음 — 캔들에만 맞춘 화면범위로 자르면 다 사라짐)
+      var loBound=Math.min(startV, floor_)*0.98, hiBound=Math.max(startV, ceil_)*1.02;
+      allLv=allLv.filter(function(v){return v>loBound&&v<hiBound;}).sort(function(a,b){return a-b;});
       var clean=[]; allLv.forEach(function(v){if(!clean.length||Math.abs(v-clean[clean.length-1])>cur*0.015)clean.push(v);});
       allLv=clean;
       var color = SCEN==='up'?'rgba(226,75,74,':SCEN==='dn'?'rgba(55,138,221,':'rgba(138,152,168,';
