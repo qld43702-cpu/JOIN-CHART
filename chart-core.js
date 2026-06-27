@@ -544,12 +544,13 @@ function mkChart(data,pj,sfx){
   // fwave: 기법선·목표선을 교차점 기준점(anchor)부터 미래끝까지 그림
   // fn(t, basePrice) → y값. t=0(시작점) ~ t=1(미래끝)
   var ANCHOR_I=(pj.anchor_idx!=null)?pj.anchor_idx:(n-1);
+  var RECENT_I=(pj.recent_pivot!=null)?pj.recent_pivot:null;
   var ANCHOR_P=(pj.anchor_price!=null)?pj.anchor_price:cur;
   var ANCHOR_SPAN=Math.max(1,(TOTAL-1)-ANCHOR_I);
-  function fwave(ctx,fn,color,wid,dash,fromGreen){
-    var startI=ANCHOR_I;
-    var baseP=ANCHOR_P;
-    var totalSpan=ANCHOR_SPAN;
+  function fwave(ctx,fn,color,wid,dash,fromGreen,ovStartI,ovStartP){
+    var startI=(ovStartI!=null)?ovStartI:ANCHOR_I;
+    var baseP=(ovStartP!=null)?ovStartP:ANCHOR_P;
+    var totalSpan=Math.max(1,(TOTAL-1)-startI);
     var endI=TOTAL-1;  // 끝점을 미래 마지막 봉에 고정 (줌해도 안 흔들림)
     if(startI>endI)return;
     ctx.strokeStyle=color;ctx.lineWidth=wid;ctx.setLineDash(dash||[]);
@@ -658,6 +659,11 @@ function mkChart(data,pj,sfx){
       // 기본 틀: 교차점 기준부터 — 직선
       fwave(ctx,function(t,b){return b+(upT-b)*t;},'rgba(29,158,117,.95)',2.4,[6,4],false);       // 상승목표(녹색 35%)
       fwave(ctx,function(t,b){return b+(dnT-b)*t;},'rgba(212,83,126,.9)',2.4,[6,4],false);         // 위험(분홍)
+      // 최근 변곡점에서 희미한 목표선(캡 씌운것만). 다음 시작점이 되면 진해지고 잠재선도 생김.
+      if(RECENT_I!=null && RECENT_I!==ANCHOR_I && RECENT_I<n){
+        var rBase=(ma2[RECENT_I]!=null)?ma2[RECENT_I]:(c[RECENT_I]!=null?c[RECENT_I]:cur);
+        fwave(ctx,function(t,b){return b+(upT-b)*t;},'rgba(29,158,117,.30)',1.8,[5,4],false,RECENT_I,rBase);
+      }
       // 삼각수렴 제거됨
       // 체크박스 기법: 전부 교차점 기준부터 직선
       var checked=getChecked();

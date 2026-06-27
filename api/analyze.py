@@ -506,7 +506,7 @@ def build_projection(bars, draws, risk_level, fut=63, market='', period='quarter
     # 현재가에서 뒤로, 가격이 임계% 움직일 때마다 변곡점 확정.
     # 시작점 = 가장 최근 변곡이 아니라 '바로 직전' 변곡 (최근 변곡은 진행중이라 경유점이 됨).
     # 새 변곡이 생기면 시작점이 한 칸씩 이동.
-    anchor_idx=None; anchor_price=None
+    anchor_idx=None; anchor_price=None; recent_pivot=None
     try:
         import datetime as _dt
         def _date_of(b):
@@ -532,15 +532,17 @@ def build_projection(bars, draws, risk_level, fut=63, market='', period='quarter
                     elif ex>0 and (p-ex)/ex>=thr: pv.append(exi); tr=1; ex=p; exi=i
             return pv
         piv=_pivots(THR)
+        recent_pivot=None
         # 시작점 = 마지막에서 두 번째(직전) 변곡. 최근 변곡(piv[-1])은 경유점.
         if len(piv)>=2:
             anchor_idx = piv[-2]      # ← 직전 변곡
+            recent_pivot = piv[-1]    # ← 최근 변곡 (희미한 선, 다음 시작점 후보)
         else:
             # 변곡 부족 → 임계 낮춰 재탐색
             for f in (0.6,0.35,0.2):
                 pv=_pivots(THR*f)
                 if len(pv)>=2:
-                    anchor_idx = pv[-2]; break
+                    anchor_idx = pv[-2]; recent_pivot = pv[-1]; break
             if anchor_idx is None:
                 anchor_idx = max(0, N-fut)
         if anchor_idx>=N-1: anchor_idx=max(0,N-2)
@@ -570,7 +572,7 @@ def build_projection(bars, draws, risk_level, fut=63, market='', period='quarter
         'cap_count':cap_count, 'cap_detail':cap_detail,
         'fib_levels':[round(cur*f) for f in (1.236,1.382,1.618,0.786,0.618)],
         'green_start': green_start,
-        'anchor_idx':anchor_idx, 'anchor_price':anchor_price,
+        'anchor_idx':anchor_idx, 'anchor_price':anchor_price, 'recent_pivot':recent_pivot,
     }
 
 def analyze_pattern(bars, draws):
