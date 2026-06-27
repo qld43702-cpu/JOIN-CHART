@@ -123,7 +123,20 @@ function trackHtml(sfx, label, hint, isUS){
 function render(x){
   var d=x['일봉'];
   var box=document.getElementById('result');
-  if(!d||d.error||!d.chart){box.innerHTML='<div class="empty">'+((d&&d.error)||'데이터 없음')+'</div>';return;}
+  var _t60=x['60분'], _t10=x['10분'];
+  // 셋 중 하나라도 부족하면 → 친절한 안내만, 차트 영역으로 안 넘김
+  var dOK=(d&&!d.error&&d.chart), t60OK=(_t60&&!_t60.error&&_t60.chart), t10OK=(_t10&&!_t10.error&&_t10.chart);
+  if(!dOK||!t60OK||!t10OK){
+    var miss=[];
+    if(!t10OK) miss.push('단기(15분봉)');
+    if(!t60OK) miss.push('중기(60분봉)');
+    if(!dOK) miss.push('중장기(일봉)');
+    var emsg=(d&&d.error&&d.error.length>20)?d.error
+      :(_t60&&_t60.error&&_t60.error.length>20)?_t60.error
+      :(_t10&&_t10.error&&_t10.error.length>20)?_t10.error
+      :('아직 차트를 충분히 분석하기 어려워요.\n\n'+miss.join(' · ')+' 분석에 필요한 데이터가 부족해요.\n상장 초기, 장기 거래정지, 거래량 부족 등이 원인일 수 있어요.\n봉이 더 쌓이면 분석할 수 있어요.');
+    box.innerHTML='<div class="empty data-notice">'+String(emsg).replace(/\n/g,'<br>')+'</div>';return;
+  }
   var pj=d.projection||{methods:{}};
   var IS_US=(x['시장']==='미국');
   window.__IS_US=IS_US;
@@ -542,16 +555,9 @@ function mkChart(data,pj,sfx){
     ctx.strokeStyle=color;ctx.lineWidth=wid;ctx.setLineDash(dash||[]);
     ctx.beginPath();
     ctx.moveTo(xOf(startI),yOf(baseP));
-    // 시작점~현재(n-1): 실제 2일선(ma2)을 따라 지그재그 (작은 변곡점 반영)
-    var nowI=Math.min(n-1,endI);
-    for(var i=startI;i<=nowI;i++){
-      var yv=(ma2[i]!=null)?ma2[i]:(c[i]!=null?c[i]:baseP);
-      ctx.lineTo(xOf(i),yOf(yv));
-    }
-    // 현재~미래: 예측 직선 (fn으로 목표 향해)
-    for(var j=nowI+1;j<=endI;j++){
-      var t=(totalSpan>0)?(j-startI)/totalSpan:0;
-      ctx.lineTo(xOf(j),yOf(fn(t,baseP)));
+    for(var i=startI;i<=endI;i++){
+      var t=(totalSpan>0)?(i-startI)/totalSpan:0;
+      ctx.lineTo(xOf(i),yOf(fn(t,baseP)));
     }
     ctx.stroke();ctx.setLineDash([]);
   }
