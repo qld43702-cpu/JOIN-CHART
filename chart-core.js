@@ -243,7 +243,7 @@ var verdicts3={
 //  - 둘 다 인정 → 중립 / 한쪽만 → 그 방향 / 둘 다 미인정 → 중립
 function buildSeq(pj, d, dir){
   var cur=pj.cur||0;
-  var startV=pj.anchor_price||cur;
+  var startV=pj.recent_pivot_price||pj.anchor_price||cur;  // 시나리오와 같은 시작점(최근 변곡점)
   var ceil_=pj.up_target||cur*1.1, floor_=pj.dn_target||cur*0.8;
   var allLv=[];
   (pj.sr_levels||[]).forEach(function(v){ if(v>0) allLv.push(v); });

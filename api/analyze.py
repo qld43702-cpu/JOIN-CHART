@@ -506,7 +506,7 @@ def build_projection(bars, draws, risk_level, fut=63, market='', period='quarter
     # 현재가에서 뒤로, 가격이 임계% 움직일 때마다 변곡점 확정.
     # 시작점 = 가장 최근 변곡이 아니라 '바로 직전' 변곡 (최근 변곡은 진행중이라 경유점이 됨).
     # 새 변곡이 생기면 시작점이 한 칸씩 이동.
-    anchor_idx=None; anchor_price=None; recent_pivot=None
+    anchor_idx=None; anchor_price=None; recent_pivot=None; recent_pivot_price=None
     try:
         import datetime as _dt
         def _date_of(b):
@@ -547,6 +547,13 @@ def build_projection(bars, draws, risk_level, fut=63, market='', period='quarter
                 anchor_idx = max(0, N-fut)
         if anchor_idx>=N-1: anchor_idx=max(0,N-2)
         anchor_price=round(bars[anchor_idx].get('o',bars[anchor_idx]['c']),2)
+        # 최근 변곡점 가격 (시나리오·판정·다른선 모두 같은 시작점 = 2일선 값으로 통일)
+        _ma2=ma([b['c'] for b in bars],2)
+        def _ptp(idx):
+            if idx is None or idx>=len(bars): return anchor_price
+            v=_ma2[idx] if (idx<len(_ma2) and _ma2[idx] is not None) else bars[idx]['c']
+            return round(v,2)
+        recent_pivot_price = _ptp(recent_pivot)
         # ── 미래 길이 = 시작점~현재 길이(대칭). 날짜 한정 없음. period별 최소 보장 ──
         passed_bars = (len(bars)-1) - anchor_idx       # 시작점부터 현재까지 봉 수
         fut_min = {'week':10, 'month':15, 'quarter':20}.get(period, 15)
@@ -574,6 +581,7 @@ def build_projection(bars, draws, risk_level, fut=63, market='', period='quarter
         'green_start': green_start,
         'anchor_idx':anchor_idx, 'anchor_price':anchor_price, 'recent_pivot':recent_pivot,
         'touch_buf': {'week':0.03, 'month':0.05, 'quarter':0.05}.get(period, 0.05),
+        'recent_pivot_price': recent_pivot_price,
     }
 
 def analyze_pattern(bars, draws):
