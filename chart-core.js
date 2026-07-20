@@ -110,11 +110,7 @@ function trackHtml(sfx, label, hint, isUS){
   h+='</div>';
   h+='<div class="zoombar"><button id="zin'+sfx+'">+ 확대</button><button id="zout'+sfx+'">− 축소</button><button id="zall'+sfx+'">전체</button></div>';
   h+='<div class="chart-host" style="position:relative;"><canvas id="cv'+sfx+'"></canvas><canvas class="draw-canvas" id="dcv'+sfx+'"></canvas><div class="linetip" id="tip'+sfx+'"></div><div class="chart-notice" id="notice'+sfx+'" style="display:none"></div></div>';
-  h+='<div class="legend"><span><i style="background:#1d9e75"></i>상승목표</span><span><i style="background:#5a6473"></i>상승잠재</span><span><i style="background:#d4537e"></i>공방선</span></div>';
-  h+='<div class="scen-btns">';
-  h+='<button class="scen-btn up" data-scen="up"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 15l5-6 4 3 7-8"/></svg>상승 시나리오</button>';
-  h+='<button class="scen-btn dn" data-scen="dn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 9l5 6 4-3 7 8"/></svg>하락 시나리오</button>';
-  h+='</div>';
+  h+='<div class="legend"><span><i style="background:#e24b4a"></i>상승 시나리오</span><span><i style="background:#378add"></i>하락 시나리오</span><span><i style="background:#1d9e75"></i>상승목표</span><span><i style="background:#5a6473"></i>상승잠재</span><span><i style="background:#d4537e"></i>공방선</span></div>';
   h+='<div class="scen-hint">'+hint+'</div>';
   h+='</div>'; // host
   return h;
@@ -716,11 +712,8 @@ function mkChart(data,pj,sfx){
     }
     // ===== 시나리오 웨이브 (교차점 기준점부터 — 실제 봉과 비교 가능) =====
     if(SCEN && scenFade>0){
-      // ===== 터치 기반 시나리오 =====
-      // 목표선/위험선은 최근변곡점(MAIN_I)에서 기울기로 뻗음. 시나리오선은 현재가에서 출발,
-      // 그 기울어진 선에 '터치'하면 거기가 새 기준 → 반대 선 향해 다시.
+      // 상승·하락 시나리오를 함께 표시 (SCEN==='both'). 탭 전환만으로 양쪽 다 보임.
       var startI=MAIN_I, endI=TOTAL-1;
-      var color = SCEN==='up'?'rgba(226,75,74,':SCEN==='dn'?'rgba(55,138,221,':'rgba(138,152,168,';
       var ceil_ = pj.up_target||cur*1.1;
       var floor_ = pj.dn_target||cur*0.8;
       var span0=Math.max(1,(TOTAL-1)-MAIN_I);
@@ -737,48 +730,46 @@ function mkChart(data,pj,sfx){
         ctx.strokeStyle='rgba(232,116,59,'+(0.5*scenFade)+')';ctx.lineWidth=1.4;ctx.setLineDash([4,3]);
         ctx.beginPath();ctx.moveTo(xOf(startI),plot.y0);ctx.lineTo(xOf(startI),plot.y1);ctx.stroke();ctx.setLineDash([]);
       }
-      var nowI=Math.min(n-1,endI);
-      // 시나리오 시작점 = 최근 변곡점(MAIN_I). 거기서 목표선/위험선 향해 교차점들로 파동.
-      var startV=MAIN_P;
-      var dirUp=(SCEN!=='dn');
-      var aimP=dirUp? ceil_ : floor_;   // 방향별 목표(상승=목표선, 하락=위험선)
-      // 경유 레벨(교차점 lv) — 시작가와 목표 사이의 것만, 순서대로
-      var midLv;
-      if(dirUp) midLv=lv.filter(function(v){return v>startV*1.005 && v<ceil_*0.999;}).sort(function(a,b){return a-b;});
-      else      midLv=lv.filter(function(v){return v<startV*0.995 && v>floor_*1.001;}).sort(function(a,b){return b-a;});
-      // 파동 시퀀스: 시작 → (레벨 돌파 → 되돌림)* → 목표
-      var seq=[startV]; var prev=startV;
-      for(var mi=0;mi<midLv.length;mi++){
-        seq.push(midLv[mi]);
-        if(mi<midLv.length-1) seq.push(prev+(midLv[mi]-prev)*(dirUp?0.55:0.30)); // 되돌림/반등
-        prev=midLv[mi];
+      // 한 방향 시나리오 그리기 (시작점 = 최근 변곡점 MAIN_I)
+      function drawScen(dirUp){
+        var color = dirUp?'rgba(226,75,74,':'rgba(55,138,221,';
+        var startV=MAIN_P;
+        var aimP=dirUp? ceil_ : floor_;
+        var midLv;
+        if(dirUp) midLv=lv.filter(function(v){return v>startV*1.005 && v<ceil_*0.999;}).sort(function(a,b){return a-b;});
+        else      midLv=lv.filter(function(v){return v<startV*0.995 && v>floor_*1.001;}).sort(function(a,b){return b-a;});
+        var seq=[startV]; var prev=startV;
+        for(var mi=0;mi<midLv.length;mi++){
+          seq.push(midLv[mi]);
+          if(mi<midLv.length-1) seq.push(prev+(midLv[mi]-prev)*(dirUp?0.55:0.30));
+          prev=midLv[mi];
+        }
+        seq.push(aimP);
+        var steps=endI-MAIN_I; if(steps<1)steps=1;
+        var segW=[]; for(var q=1;q<seq.length;q++){ segW.push(seq[q]>=seq[q-1]?1.6:0.7); }
+        var wsum=0; for(var wi=0;wi<segW.length;wi++)wsum+=segW[wi]; if(wsum<=0)wsum=1;
+        var tpos=[0],acc=0; for(var q2=1;q2<seq.length;q2++){ acc+=segW[q2-1]; tpos.push(acc/wsum); }
+        ctx.strokeStyle=color+'0.95)';ctx.lineWidth=2.6;ctx.setLineDash([]);
+        ctx.beginPath();
+        for(var s=0;s<=steps;s++){
+          var t=s/steps;
+          var k=0; while(k<seq.length-2 && t>tpos[k+1]) k++;
+          var segT=(t-tpos[k])/((tpos[k+1]-tpos[k])||1);
+          var ease=(1-Math.cos(segT*Math.PI))/2;
+          var base=seq[k]+(seq[k+1]-seq[k])*ease;
+          var xx=xOf(MAIN_I+s), yy=yOf(base);
+          if(s===0)ctx.moveTo(xx,yy);else ctx.lineTo(xx,yy);
+        }
+        ctx.stroke();
+        var labels=['1','2','3','4','5','6','7','8'];
+        ctx.fillStyle=color+'0.9)';ctx.font='bold 12px '+FF();ctx.textAlign='center';
+        for(var ai=1;ai<seq.length;ai++){
+          var px=MAIN_I+tpos[ai]*steps;
+          if(px<=endI&&labels[ai-1]) ctx.fillText(labels[ai-1], xOf(px), yOf(seq[ai])-(dirUp?6:-14));
+        }
       }
-      seq.push(aimP);
-      // 시간축 배치 (상승 더디게, 하락 가파르게)
-      var steps=endI-MAIN_I; if(steps<1)steps=1;
-      var segW=[]; for(var q=1;q<seq.length;q++){ segW.push(seq[q]>=seq[q-1]?1.6:0.7); }
-      var wsum=0; for(var wi=0;wi<segW.length;wi++)wsum+=segW[wi]; if(wsum<=0)wsum=1;
-      var tpos=[0],acc=0; for(var q2=1;q2<seq.length;q2++){ acc+=segW[q2-1]; tpos.push(acc/wsum); }
-      // 그리기
-      ctx.strokeStyle=color+'0.95)';ctx.lineWidth=2.6;ctx.setLineDash([]);
-      ctx.beginPath();
-      for(var s=0;s<=steps;s++){
-        var t=s/steps;
-        var k=0; while(k<seq.length-2 && t>tpos[k+1]) k++;
-        var segT=(t-tpos[k])/((tpos[k+1]-tpos[k])||1);
-        var ease=(1-Math.cos(segT*Math.PI))/2;
-        var base=seq[k]+(seq[k+1]-seq[k])*ease;
-        var xx=xOf(MAIN_I+s), yy=yOf(base);
-        if(s===0)ctx.moveTo(xx,yy);else ctx.lineTo(xx,yy);
-      }
-      ctx.stroke();
-      // 파동 번호
-      var labels=['1','2','3','4','5','6','7','8'];
-      ctx.fillStyle=color+'0.9)';ctx.font='bold 12px '+FF();ctx.textAlign='center';
-      for(var ai=1;ai<seq.length;ai++){
-        var px=MAIN_I+tpos[ai]*steps;
-        if(px<=endI&&labels[ai-1]) ctx.fillText(labels[ai-1], xOf(px), yOf(seq[ai])-6);
-      }
+      if(SCEN==='both'){ drawScen(true); drawScen(false); }
+      else drawScen(SCEN!=='dn');
       ctx.restore();
     }
     // 크로스헤어
@@ -908,10 +899,8 @@ function mkChart(data,pj,sfx){
     if(fadeTimer){clearInterval(fadeTimer);fadeTimer=null;}
     // 토글: 같은 버튼 다시 누르면 끔
     if(SCEN===scen){SCEN=null;scenFade=0;
-      scope.querySelectorAll('.scen-btn').forEach(function(b){b.classList.remove('active');});
       draw(lastMx,lastMy);return;}
     SCEN=scen;scenFade=0;
-    scope.querySelectorAll('.scen-btn').forEach(function(b){b.classList.toggle('active',b.getAttribute('data-scen')===scen);});
     // 교차점 기준부터 미래 끝까지 다 보이게 뷰 조정
     var aI=(pj.anchor_idx!=null)?pj.anchor_idx:(n-1);
     viewS=Math.max(0, aI-3);
@@ -924,9 +913,13 @@ function mkChart(data,pj,sfx){
       draw(lastMx,lastMy);
     },30);
   }
-  scope.querySelectorAll('.scen-btn').forEach(function(b){
-    b.addEventListener('click',function(){playScenario(b.getAttribute('data-scen'));});
-  });
+  // 시나리오는 버튼 없이 항상 표시(상승·하락 동시). 뷰는 기본값 유지.
+  SCEN='both'; scenFade=0;
+  fadeTimer=setInterval(function(){
+    scenFade+=0.08;
+    if(scenFade>=1){scenFade=1;clearInterval(fadeTimer);fadeTimer=null;}
+    draw(lastMx,lastMy);
+  },30);
   try{lay();draw(null,null);}catch(err){console.error('draw error:',err);}
   window.addEventListener('resize',function(){lay();draw(null,null);});
 }
