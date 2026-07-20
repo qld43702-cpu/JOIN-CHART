@@ -913,13 +913,9 @@ function mkChart(data,pj,sfx){
       draw(lastMx,lastMy);
     },30);
   }
-  // 시나리오는 버튼 없이 항상 표시(상승·하락 동시). 뷰는 기본값 유지.
-  SCEN='both'; scenFade=0;
-  fadeTimer=setInterval(function(){
-    scenFade+=0.08;
-    if(scenFade>=1){scenFade=1;clearInterval(fadeTimer);fadeTimer=null;}
-    draw(lastMx,lastMy);
-  },30);
+  // 시나리오는 버튼 없이 항상 표시(상승·하락 동시).
+  // 뷰 조정은 기존 시나리오 버튼과 동일: 시작점 ~ 미래 끝까지 다 보이게.
+  playScenario('both');
   try{lay();draw(null,null);}catch(err){console.error('draw error:',err);}
   window.addEventListener('resize',function(){lay();draw(null,null);});
 }
