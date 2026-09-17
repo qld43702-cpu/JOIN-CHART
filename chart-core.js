@@ -22,6 +22,7 @@ function doSearch(){
   var ql=q.toLowerCase();
   var hit=STOCKS.find(function(s){return s.name&&s.name.toLowerCase()===ql;})||STOCKS.find(function(s){return s.name&&s.name.toLowerCase().includes(ql);});
   if(hit){pick(hit.code,hit.name);return;}
+  if(/^\d{4}$/.test(q)){go(q);return;}   // 4자리 숫자 = 일본 (도쿄)
   if(/^[A-Za-z][A-Za-z.\-]{0,6}$/.test(q)){go(q.toUpperCase());return;}
   var hit2=STOCKS.find(function(s){return s.code.includes(q);}); if(hit2){pick(hit2.code,hit2.name);}
 }
@@ -135,12 +136,21 @@ function render(x){
   }
   var pj=d.projection||{methods:{}};
   var IS_US=(x['시장']==='미국');
-  window.__IS_US=IS_US;
+  var IS_JP=(x['시장']==='일본');
+  window.__IS_US=IS_US; window.__IS_JP=IS_JP;
+  // 통화 포맷: 미국 $, 일본 ¥, 그 외 원
+  function fmtCur(v){
+    v=v||0;
+    if(IS_US) return '$'+v.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
+    if(IS_JP) return '¥'+Math.round(v).toLocaleString();
+    return v.toLocaleString()+'원';
+  }
+  window.__fmtCur=fmtCur;
   var t60=x['60분']; var has60 = t60 && !t60.error && t60.chart && t60.projection;
   var t10=x['10분']; var has10 = t10 && !t10.error && t10.chart && t10.projection;
   var minName='15분봉';
   var html='';
-  var priceStr = IS_US ? ('$'+(d.cur||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})) : ((d.cur||0).toLocaleString()+'원');
+  var priceStr = fmtCur(d.cur);
   // 등락: 차트 마지막 봉 시가 대비 현재가 (전일종가 기준 근사)
   var _lastBar = (d.chart&&d.chart.length)?d.chart[d.chart.length-1]:null;
   var _prevClose = (d.chart&&d.chart.length>=2)?d.chart[d.chart.length-2].c:(_lastBar?_lastBar.o:d.cur);
@@ -148,7 +158,7 @@ function render(x){
   var _chgPct = _prevClose>0?(_chg/_prevClose*100):0;
   var _upColor = _chg>0?'#e24b4a':(_chg<0?'#378add':'#5a6b7d');
   var _arrow = _chg>0?'▲':(_chg<0?'▼':'-');
-  var _chgStr = (IS_US?('$'+Math.abs(_chg).toFixed(2)):(Math.abs(Math.round(_chg)).toLocaleString()))+' '+Math.abs(_chgPct).toFixed(2)+'%';
+  var _chgStr = (IS_US?('$'+Math.abs(_chg).toFixed(2)):IS_JP?('¥'+Math.abs(Math.round(_chg)).toLocaleString()):(Math.abs(Math.round(_chg)).toLocaleString()))+' '+Math.abs(_chgPct).toFixed(2)+'%';
   html+='<div class="result-head"><span class="rn">'+(x['종목명']||'')+'</span><span class="rc">'+x['종목코드']+' · '+(x['시장']||'')+'</span><span class="rp" style="color:'+_upColor+'">'+priceStr+'<span style="font-size:12px;font-weight:600;margin-left:6px">'+_arrow+' '+_chgStr+'</span></span></div>';
 
   // ===== 탭 =====
@@ -327,7 +337,8 @@ function buildReport(x, d, pj, t10, t60){
       '<div class="rep-foot">본 리포트는 작도·통계 기반 참고 자료이며 매수·매도 추천이 아닙니다.</div></div>';
     return;
   }
-  function pf(v){ return IS_US?('$'+Number(v).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})):(Math.round(v).toLocaleString()+'원'); }
+  var IS_JP=(x['시장']==='일본');
+  function pf(v){ return IS_US?('$'+Number(v).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})):IS_JP?('¥'+Math.round(v).toLocaleString()):(Math.round(v).toLocaleString()+'원'); }
   var qDir=judgeDir(pj, d, false);                                   // 장기(일봉)
   var mDir=(t60&&t60.projection)?judgeDir(t60.projection, t60, false):'flat';  // 월(60분봉)
   var wDir=(t10&&t10.projection)?judgeDir(t10.projection, t10, true):'flat';   // 주(10분봉) — 표시용
@@ -410,7 +421,8 @@ function buildReport(x, d, pj, t10, t60){
 function mkChart(data,pj,sfx){
   sfx=sfx||'';
   var IS_US=!!window.__IS_US;
-  function fmtP(v){ return IS_US ? ('$'+Number(v).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})) : Math.round(v).toLocaleString(); }
+  var IS_JP=!!window.__IS_JP;
+  function fmtP(v){ return IS_US ? ('$'+Number(v).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})) : IS_JP ? ('¥'+Math.round(v).toLocaleString()) : Math.round(v).toLocaleString(); }
   // ===== v3 모든 데이터 변수 최상단 선언 (TDZ 방지) =====
   var cv=document.getElementById('cv'+sfx), tip=document.getElementById('tip'+sfx);
   var scope=document.getElementById('host'+sfx)||document;

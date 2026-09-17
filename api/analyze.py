@@ -20,10 +20,26 @@ BASE="https://openapi.ls-sec.co.kr:8080"
 YBASE="https://query1.finance.yahoo.com/v8/finance/chart"
 YHEAD={"User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
 
+def is_jp(code):
+    """숫자 4자리면 일본주식 (도쿄증권거래소). 예: 7203=도요타"""
+    c=(code or "").strip()
+    return c.isdigit() and len(c)==4
+
 def is_us(code):
-    """영문 티커면 미국주식 (숫자6자리=한국)"""
+    """영문 티커면 미국주식 (숫자6자리=한국, 4자리=일본)"""
     c=(code or "").strip().upper()
     return bool(c) and not c.isdigit() and all(ch.isalnum() or ch in '.-' for ch in c)
+
+def get_day_jp(code):  return _yahoo_fetch(code+".T","2y","1d")
+def get_60m_jp(code):  return _yahoo_fetch(code+".T","2y","60m")
+def get_15m_jp(code):  return _yahoo_fetch(code+".T","60d","15m")
+def get_name_jp(ticker):
+    try:
+        r=requests.get(f"{YBASE}/{ticker}.T",headers=YHEAD,timeout=8,params={"range":"5d","interval":"1d"})
+        meta=r.json().get("chart",{}).get("result",[{}])[0].get("meta",{})
+        return meta.get("shortName") or meta.get("longName") or ticker,"일본"
+    except Exception:
+        return ticker,"일본"
 
 def _yahoo_fetch(ticker, rng, interval):
     try:
@@ -71,9 +87,9 @@ def get_cur_ls(tk,code):
     except: return None
 
 def get_today_bar_ls(tk,code):
-    """장중 오늘 봉(시가/고가/저가/현재가)을 LS t1102에서 — 야후 시세에 씌우기용"""
+    """오늘/최신 봉(시가/고가/저가/현재가·종가)을 LS t1102에서 — 야후 시세에 씌우기용.
+    장중이면 실시간, 장 마감 후면 그날 종가를 받아 야후의 지연 값을 덮어씀."""
     try:
-        if not _is_market_open(): return None
         r=requests.post(f"{BASE}/stock/market-data",verify=False,timeout=5,
             headers={"Content-Type":"application/json; charset=UTF-8","authorization":f"Bearer {tk}","tr_cd":"t1102","tr_cont":"N"},
             json={"t1102InBlock":{"shcode":code}})
@@ -723,7 +739,15 @@ class handler(BaseHTTPRequestHandler):
             _hit=_RESULT_CACHE.get(_ck)
             if _hit and _t.time() < _hit["exp"]:
                 self.wfile.write(_hit["data"]); return
-            if is_us(code):
+            if is_jp(code):
+                # ===== 일본 주식 (야후, .T) =====
+                nm,mk=get_name_jp(code)
+                day=get_day_jp(code)
+                try: m60=get_60m_jp(code)
+                except Exception: m60=None
+                try: m10=get_15m_jp(code)
+                except Exception: m10=None
+            elif is_us(code):
                 # ===== 미국 주식 (야후) =====
                 tkr=code.upper()
                 nm,mk=get_name_us(tkr)
