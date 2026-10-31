@@ -85,7 +85,9 @@ async function go(code){
   var hero=document.getElementById('heroIntro'); if(hero)hero.style.display='none';
   box.innerHTML='<div class="loading"><div class="rtv-spin"><div class="rtv-core">RTV</div><div class="rtv-ring"></div></div><div class="ltxt">차트를 정밀 분석하고 있어요</div><div class="lsub">JOIN 고유 RTV 엔진 가동 중 · 약 3~5초 정도 걸려요</div><div class="load-chips"><span class="lchip" style="--c:#7f77dd">엘리엇</span><span class="lchip" style="--c:#1d9e75">피보나치</span><span class="lchip" style="--c:#3f7fd0">몬테카를로</span><span class="lchip" style="--c:#ba7517">갠</span><span class="lchip" style="--c:#ed7d31">공방선</span></div></div>';
   try{
-    var x=await fetch('/api/analyze?code='+code).then(function(r){return r.json();});
+    var tk=window.jcIdToken?await window.jcIdToken():'';
+    var x=await fetch('/api/analyze?code='+code,{headers:tk?{'Authorization':'Bearer '+tk}:{}}).then(function(r){return r.json();});
+    if(x.auth){box.innerHTML='';if(window.jcRecheck)window.jcRecheck();return;}  // 미승인·만료·정지 → 안내 화면
     if(x.error){box.innerHTML='<div class="empty data-notice">'+String(x.error).replace(/\n/g,'<br>')+'</div>';return;}
     if(x['종목명']) saveRecent(x['종목코드']||code, x['종목명']);
     render(x);

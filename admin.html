@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<!-- BUILD:1789677368 -->
+<!-- BUILD:1793424937 -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>JOIN CHART — 어드민</title>
@@ -74,6 +74,7 @@ tr:last-child td{border-bottom:none}
 </style>
 </head>
 <body>
+<script src="/auth.js?v=1793424937" data-mode="admin"></script>
 <div class="admin-wrap">
   <div class="sidebar">
     <div class="sb-logo">
@@ -119,15 +120,10 @@ tr:last-child td{border-bottom:none}
 
     <!-- 회원 관리 -->
     <div class="page" id="page-members">
-      <div class="sbar">
-        <input type="text" id="msearch" placeholder="이메일, 이름 검색" oninput="filterM()">
-        <select id="mplan" onchange="filterM()"><option value="">전체 플랜</option><option value="free">무료</option><option value="basic">베이직</option><option value="premium">프리미엄</option></select>
-        <select id="mstatus" onchange="filterM()"><option value="">전체 상태</option><option value="active">활성</option><option value="expired">만료</option><option value="trial">체험중</option></select>
-      </div>
       <div class="card">
-        <div class="card-title"><span>회원 목록 <span id="mcount" style="font-size:11px;color:#888;font-weight:400"></span></span><button class="btn btn-p btn-sm">CSV 내보내기</button></div>
+        <div class="card-title"><span>회원 관리 <span id="mcount" style="font-size:11px;color:#888;font-weight:400"></span></span></div>
         <table>
-          <thead><tr><th>이메일</th><th>플랜</th><th>상태</th><th>가입일</th><th>만료일</th><th>조회수</th><th>관리</th></tr></thead>
+          <thead><tr><th>번호</th><th>가입일</th><th>승인여부</th><th>만료일</th><th>마지막 로그인</th><th>관리</th></tr></thead>
           <tbody id="mtable"></tbody>
         </table>
       </div>
@@ -217,6 +213,7 @@ tr:last-child td{border-bottom:none}
 
   </div>
 </div>
+<div class="jc-foot">주식회사 조인홀딩스 | 대표 김상문 | 사업자등록번호 753-87-03679 | 통신판매업신고 제2026-서울양천-1009호<br>서울특별시 양천구 목동중앙서로8길 14, B101 | 070-8985-8221 | help@joinpeople.kr | 개인정보 보호책임자 김시현</div>
 
 <script>
 document.getElementById('today-date').textContent = (function(){var d=new Date();return d.getFullYear()+'년 '+(d.getMonth()+1)+'월 '+d.getDate()+'일';})();
@@ -231,29 +228,24 @@ function showPage(id, el) {
   if(id==='drawing') setTimeout(initCanvas,100);
 }
 
-// 회원 데이터
-var MEMBERS=[
-  {email:'kim@gmail.com',plan:'premium',status:'active',joined:'2026-06-19',expire:'2026-07-19',views:142},
-  {email:'lee@naver.com',plan:'basic',status:'active',joined:'2026-06-18',expire:'2026-07-18',views:87},
-  {email:'park@kakao.com',plan:'premium',status:'trial',joined:'2026-06-17',expire:'2026-06-20',views:23},
-  {email:'choi@gmail.com',plan:'free',status:'active',joined:'2026-06-15',expire:'—',views:6},
-  {email:'jung@naver.com',plan:'basic',status:'expired',joined:'2026-04-10',expire:'2026-05-10',views:55},
-  {email:'han@gmail.com',plan:'premium',status:'active',joined:'2026-03-22',expire:'2026-07-22',views:210},
-  {email:'lim@naver.com',plan:'basic',status:'active',joined:'2026-05-30',expire:'2026-06-30',views:63},
-];
-function planB(p){return {premium:'<span class="badge bo">프리미엄</span>',basic:'<span class="badge bb">베이직</span>',free:'<span class="badge bgr">무료</span>'}[p]||p;}
-function statusB(s){return {active:'<span class="badge bg">활성</span>',expired:'<span class="badge br">만료</span>',trial:'<span class="badge bo">체험중</span>'}[s]||s;}
-function filterM(){
-  var q=document.getElementById('msearch').value.toLowerCase();
-  var pf=document.getElementById('mplan').value;
-  var sf=document.getElementById('mstatus').value;
-  var filtered=MEMBERS.filter(function(m){return (!q||m.email.toLowerCase().includes(q))&&(!pf||m.plan===pf)&&(!sf||m.status===sf);});
-  document.getElementById('mcount').textContent=filtered.length+'명';
-  document.getElementById('mtable').innerHTML=filtered.map(function(m){
-    return '<tr><td>'+m.email+'</td><td>'+planB(m.plan)+'</td><td>'+statusB(m.status)+'</td><td>'+m.joined+'</td><td>'+m.expire+'</td><td>'+m.views+'</td><td><button class="btn btn-o btn-sm">수정</button></td></tr>';
+// ===== 회원 관리 (서버 /api/admin — 관리자 토큰 검증, 프론트에서 Firestore 직접 쓰지 않음) =====
+function statusB(s){return {pending:'<span class="badge bo">대기</span>',active:'<span class="badge bg">이용중</span>',expired:'<span class="badge br">만료</span>',suspended:'<span class="badge bgr">정지</span>'}[s]||s;}
+async function loadMembers(){
+  var r=await jcApi('/api/admin');
+  var list=r.users||[];
+  document.getElementById('mcount').textContent=list.length+'명';
+  document.getElementById('mtable').innerHTML=list.map(function(m){
+    return '<tr><td>'+m.phone+'</td><td>'+m.createdAt+'</td><td>'+statusB(m.status)+'</td><td>'+(m.expiresAt||'—')+'</td><td>'+(m.lastLoginAt||'—')+'</td><td>'
+      +'<button class="btn btn-p btn-sm" onclick="memberAct(\''+m.uid+'\',\'approve\')">승인</button> '
+      +'<button class="btn btn-o btn-sm" onclick="memberAct(\''+m.uid+'\',\'extend\')">연장</button> '
+      +'<button class="btn btn-o btn-sm" onclick="memberAct(\''+m.uid+'\',\'suspend\')">정지</button></td></tr>';
   }).join('');
 }
-filterM();
+async function memberAct(uid,action){
+  await jcApi('/api/admin',{method:'POST',body:JSON.stringify({uid:uid,action:action})});
+  loadMembers();
+}
+window.jcAdminReady=loadMembers;
 
 // ===== 작도 도구 =====
 var currentCode='005930';

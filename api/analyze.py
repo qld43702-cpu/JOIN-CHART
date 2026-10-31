@@ -6,7 +6,9 @@
 # ============================================================
 from http.server import BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
-import os, json, requests
+import os, sys, json, requests
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import _auth
 
 
 import datetime as _dt
@@ -727,6 +729,13 @@ def resolve_risk(day, m60):
 class handler(BaseHTTPRequestHandler):
     def do_GET(self):
         qs=parse_qs(urlparse(self.path).query); code=(qs.get('code',[''])[0] or '').strip()
+        # ===== 이용권한 확인 — 승인 + 만료 전(active)만 통과 =====
+        try: _st=_auth.access(self.headers)[2]
+        except Exception: _st='login'
+        if _st!='active':
+            self.send_response(401)
+            self.send_header('Content-Type','application/json; charset=utf-8'); self.end_headers()
+            self.wfile.write(json.dumps({'auth':_st}).encode()); return
         self.send_response(200)
         self.send_header('Content-Type','application/json; charset=utf-8')
         self.send_header('Access-Control-Allow-Origin','*'); self.end_headers()

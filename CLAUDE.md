@@ -68,7 +68,12 @@
 
 ## 예정 작업 (순서)
 
-1. **로그인** — Firebase Auth (프로젝트 `chart-join`, Google + 이메일/비밀번호). 로그인 필수. 가입 시 **휴대폰번호 입력 필수**(알림톡용) → Firestore `users/{uid}`에 `email, phone, approved(false), createdAt` 저장. 미승인 계정은 "승인 대기" 안내만. 승인된 도메인에 `join-chart.vercel.app` 필요.
+1. **로그인** — Firebase Auth (프로젝트 `chart-join`). 로그인 필수. 사용자가 스스로 가입하고, 관리자는 승인만 한다.
+   - 휴대폰번호 입력 → 솔라피 알림톡으로 6자리 인증번호(실패 시 SMS 대체발송) → 입력·대조 → Firebase 커스텀 토큰 로그인.
+   - 첫 로그인이면 `users/{uid}` 생성: `{ phone, approved:false, expiresAt:null, createdAt }`.
+   - approved=false → 입금 안내 화면. approved=true + expiresAt 안 지남 → 차트 열림. expiresAt 지남 → 재입금 안내, `/api/analyze`도 서버에서 거부. `suspended:true` → 정지 안내.
+   - 관리자(admin.html, `users/{uid}.role == "admin"`): 가입자 목록 + 승인(승인일+30일) / 연장(만료 전 expiresAt+30일, 만료 후 오늘+30일) / 정지. 서버 API로 처리, 관리자 토큰 검증. 프론트에서 Firestore 직접 쓰지 않는다.
+   - 환경변수: SOLAPI_API_KEY, SOLAPI_API_SECRET, SOLAPI_PFID, SOLAPI_AUTH_TEMPLATE_ID, SOLAPI_SENDER, FIREBASE_SERVICE_ACCOUNT_JSON.
 2. 사례 축적 — 판정·공방선이 맞아떨어진 종목을 날짜·스크린샷으로 기록(코드 외 작업).
 3. 관심종목 저장(Firestore) → Vercel Cron 하루 1회(장 마감 후) 판정 비교 → **전환된 종목만** 솔라피 알림톡 발송. 환경변수: SOLAPI_API_KEY, SOLAPI_API_SECRET, SOLAPI_PFID, SOLAPI_TEMPLATE_ID.
 4. 결제 — PG사(토스페이먼츠/포트원). 월 99,000원. 결제 성공 시 `approved=true`. 네이버페이 직접가맹은 매출 실적 필요라 미적합.
