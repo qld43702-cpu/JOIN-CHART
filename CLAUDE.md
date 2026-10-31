@@ -71,8 +71,10 @@
 1. **로그인** — Firebase Auth (프로젝트 `chart-join`). 로그인 필수. 사용자가 스스로 가입하고, 관리자는 승인만 한다.
    - 휴대폰번호 입력 → 솔라피 알림톡으로 6자리 인증번호(실패 시 SMS 대체발송) → 입력·대조 → Firebase 커스텀 토큰 로그인.
    - 첫 로그인이면 `users/{uid}` 생성: `{ phone, approved:false, expiresAt:null, createdAt }`.
-   - approved=false → 입금 안내 화면. approved=true + expiresAt 안 지남 → 차트 열림. expiresAt 지남 → 재입금 안내, `/api/analyze`도 서버에서 거부. `suspended:true` → 정지 안내.
-   - 관리자(admin.html, `users/{uid}.role == "admin"`): 가입자 목록 + 승인(승인일+30일) / 연장(만료 전 expiresAt+30일, 만료 후 오늘+30일) / 정지. 서버 API로 처리, 관리자 토큰 검증. 프론트에서 Firestore 직접 쓰지 않는다.
+   - 홈은 누구나 본다. 이용중(approved=true + expiresAt 안 지남)일 때만 `/api/analyze`가 실제 결과를 준다.
+   - 그 외(비로그인·대기·만료·`suspended:true`)는 `/api/analyze`가 preview 응답: 모든 가격을 숨긴 비율(k·p+b)로 변환, 캔들 전 구간 ±2%·최근 20봉 ±4%, 선·점 값·기울기 ±3% 흔듦, `pattern`·`wave.desc` 제외. 캐시 기간 동안 같은 흔들림. 실제 가격·정확한 최근 좌표는 로그인·승인 없이 절대 내려가지 않는다.
+   - 프론트: preview면 가격 표시 전부 `***`, 결과 영역 blur(6px) + 상태별 오버레이 카드(비로그인 인증 / 입금 안내 / 재입금 안내 / 정지 안내).
+   - 관리자(admin.html, `users/{uid}.role == "admin"`): 가입자 목록 + 승인(승인일+30일) / 연장(만료 전 expiresAt+30일, 만료 후 오늘+30일) / 정지 / 해제(suspended=false → 원래 상태). 서버 API로 처리, 관리자 토큰 검증. 프론트에서 Firestore 직접 쓰지 않는다.
    - 환경변수: SOLAPI_API_KEY, SOLAPI_API_SECRET, SOLAPI_PFID, SOLAPI_AUTH_TEMPLATE_ID, SOLAPI_SENDER, FIREBASE_SERVICE_ACCOUNT_JSON.
 2. 사례 축적 — 판정·공방선이 맞아떨어진 종목을 날짜·스크린샷으로 기록(코드 외 작업).
 3. 관심종목 저장(Firestore) → Vercel Cron 하루 1회(장 마감 후) 판정 비교 → **전환된 종목만** 솔라피 알림톡 발송. 환경변수: SOLAPI_API_KEY, SOLAPI_API_SECRET, SOLAPI_PFID, SOLAPI_TEMPLATE_ID.
