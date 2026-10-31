@@ -87,11 +87,25 @@ async function go(code){
   try{
     var tk=window.jcIdToken?await window.jcIdToken():'';
     var x=await fetch('/api/analyze?code='+code,{headers:tk?{'Authorization':'Bearer '+tk}:{}}).then(function(r){return r.json();});
-    if(x.auth){box.innerHTML='';if(window.jcRecheck)window.jcRecheck();return;}  // 미승인·만료·정지 → 안내 화면
+    if(x.auth){renderLocked(code);return;}  // 비로그인·대기·만료·정지 → 흐린 차트 틀 + 오버레이
     if(x.error){box.innerHTML='<div class="empty data-notice">'+String(x.error).replace(/\n/g,'<br>')+'</div>';return;}
     if(x['종목명']) saveRecent(x['종목코드']||code, x['종목명']);
     render(x);
   }catch(e){box.innerHTML='<div class="empty">분석 실패. 잠시 후 다시 시도하세요.</div>';}
+}
+// ===== 이용권한 없음: 빈 차트 틀(격자·축)을 흐리게 그리고 그 위에 auth.js 오버레이 =====
+function renderLocked(code){
+  var box=document.getElementById('result');
+  box.innerHTML='<div class="chart-host jc-lockhost"><canvas id="cvLock" class="jc-blur"></canvas><div class="jc-ov" id="jcOv"></div></div>';
+  var cv=document.getElementById('cvLock'), r=cv.getBoundingClientRect(), d=window.devicePixelRatio||1;
+  cv.width=r.width*d; cv.height=r.height*d;
+  var ctx=cv.getContext('2d'); ctx.scale(d,d);
+  var W=r.width, H=r.height, ax=W-56;
+  ctx.strokeStyle='#e7ecf1'; ctx.lineWidth=1;
+  for(var i=1;i<6;i++){ var y=Math.round(H*i/6)+.5; ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(ax,y); ctx.stroke(); }
+  for(var j=1;j<8;j++){ var xx=Math.round(ax*j/8)+.5; ctx.beginPath(); ctx.moveTo(xx,0); ctx.lineTo(xx,H-24); ctx.stroke(); }
+  ctx.strokeStyle='#c9d2dc'; ctx.beginPath(); ctx.moveTo(ax+.5,0); ctx.lineTo(ax+.5,H-24); ctx.lineTo(0,H-24); ctx.stroke();
+  if(window.jcOverlay) window.jcOverlay(document.getElementById('jcOv'),code);
 }
 function goHome(){
   document.getElementById('result').innerHTML='';

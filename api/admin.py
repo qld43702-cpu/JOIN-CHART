@@ -1,7 +1,7 @@
 # ============================================================
 #  회원 관리 — 관리자(users/{uid}.role == "admin") 전용
 #  GET  /api/admin                       → 가입자 목록
-#  POST /api/admin {uid, action}          action: approve(승인 30일) / extend(연장 +30일) / suspend(정지)
+#  POST /api/admin {uid, action}          action: approve(승인 30일) / extend(연장 +30일) / suspend(정지) / unsuspend(해제)
 # ============================================================
 import os, sys, datetime as _dt
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -45,6 +45,8 @@ class handler(BaseHTTPRequestHandler):
                 ref.update({'expiresAt':(exp if exp and exp>n else n)+DAYS})
             elif action=='suspend':
                 ref.update({'suspended':True})
+            elif action=='unsuspend':
+                ref.update({'suspended':False})   # 해제 → 원래 상태(대기/이용중/만료)로
             else:
                 return _auth.send_json(self,400,{'error':'action'})
             _auth.send_json(self,200,{'ok':True})

@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<!-- BUILD:1793424937 -->
+<!-- BUILD:1793428760 -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>JOIN CHART — 어드민</title>
@@ -74,7 +74,7 @@ tr:last-child td{border-bottom:none}
 </style>
 </head>
 <body>
-<script src="/auth.js?v=1793424937" data-mode="admin"></script>
+<script src="/auth.js?v=1793428760" data-mode="admin"></script>
 <div class="admin-wrap">
   <div class="sidebar">
     <div class="sb-logo">
@@ -123,7 +123,7 @@ tr:last-child td{border-bottom:none}
       <div class="card">
         <div class="card-title"><span>회원 관리 <span id="mcount" style="font-size:11px;color:#888;font-weight:400"></span></span></div>
         <table>
-          <thead><tr><th>번호</th><th>가입일</th><th>승인여부</th><th>만료일</th><th>마지막 로그인</th><th>관리</th></tr></thead>
+          <thead><tr><th>번호</th><th>가입일</th><th>상태</th><th>만료일</th><th>마지막 로그인</th><th>관리</th></tr></thead>
           <tbody id="mtable"></tbody>
         </table>
       </div>
@@ -238,7 +238,8 @@ async function loadMembers(){
     return '<tr><td>'+m.phone+'</td><td>'+m.createdAt+'</td><td>'+statusB(m.status)+'</td><td>'+(m.expiresAt||'—')+'</td><td>'+(m.lastLoginAt||'—')+'</td><td>'
       +'<button class="btn btn-p btn-sm" onclick="memberAct(\''+m.uid+'\',\'approve\')">승인</button> '
       +'<button class="btn btn-o btn-sm" onclick="memberAct(\''+m.uid+'\',\'extend\')">연장</button> '
-      +'<button class="btn btn-o btn-sm" onclick="memberAct(\''+m.uid+'\',\'suspend\')">정지</button></td></tr>';
+      +'<button class="btn btn-o btn-sm" onclick="memberAct(\''+m.uid+'\',\'suspend\')">정지</button> '
+      +'<button class="btn btn-o btn-sm" onclick="memberAct(\''+m.uid+'\',\'unsuspend\')">해제</button></td></tr>';
   }).join('');
 }
 async function memberAct(uid,action){
