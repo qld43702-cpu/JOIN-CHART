@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<!-- BUILD:1793433047 -->
+<!-- BUILD:1793434393 -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>JOIN CHART — 어드민</title>
@@ -99,21 +99,16 @@ tr:last-child td{border-bottom:none}
     <!-- 대시보드 -->
     <div class="page on" id="page-dashboard">
       <div class="stat-grid">
-        <div class="stat-card"><div class="sl">전체 회원</div><div class="sv">8명</div><div class="sd">이번 주 +3명</div></div>
-        <div class="stat-card"><div class="sl">유료 구독자</div><div class="sv">5명</div><div class="sd">베이직 3 + 프리미엄 2</div></div>
-        <div class="stat-card"><div class="sl">오늘 방문자</div><div class="sv">94명</div><div class="sd">종목 조회 347회</div></div>
-        <div class="stat-card"><div class="sl">이번 달 매출</div><div class="sv">231,000원</div><div class="sd">전월 대비 +12%</div></div>
+        <div class="stat-card"><div class="sl">전체 회원</div><div class="sv" id="dTotal">—</div></div>
+        <div class="stat-card"><div class="sl">유료 구독자</div><div class="sv" style="font-size:16px;color:#888">준비 중</div></div>
+        <div class="stat-card"><div class="sl">오늘 방문자</div><div class="sv" style="font-size:16px;color:#888">준비 중</div></div>
+        <div class="stat-card"><div class="sl">이번 달 매출</div><div class="sv" style="font-size:16px;color:#888">준비 중</div></div>
       </div>
       <div class="card">
         <div class="card-title">최근 가입 회원</div>
         <table>
-          <thead><tr><th>이메일</th><th>플랜</th><th>가입일</th><th>조회수</th></tr></thead>
-          <tbody>
-            <tr><td>kim@gmail.com</td><td><span class="badge bo">프리미엄</span></td><td>2026-06-19</td><td>142</td></tr>
-            <tr><td>lee@naver.com</td><td><span class="badge bb">베이직</span></td><td>2026-06-18</td><td>87</td></tr>
-            <tr><td>park@kakao.com</td><td><span class="badge bo">프리미엄</span></td><td>2026-06-17</td><td>23</td></tr>
-            <tr><td>choi@gmail.com</td><td><span class="badge bgr">무료</span></td><td>2026-06-15</td><td>6</td></tr>
-          </tbody>
+          <thead><tr><th>번호</th><th>가입일</th><th>상태</th></tr></thead>
+          <tbody id="dRecent"></tbody>
         </table>
       </div>
     </div>
@@ -131,47 +126,17 @@ tr:last-child td{border-bottom:none}
 
     <!-- 결제 내역 -->
     <div class="page" id="page-payments">
-      <div class="stat-grid" style="grid-template-columns:repeat(3,1fr)">
-        <div class="stat-card"><div class="sl">이번 달 매출</div><div class="sv">231,000원</div></div>
-        <div class="stat-card"><div class="sl">결제 건수</div><div class="sv">5건</div></div>
-        <div class="stat-card"><div class="sl">환불 건수</div><div class="sv">1건</div></div>
-      </div>
       <div class="card">
         <div class="card-title">결제 내역</div>
-        <table>
-          <thead><tr><th>날짜</th><th>이메일</th><th>플랜</th><th>금액</th><th>방법</th><th>상태</th></tr></thead>
-          <tbody>
-            <tr><td>2026-06-19</td><td>kim@gmail.com</td><td>프리미엄</td><td>55,000원</td><td>카카오페이</td><td><span class="badge bg">완료</span></td></tr>
-            <tr><td>2026-06-18</td><td>park@kakao.com</td><td>프리미엄</td><td>55,000원</td><td>카드</td><td><span class="badge bg">완료</span></td></tr>
-            <tr><td>2026-06-15</td><td>han@gmail.com</td><td>프리미엄</td><td>55,000원</td><td>카카오페이</td><td><span class="badge bg">완료</span></td></tr>
-            <tr><td>2026-06-10</td><td>lim@naver.com</td><td>베이직</td><td>33,000원</td><td>카드</td><td><span class="badge bg">완료</span></td></tr>
-            <tr><td>2026-06-01</td><td>lee@naver.com</td><td>베이직</td><td>33,000원</td><td>카카오페이</td><td><span class="badge bg">완료</span></td></tr>
-            <tr><td>2026-05-30</td><td>jung@naver.com</td><td>베이직</td><td>33,000원</td><td>카드</td><td><span class="badge br">환불</span></td></tr>
-          </tbody>
-        </table>
+        <div style="padding:30px 0;text-align:center;color:#888">준비 중</div>
       </div>
     </div>
 
     <!-- 접속 통계 -->
     <div class="page" id="page-stats">
-      <div class="stat-grid">
-        <div class="stat-card"><div class="sl">오늘 UV</div><div class="sv">94명</div></div>
-        <div class="stat-card"><div class="sl">종목 조회</div><div class="sv">347회</div></div>
-        <div class="stat-card"><div class="sl">인기 종목</div><div class="sv" style="font-size:16px">삼성전자</div></div>
-        <div class="stat-card"><div class="sl">평균 세션</div><div class="sv">4분 32초</div></div>
-      </div>
       <div class="card">
-        <div class="card-title">인기 종목 TOP 10</div>
-        <table>
-          <thead><tr><th>순위</th><th>종목</th><th>코드</th><th>조회수</th></tr></thead>
-          <tbody>
-            <tr><td style="color:#888">1</td><td>삼성전자</td><td style="color:#888">005930</td><td>1,240</td></tr>
-            <tr><td style="color:#888">2</td><td>SK하이닉스</td><td style="color:#888">000660</td><td>980</td></tr>
-            <tr><td style="color:#888">3</td><td>NVIDIA</td><td style="color:#888">NVDA</td><td>870</td></tr>
-            <tr><td style="color:#888">4</td><td>카카오</td><td style="color:#888">035720</td><td>640</td></tr>
-            <tr><td style="color:#888">5</td><td>APPLE</td><td style="color:#888">AAPL</td><td>580</td></tr>
-          </tbody>
-        </table>
+        <div class="card-title">접속 통계</div>
+        <div style="padding:30px 0;text-align:center;color:#888">준비 중</div>
       </div>
     </div>
 
@@ -234,6 +199,11 @@ async function loadMembers(){
   var r=await jcApi('/api/admin');
   var list=r.users||[];
   document.getElementById('mcount').textContent=list.length+'명';
+  // 대시보드: 전체 회원 수 + 최근 가입 5명 (목록은 가입일 최신순)
+  document.getElementById('dTotal').textContent=list.length+'명';
+  document.getElementById('dRecent').innerHTML=list.slice(0,5).map(function(m){
+    return '<tr><td>'+m.phone+'</td><td>'+m.createdAt+'</td><td>'+statusB(m.status)+'</td></tr>';
+  }).join('');
   document.getElementById('mtable').innerHTML=list.map(function(m){
     return '<tr><td>'+m.phone+'</td><td>'+m.createdAt+'</td><td>'+statusB(m.status)+'</td><td>'+(m.expiresAt||'—')+'</td><td>'+(m.lastLoginAt||'—')+'</td><td>'
       +'<button class="btn btn-p btn-sm" onclick="memberAct(\''+m.uid+'\',\'approve\')">승인</button> '
