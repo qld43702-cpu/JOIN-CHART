@@ -1,6 +1,6 @@
 // ===== JOIN-CHART 로그인·이용권한 (index·chart·admin 공유) =====
 // data-mode: user(index) · embed(chart, 어드민 iframe) · admin(admin.html)
-// 홈은 누구나 본다. 차트를 열면 흐린 차트 위에 상태별 오버레이(jcOverlay). 이용중일 때만 오버레이 없음.
+// 홈은 누구나 본다. 이용중이 아니면 차트(preview: 가격 ***·좌표 흔듦)를 흐리게 깔고 상태별 오버레이(jcOverlay).
 // 휴대폰 인증(/api/auth_send → /api/auth_verify) → Firebase 커스텀 토큰 로그인 → /api/me 상태.
 (function(){
 var MODE=(document.currentScript&&document.currentScript.getAttribute('data-mode'))||'user';
@@ -39,7 +39,7 @@ function cardHtml(st){
 var css=document.createElement('style');
 css.textContent='body.jc-lock .admin-wrap{display:none!important}'
  +'.jc-gate{max-width:420px;margin:40px auto;padding:0 16px}.jc-gate:empty{display:none}'
- +'.jc-lockhost{position:relative;overflow:hidden}.jc-blur{filter:blur(4px);opacity:.6}'
+ +'.jc-pvblur{filter:blur(6px);pointer-events:none;user-select:none}'
  +'.jc-ov{position:absolute;inset:0;display:flex;padding:12px;overflow-y:auto;background:rgba(238,241,245,.35);z-index:20}'
  +'.jc-card{margin:auto;width:100%;max-width:360px;background:rgba(255,255,255,.95);border-radius:16px;border:1px solid #edf1f5;box-shadow:0 6px 24px rgba(27,58,92,.12);padding:20px 18px;text-align:center;color:#23344a}'
  +'.jc-t{font-size:19px;font-weight:800;color:#1b3a5c;margin-bottom:4px}'
@@ -90,7 +90,7 @@ function post(path,body){ return fetch(path,{method:'POST',headers:{'Content-Typ
 function logout(){ fa.signOut(auth).then(function(){ location.reload(); }); }
 window.jcIdToken=idToken;
 window.jcApi=api;
-// chart-core: /api/analyze가 거부하면 흐린 차트 틀 위 오버레이 칸(el)을 넘겨줌
+// chart-core: /api/analyze가 미리보기(preview)를 주면 흐린 차트 위 오버레이 칸(el)을 넘겨줌
 window.jcOverlay=function(el,code){ cur={el:el,code:code}; ready.then(function(){ paintOverlay(false); }); };
 
 async function refresh(changed){

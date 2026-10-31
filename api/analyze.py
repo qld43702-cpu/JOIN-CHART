@@ -726,16 +726,69 @@ def resolve_risk(day, m60):
     else:
         day['risks']=[]; day['risk_on']=False; day['risk_src']=None; day['view_start']=None
 
+# ===== 미리보기(preview) — 로그인·승인(active) 없이 내려가는 응답 =====
+# 모양만 보이고 실제 가격은 복원 못 하게: 모든 가격을 숨긴 비율(k·p+b)로 바꾸고 흔든다.
+#   캔들: 전 구간 ±2%, 최근 20봉 ±4% (봉마다 o/h/l/c/2일선에 같은 비율)
+#   선·점 값(교차점·목표·시작점·기울기 등): ±3%
+#   리포트 멘트(pattern, wave.desc)는 빼고 보냄. 결과 캐시 기간 동안 같은 흔들림 유지.
+_PV_POINT={'A_y1','B_y1','yc','M_y0','M_y1','M_ky','ep','target','cur',
+           'up_target','green_max','dn_target','mc_target','anchor_price','recent_pivot_price'}
+_PV_SLOPE={'A_slope','B_slope','M_slope','M_s1','M_s2','up_slope'}
+_PV_LIST={'fib_levels','sr_levels','xpoints'}
+
+def build_preview(out):
+    import random, copy
+    rnd=random.Random(os.urandom(16))
+    base=0
+    for key in ('일봉','60분','10분'):
+        blk=out.get(key)
+        if isinstance(blk,dict) and blk.get('cur'): base=float(blk['cur']); break
+    if base<=0: base=1.0
+    k=rnd.uniform(0.5,2.0); b=rnd.uniform(0.1,0.8)*base*k
+    def num(v): return isinstance(v,(int,float)) and not isinstance(v,bool)
+    def P(v,e): return round(k*v*(1+rnd.uniform(-e,e))+b,2) if num(v) else v
+    def walk(d):
+        for key,v in list(d.items()):
+            if key in _PV_POINT: d[key]=P(v,0.03)
+            elif key in _PV_SLOPE: d[key]=round(k*v*(1+rnd.uniform(-0.03,0.03)),3) if num(v) else v
+            elif key in _PV_LIST and isinstance(v,list): d[key]=[P(x,0.03) for x in v]
+            elif key=='tech_targets' and isinstance(v,dict): d[key]={t:P(x,0.03) for t,x in v.items()}
+            elif isinstance(v,dict): walk(v)
+            elif isinstance(v,list):
+                for it in v:
+                    if isinstance(it,dict): walk(it)
+    pv=copy.deepcopy(out)
+    for key in ('일봉','60분','10분'):
+        blk=pv.get(key)
+        if not isinstance(blk,dict): continue
+        blk.pop('pattern',None)
+        ch=blk.pop('chart',None)
+        walk(blk)
+        wave=(blk.get('projection') or {}).get('wave')
+        if isinstance(wave,dict): wave.pop('desc',None)
+        if ch:
+            n=len(ch)
+            for i,r in enumerate(ch):
+                e=0.04 if i>=n-20 else 0.02
+                f=1+rnd.uniform(-e,e)
+                for pk in ('o','h','l','c','m2'):
+                    if num(r.get(pk)): r[pk]=round(k*r[pk]*f+b,2)
+            blk['chart']=ch
+    pv['preview']=True
+    return pv
+
+def _preview_bytes(ent, st):
+    """캐시 항목마다 미리보기를 한 번만 만든다 → 캐시 기간 동안 같은 흔들림"""
+    if 'pv' not in ent: ent['pv']=build_preview(ent['obj'])
+    pv=dict(ent['pv']); pv['auth']=st
+    return json.dumps(pv,ensure_ascii=False).encode()
+
 class handler(BaseHTTPRequestHandler):
     def do_GET(self):
         qs=parse_qs(urlparse(self.path).query); code=(qs.get('code',[''])[0] or '').strip()
-        # ===== 이용권한 확인 — 승인 + 만료 전(active)만 통과 =====
+        # ===== 이용권한 확인 — 승인 + 만료 전(active)만 실제 결과, 그 외는 미리보기(preview) =====
         try: _st=_auth.access(self.headers)[2]
         except Exception: _st='login'
-        if _st!='active':
-            self.send_response(401)
-            self.send_header('Content-Type','application/json; charset=utf-8'); self.end_headers()
-            self.wfile.write(json.dumps({'auth':_st}).encode()); return
         self.send_response(200)
         self.send_header('Content-Type','application/json; charset=utf-8')
         self.send_header('Access-Control-Allow-Origin','*'); self.end_headers()
@@ -747,7 +800,7 @@ class handler(BaseHTTPRequestHandler):
             _ck=code.upper()
             _hit=_RESULT_CACHE.get(_ck)
             if _hit and _t.time() < _hit["exp"]:
-                self.wfile.write(_hit["data"]); return
+                self.wfile.write(_hit["data"] if _st=='active' else _preview_bytes(_hit,_st)); return
             if is_jp(code):
                 # ===== 일본 주식 (야후, .T) =====
                 nm,mk=get_name_jp(code)
@@ -888,7 +941,7 @@ class handler(BaseHTTPRequestHandler):
             _payload=json.dumps(out,ensure_ascii=False).encode()
             # 캐시 저장 (30분)
             _ttl=300 if _is_market_open() else 1800  # 장중 5분, 장외 30분
-            _RESULT_CACHE[_ck]={"data":_payload,"exp":_t.time()+_ttl}
-            self.wfile.write(_payload)
+            _RESULT_CACHE[_ck]={"data":_payload,"obj":out,"exp":_t.time()+_ttl}
+            self.wfile.write(_payload if _st=='active' else _preview_bytes(_RESULT_CACHE[_ck],_st))
         except Exception as ex:
             self.wfile.write(json.dumps({'error':'분석 실패: '+str(ex)}).encode())

@@ -87,25 +87,23 @@ async function go(code){
   try{
     var tk=window.jcIdToken?await window.jcIdToken():'';
     var x=await fetch('/api/analyze?code='+code,{headers:tk?{'Authorization':'Bearer '+tk}:{}}).then(function(r){return r.json();});
-    if(x.auth){renderLocked(code);return;}  // 비로그인·대기·만료·정지 → 흐린 차트 틀 + 오버레이
     if(x.error){box.innerHTML='<div class="empty data-notice">'+String(x.error).replace(/\n/g,'<br>')+'</div>';return;}
     if(x['종목명']) saveRecent(x['종목코드']||code, x['종목명']);
+    PREVIEW=!!x.preview;   // 비로그인·대기·만료·정지 → 가격 *** + 흐리게 + 오버레이
     render(x);
+    if(PREVIEW) lockPreview(code);
   }catch(e){box.innerHTML='<div class="empty">분석 실패. 잠시 후 다시 시도하세요.</div>';}
 }
-// ===== 이용권한 없음: 빈 차트 틀(격자·축)을 흐리게 그리고 그 위에 auth.js 오버레이 =====
-function renderLocked(code){
+// ===== 미리보기(preview): 렌더된 결과 전체를 흐리게 + 그 위에 auth.js 오버레이 =====
+var PREVIEW=false;   // true면 가격 표시를 전부 *** 로
+function lockPreview(code){
   var box=document.getElementById('result');
-  box.innerHTML='<div class="chart-host jc-lockhost"><canvas id="cvLock" class="jc-blur"></canvas><div class="jc-ov" id="jcOv"></div></div>';
-  var cv=document.getElementById('cvLock'), r=cv.getBoundingClientRect(), d=window.devicePixelRatio||1;
-  cv.width=r.width*d; cv.height=r.height*d;
-  var ctx=cv.getContext('2d'); ctx.scale(d,d);
-  var W=r.width, H=r.height, ax=W-56;
-  ctx.strokeStyle='#e7ecf1'; ctx.lineWidth=1;
-  for(var i=1;i<6;i++){ var y=Math.round(H*i/6)+.5; ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(ax,y); ctx.stroke(); }
-  for(var j=1;j<8;j++){ var xx=Math.round(ax*j/8)+.5; ctx.beginPath(); ctx.moveTo(xx,0); ctx.lineTo(xx,H-24); ctx.stroke(); }
-  ctx.strokeStyle='#c9d2dc'; ctx.beginPath(); ctx.moveTo(ax+.5,0); ctx.lineTo(ax+.5,H-24); ctx.lineTo(0,H-24); ctx.stroke();
-  if(window.jcOverlay) window.jcOverlay(document.getElementById('jcOv'),code);
+  var inner=document.createElement('div'); inner.className='jc-pvblur';
+  while(box.firstChild) inner.appendChild(box.firstChild);
+  var ov=document.createElement('div'); ov.className='jc-ov';
+  box.style.position='relative';
+  box.appendChild(inner); box.appendChild(ov);
+  if(window.jcOverlay) window.jcOverlay(ov,code);
 }
 function goHome(){
   document.getElementById('result').innerHTML='';
@@ -156,6 +154,7 @@ function render(x){
   window.__IS_US=IS_US; window.__IS_JP=IS_JP;
   // 통화 포맷: 미국 $, 일본 ¥, 그 외 원
   function fmtCur(v){
+    if(PREVIEW) return '***';
     v=v||0;
     if(IS_US) return '$'+v.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
     if(IS_JP) return '¥'+Math.round(v).toLocaleString();
@@ -175,6 +174,7 @@ function render(x){
   var _upColor = _chg>0?'#e24b4a':(_chg<0?'#378add':'#5a6b7d');
   var _arrow = _chg>0?'▲':(_chg<0?'▼':'-');
   var _chgStr = (IS_US?('$'+Math.abs(_chg).toFixed(2)):IS_JP?('¥'+Math.abs(Math.round(_chg)).toLocaleString()):(Math.abs(Math.round(_chg)).toLocaleString()))+' '+Math.abs(_chgPct).toFixed(2)+'%';
+  if(PREVIEW) _chgStr='***';
   html+='<div class="result-head"><span class="rn">'+(x['종목명']||'')+'</span><span class="rc">'+x['종목코드']+' · '+(x['시장']||'')+'</span><span class="rp" style="color:'+_upColor+'">'+priceStr+'<span style="font-size:12px;font-weight:600;margin-left:6px">'+_arrow+' '+_chgStr+'</span></span></div>';
 
   // ===== 탭 =====
@@ -354,7 +354,7 @@ function buildReport(x, d, pj, t10, t60){
     return;
   }
   var IS_JP=(x['시장']==='일본');
-  function pf(v){ return IS_US?('$'+Number(v).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})):IS_JP?('¥'+Math.round(v).toLocaleString()):(Math.round(v).toLocaleString()+'원'); }
+  function pf(v){ if(PREVIEW) return '***'; return IS_US?('$'+Number(v).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})):IS_JP?('¥'+Math.round(v).toLocaleString()):(Math.round(v).toLocaleString()+'원'); }
   var qDir=judgeDir(pj, d, false);                                   // 장기(일봉)
   var mDir=(t60&&t60.projection)?judgeDir(t60.projection, t60, false):'flat';  // 월(60분봉)
   var wDir=(t10&&t10.projection)?judgeDir(t10.projection, t10, true):'flat';   // 주(10분봉) — 표시용
@@ -438,7 +438,7 @@ function mkChart(data,pj,sfx){
   sfx=sfx||'';
   var IS_US=!!window.__IS_US;
   var IS_JP=!!window.__IS_JP;
-  function fmtP(v){ return IS_US ? ('$'+Number(v).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})) : IS_JP ? ('¥'+Math.round(v).toLocaleString()) : Math.round(v).toLocaleString(); }
+  function fmtP(v){ if(PREVIEW) return '***'; return IS_US ? ('$'+Number(v).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})) : IS_JP ? ('¥'+Math.round(v).toLocaleString()) : Math.round(v).toLocaleString(); }
   // ===== v3 모든 데이터 변수 최상단 선언 (TDZ 방지) =====
   var cv=document.getElementById('cv'+sfx), tip=document.getElementById('tip'+sfx);
   var scope=document.getElementById('host'+sfx)||document;
