@@ -53,7 +53,8 @@
 ## 빌드·배포
 
 - HTML 상단 `<!-- BUILD:타임스탬프 -->`와 `chart-core.js?v=타임스탬프`를 갱신해 캐시를 깬다.
-- 변경 후 `node -c chart-core.js`, `python3 -c "compile(open('api/analyze.py').read(),'a','exec')"`로 문법 확인.
+- **커밋 전 항상** 문법 확인: `node -c chart-core.js`, `node -c auth.js`, `python -c "compile(open('api/analyze.py').read(),'a','exec')"`. 하나라도 실패하면 커밋하지 않는다.
+  - Windows에서는 `open()`이 cp949로 읽어 실패하므로 `PYTHONUTF8=1` 환경변수를 켜고 실행한다 (PowerShell: `$env:PYTHONUTF8='1'`).
 - **`stocks.json`, `result*.json`은 함부로 덮어쓰지 않는다** (git 충돌 원인). 코드 파일만 커밋.
 - 커밋 → push → Vercel 자동 배포. `api/analyze.py` 변경 시 재배포 필요. 브라우저 캐시는 Ctrl+Shift+R.
 
