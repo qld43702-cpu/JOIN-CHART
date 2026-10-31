@@ -21,6 +21,7 @@ var FORM='<div class="jc-l">휴대폰번호를 입력해 주세요</div>'
   +'<div class="jc-codebox" style="display:none">'
   +'<div class="jc-l" style="margin-top:14px">카카오톡으로 받은 인증번호 6자리를 입력해 주세요</div>'
   +'<input class="jc-in jc-code" type="text" inputmode="numeric" maxlength="6" autocomplete="one-time-code">'
+  +'<div class="jc-links"><button class="jc-link jc-resend" disabled>다시 받기</button><button class="jc-link jc-change">번호 변경</button></div>'
   +'<button class="jc-btn jc-ok">확인</button></div>'
   +'<div class="jc-err"></div>';
 var OUT='<button class="jc-out">로그아웃</button>';
@@ -51,6 +52,10 @@ css.textContent='body.jc-lock .admin-wrap{display:none!important}'
  +'.jc-btn{width:100%;height:44px;margin-top:10px;border:none;border-radius:12px;background:#1b3a5c;color:#fff;font-size:15px;font-weight:800;cursor:pointer}.jc-btn:disabled{opacity:.6}'
  +'.jc-err{min-height:16px;font-size:13px;font-weight:600;color:#dd5b54;margin-top:8px;text-align:left}'
  +'.jc-note{font-size:11.5px;color:#8a97a6;margin-top:10px;line-height:1.5}'
+ +'.jc-in[readonly]{background:#f3f5f8;color:#6e7c8a}'
+ +'.jc-links{display:flex;justify-content:center;gap:14px;margin-top:8px}'
+ +'.jc-link{background:none;border:none;color:#1b3a5c;font-size:12px;font-weight:700;cursor:pointer;text-decoration:underline}.jc-link:disabled{color:#b8c2cc;cursor:default}'
+ +'.jc-card{position:relative}.jc-x{position:absolute;top:8px;right:10px;width:28px;height:28px;border:none;background:none;color:#8a97a6;font-size:22px;line-height:1;cursor:pointer}'
  +'.jc-out{display:block;margin:12px auto 0;background:none;border:none;color:#8a97a6;font-size:12px;font-weight:600;cursor:pointer;text-decoration:underline}'
  +'.jc-me{flex-shrink:0;display:flex;align-items:center;gap:8px;font-size:12px;font-weight:700;color:#cdddee;position:relative;z-index:1;white-space:nowrap}'
  +'.jc-hout{flex-shrink:0;height:30px;padding:0 10px;border:none;border-radius:8px;background:rgba(255,255,255,.15);color:#fff;font-size:12px;font-weight:700;cursor:pointer}'
@@ -104,9 +109,11 @@ async function refresh(changed){
   else paintOverlay(changed);
 }
 
+function isActive(){ return !!ME&&(ME.role==='admin'||ME.status==='active'); }   // 관리자는 항상 통과
+
 function paintOverlay(changed){
   if(!cur||!document.body.contains(cur.el)){ cur=null; return; }
-  var st=ME?ME.status:'none';
+  var st=isActive()?'active':(ME?ME.status:'none');
   if(st==='active'){
     // 방금 로그인해서 이용중이 됐으면 그 종목을 다시 불러와 실제 차트 표시
     if(changed&&window.go){ var c=cur.code; cur=null; window.go(c); }
@@ -114,7 +121,9 @@ function paintOverlay(changed){
     return;
   }
   var h=cardHtml(st);
-  cur.el.innerHTML=h?'<div class="jc-card">'+h+'</div>':'';
+  cur.el.innerHTML=h?'<div class="jc-card"><button class="jc-x" aria-label="닫기">×</button>'+h+'</div>':'';
+  var x=cur.el.querySelector('.jc-x');
+  if(x) x.onclick=function(){ cur=null; if(window.goHome) window.goHome(); };   // 오버레이 닫고 홈 첫 화면으로
   bind(cur.el);
 }
 
@@ -122,9 +131,10 @@ function paintHeader(){
   if(MODE!=='user') return;
   var bar=document.querySelector('.appbar-in'); if(!bar) return;
   if(!hdr){ hdr=document.createElement('div'); hdr.className='jc-me'; bar.appendChild(hdr); }
-  if(ME&&ME.status==='active'){
+  if(isActive()){
     var p=String(ME.phone||'');
-    hdr.innerHTML='<span>010-****-'+p.slice(-4)+' · '+(ME.until||'')+'까지</span><button class="jc-hout">로그아웃</button>';
+    var mk='010-****-'+p.slice(-4);
+    hdr.innerHTML='<span>'+(ME.role==='admin'?mk:mk+' · '+(ME.until||'')+'까지')+'</span><button class="jc-hout">로그아웃</button>';
     hdr.querySelector('.jc-hout').onclick=logout;
     hdr.style.display='';
   } else hdr.style.display='none';
@@ -156,18 +166,37 @@ function bind(box){
   };
   var bSend=box.querySelector('.jc-send'); if(!bSend) return;
   var ph=box.querySelector('.jc-phone'), cd=box.querySelector('.jc-code'), bOk=box.querySelector('.jc-ok');
+  var cbox=box.querySelector('.jc-codebox'), bRe=box.querySelector('.jc-resend'), bChg=box.querySelector('.jc-change');
   var err=function(m){ box.querySelector('.jc-err').textContent=m||''; };
-  var sentPhone='';
+  var sentPhone='', cool=null;
+  function cooldown(){ bRe.disabled=true; clearTimeout(cool); cool=setTimeout(function(){ bRe.disabled=false; },60000); }   // 다시 받기: 60초 뒤 활성
+  async function send(v){
+    try{
+      var r=await post('/api/auth_send',{phone:v});
+      if(r.ok) return true;
+      err(MSG[r.error]||'');
+    }catch(e){ err(MSG.send_fail); }
+    return false;
+  }
   bSend.onclick=async function(){
     var v=ph.value.trim();
     if(!/^010\d{8}$/.test(v)){ err(MSG.format); return; }
     bSend.disabled=true; err('');
-    try{
-      var r=await post('/api/auth_send',{phone:v});
-      if(r.ok){ sentPhone=v; box.querySelector('.jc-codebox').style.display='block'; cd.value=''; cd.focus(); }
-      else err(MSG[r.error]||'');
-    }catch(e){ err(MSG.send_fail); }
+    if(await send(v)){
+      // 인증번호 단계: 받기 버튼 숨김, 번호 수정 불가
+      sentPhone=v; ph.readOnly=true; bSend.style.display='none';
+      cbox.style.display='block'; cd.value=''; cd.focus(); cooldown();
+    }
     bSend.disabled=false;
+  };
+  bRe.onclick=async function(){
+    bRe.disabled=true; err('');
+    if(await send(sentPhone)) cooldown(); else bRe.disabled=false;
+  };
+  bChg.onclick=function(){
+    // 번호 입력 단계로 복귀
+    clearTimeout(cool); sentPhone=''; ph.readOnly=false; bSend.style.display='';
+    cbox.style.display='none'; cd.value=''; err(''); ph.focus();
   };
   bOk.onclick=async function(){
     bOk.disabled=true; err('');

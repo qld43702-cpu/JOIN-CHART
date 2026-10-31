@@ -47,6 +47,7 @@ def access(headers):
     uid=uid_from(headers)
     if not uid: return None,None,'login'
     u=get_user(uid)
+    if u and u.get('role')=='admin': return uid,u,'active'   # 관리자는 approved·expiresAt·suspended 무관 항상 통과
     return uid,u,status_of(u)
 
 def kst(ts, fmt="%Y-%m-%d"):
