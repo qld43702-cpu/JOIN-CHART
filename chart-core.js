@@ -530,7 +530,7 @@ function mkChart(data,pj,sfx){
     return out;
   }
   var fdates=futDates();
-  function lbl(i){return i<n?ch[i].d:(fdates[i-n]||'');}
+  function lbl(i){return i<n?ch[i].d:'';}   // 미래 구간(현재 이후)은 x축·십자선 날짜 라벨 없음
   function lay(keepY){
     W=cv.clientWidth; H=cv.clientHeight;
     if(!W||!H){W=cv.clientWidth||cv.parentElement.clientWidth-20||900;H=cv.clientHeight||440;}
