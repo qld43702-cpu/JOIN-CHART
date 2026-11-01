@@ -57,8 +57,12 @@ css.textContent='body.jc-lock .admin-wrap{display:none!important}'
  +'.jc-link{background:none;border:none;color:#1b3a5c;font-size:12px;font-weight:700;cursor:pointer;text-decoration:underline}.jc-link:disabled{color:#b8c2cc;cursor:default}'
  +'.jc-card{position:relative}.jc-x{position:absolute;top:8px;right:10px;width:28px;height:28px;border:none;background:none;color:#8a97a6;font-size:22px;line-height:1;cursor:pointer}'
  +'.jc-out{display:block;margin:12px auto 0;background:none;border:none;color:#8a97a6;font-size:12px;font-weight:600;cursor:pointer;text-decoration:underline}'
- +'.jc-me{flex-shrink:0;display:flex;align-items:center;gap:8px;font-size:12px;font-weight:700;color:#cdddee;position:relative;z-index:1;white-space:nowrap}'
- +'.jc-hout{flex-shrink:0;height:30px;padding:0 10px;border:none;border-radius:8px;background:rgba(255,255,255,.15);color:#fff;font-size:12px;font-weight:700;cursor:pointer}'
+ +'.jc-me{flex-shrink:0;position:relative;z-index:40}'
+ +'.jc-mebtn{width:34px;height:34px;padding:0;border:none;border-radius:9px;background:rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;cursor:pointer}.jc-mebtn svg{width:18px;height:18px}'
+ +'.jc-menu{display:none;position:absolute;right:0;top:40px;min-width:170px;background:#1b3a5c;border-radius:10px;box-shadow:0 6px 18px rgba(0,0,0,.25);padding:10px 0;color:#fff;white-space:nowrap}.jc-me.open .jc-menu{display:block}'
+ +'.jc-m1{padding:4px 16px;font-size:13px;font-weight:800}'
+ +'.jc-m2{padding:2px 16px 8px;font-size:12px;font-weight:600;color:#a8bdd6;border-bottom:1px solid rgba(255,255,255,.1)}'
+ +'.jc-hout{display:block;width:100%;padding:9px 16px 4px;border:none;background:none;color:#fff;font-size:13px;font-weight:700;text-align:left;cursor:pointer}'
  +'.jc-foot{max-width:960px;margin:24px auto 0;padding:16px;font-size:11px;color:#a8b3c0;line-height:1.7;text-align:center;word-break:keep-all}';
 document.head.appendChild(css);
 
@@ -130,14 +134,22 @@ function paintOverlay(changed){
 function paintHeader(){
   if(MODE!=='user') return;
   var bar=document.querySelector('.appbar-in'); if(!bar) return;
-  if(!hdr){ hdr=document.createElement('div'); hdr.className='jc-me'; bar.appendChild(hdr); }
-  if(isActive()){
-    var p=String(ME.phone||'');
-    var mk='010-****-'+p.slice(-4);
-    hdr.innerHTML='<span>'+(ME.role==='admin'?mk:mk+' · '+(ME.until||'')+'까지')+'</span><button class="jc-hout">로그아웃</button>';
-    hdr.querySelector('.jc-hout').onclick=logout;
-    hdr.style.display='';
-  } else hdr.style.display='none';
+  if(!hdr){
+    hdr=document.createElement('div'); hdr.className='jc-me'; bar.appendChild(hdr);
+    document.addEventListener('click',function(e){ if(!hdr.contains(e.target)) hdr.classList.remove('open'); });   // 바깥 클릭 → 닫힘
+  }
+  // 로그인 상태면 사람 아이콘 + 드롭다운(번호 / 상태 / 로그아웃). 비로그인이면 없음.
+  if(!ME||ME.status==='error'){ hdr.style.display='none'; return; }
+  var p=String(ME.phone||''), line2;
+  if(ME.role==='admin') line2='관리자';
+  else if(ME.status==='active') line2=(ME.until||'')+'까지';
+  else line2={pending:'입금 확인 대기',expired:'이용 기간 만료',suspended:'이용 정지'}[ME.status]||'';
+  hdr.innerHTML='<button class="jc-mebtn" aria-label="계정"><svg viewBox="0 0 24 24" fill="none" stroke="#f4a06a" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"/></svg></button>'
+    +'<div class="jc-menu"><div class="jc-m1">010-****-'+p.slice(-4)+'</div><div class="jc-m2">'+line2+'</div><button class="jc-hout">로그아웃</button></div>';
+  hdr.querySelector('.jc-mebtn').onclick=function(){ hdr.classList.toggle('open'); };
+  hdr.querySelector('.jc-hout').onclick=logout;
+  hdr.classList.remove('open');
+  hdr.style.display='';
 }
 
 function paintAdmin(){
