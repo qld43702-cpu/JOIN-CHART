@@ -3,11 +3,13 @@
 // 드로잉은 admin이 postMessage('drawOn')을 보낼 때만 활성화됨.
 
 var STOCKS=[];
-fetch('/stocks.json?t='+Date.now()).then(function(r){return r.json();}).then(function(s){STOCKS=s||[];}).catch(function(){STOCKS=[];});
+// window.JC_FO = 선물·옵션 화면(futures.html). 주식 화면에서는 정의되지 않음 → 아래 동작 모두 기존 그대로.
+var JC_FO=!!window.JC_FO;
+if(!JC_FO) fetch('/stocks.json?t='+Date.now()).then(function(r){return r.json();}).then(function(s){STOCKS=s||[];}).catch(function(){STOCKS=[];});
 // URL 파라미터 자동 검색
-(function(){var p=new URLSearchParams(window.location.search),c=p.get('code');if(c)setTimeout(function(){go(c.toUpperCase());},300);})();
+if(!JC_FO)(function(){var p=new URLSearchParams(window.location.search),c=p.get('code');if(c)setTimeout(function(){go(c.toUpperCase());},300);})();
 var inp=document.getElementById('codeInput'), ac=document.getElementById('acList');
-inp.addEventListener('input',function(){
+if(inp) inp.addEventListener('input',function(){
   var q=inp.value.trim().toLowerCase();
   if(!q){ showRecent(); return; }
   var hit=STOCKS.filter(function(s){return s.code.toLowerCase().includes(q)||(s.name&&s.name.toLowerCase().includes(q));}).slice(0,8);
@@ -26,11 +28,11 @@ function doSearch(){
   if(/^[A-Za-z][A-Za-z.\-]{0,6}$/.test(q)){go(q.toUpperCase());return;}
   var hit2=STOCKS.find(function(s){return s.code.includes(q);}); if(hit2){pick(hit2.code,hit2.name);}
 }
-inp.addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();inp.blur();doSearch();}});
+if(inp) inp.addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();inp.blur();doSearch();}});
 // 검색 아이콘: chart.html은 #hdSearchIcon, index.html은 .hs-ic — 둘 다 안전하게 연결
 var _searchIcon=document.getElementById('hdSearchIcon')||document.querySelector('.hs-ic');
 if(_searchIcon) _searchIcon.addEventListener('click',doSearch);
-document.addEventListener('click',function(e){if(!e.target.closest('.hd-search')&&!e.target.closest('.hero-search'))ac.classList.remove('show');});
+document.addEventListener('click',function(e){if(!ac)return;if(!e.target.closest('.hd-search')&&!e.target.closest('.hero-search'))ac.classList.remove('show');});
 function pick(code,name){inp.value=name+' ('+code+')';ac.classList.remove('show');inp.blur();saveRecent(code,name);go(code);}
 
 // ===== 최근 검색 (localStorage, 기기별) =====
@@ -70,7 +72,7 @@ function showRecent(){
   ac.classList.add('show');
 }
 // 검색창 포커스 시 입력이 비어있으면 최근 검색 표시
-inp.addEventListener('focus',function(){
+if(inp) inp.addEventListener('focus',function(){
   inp.value='';      // 클릭 순간 입력값 비움 (바로 새로 칠 수 있게)
   showRecent();      // 최근 검색 표시
 });
@@ -139,9 +141,9 @@ function render(x){
   var dOK=(d&&!d.error&&d.chart), t60OK=(_t60&&!_t60.error&&_t60.chart), t10OK=(_t10&&!_t10.error&&_t10.chart);
   if(!dOK||!t60OK||!t10OK){
     var miss=[];
-    if(!t10OK) miss.push('단기(15분봉)');
-    if(!t60OK) miss.push('중기(60분봉)');
-    if(!dOK) miss.push('중장기(일봉)');
+    if(!t10OK) miss.push(JC_FO?'3분':'단기(15분봉)');
+    if(!t60OK) miss.push(JC_FO?'5분':'중기(60분봉)');
+    if(!dOK) miss.push(JC_FO?'10분':'중장기(일봉)');
     var emsg=(d&&d.error&&d.error.length>20)?d.error
       :(_t60&&_t60.error&&_t60.error.length>20)?_t60.error
       :(_t10&&_t10.error&&_t10.error.length>20)?_t10.error
@@ -156,6 +158,7 @@ function render(x){
   function fmtCur(v){
     if(PREVIEW) return '***';
     v=v||0;
+    if(JC_FO) return Number(v).toFixed(2);
     if(IS_US) return '$'+v.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
     if(IS_JP) return '¥'+Math.round(v).toLocaleString();
     return v.toLocaleString()+'원';
@@ -173,15 +176,22 @@ function render(x){
   var _chgPct = _prevClose>0?(_chg/_prevClose*100):0;
   var _upColor = _chg>0?'#e24b4a':(_chg<0?'#378add':'#5a6b7d');
   var _arrow = _chg>0?'▲':(_chg<0?'▼':'-');
-  var _chgStr = (IS_US?('$'+Math.abs(_chg).toFixed(2)):IS_JP?('¥'+Math.abs(Math.round(_chg)).toLocaleString()):(Math.abs(Math.round(_chg)).toLocaleString()))+' '+Math.abs(_chgPct).toFixed(2)+'%';
+  if(JC_FO && x['등락'] && x['등락'].change!=null){
+    // 선물·옵션: LS 현재가 조회(t2111)의 전일 대비 등락을 그대로 사용 (sign 4·5 = 하락)
+    var _s=String(x['등락'].sign||''); _chg=Math.abs(x['등락'].change)*((_s==='4'||_s==='5')?-1:1);
+    _chgPct=Math.abs(x['등락'].diff||0)*(_chg<0?-1:1);
+    _upColor = _chg>0?'#e24b4a':(_chg<0?'#378add':'#5a6b7d');
+    _arrow = _chg>0?'▲':(_chg<0?'▼':'-');
+  }
+  var _chgStr = (JC_FO?Math.abs(_chg).toFixed(2):IS_US?('$'+Math.abs(_chg).toFixed(2)):IS_JP?('¥'+Math.abs(Math.round(_chg)).toLocaleString()):(Math.abs(Math.round(_chg)).toLocaleString()))+' '+Math.abs(_chgPct).toFixed(2)+'%';
   if(PREVIEW) _chgStr='***';
-  html+='<div class="result-head"><span class="rn">'+(x['종목명']||'')+'</span><span class="rc">'+x['종목코드']+' · '+(x['시장']||'')+'</span><span class="rp" style="color:'+_upColor+'">'+priceStr+'<span style="font-size:12px;font-weight:600;margin-left:6px">'+_arrow+' '+_chgStr+'</span></span></div>';
+  html+='<div class="result-head"><span class="rn">'+(x['종목명']||'')+'</span><span class="rc">'+x['종목코드']+(JC_FO&&!x['시장']?'':' · '+(x['시장']||''))+'</span><span class="rp" style="color:'+_upColor+'">'+priceStr+'<span style="font-size:12px;font-weight:600;margin-left:6px">'+_arrow+' '+_chgStr+'</span></span></div>';
 
   // ===== 탭 =====
   html+='<div class="trk-tabs">';
-  html+='<button class="trk-tab" data-trk="10"'+(has10?'':' style="display:none"')+'>단기<span>'+minName+'</span></button>';
-  html+='<button class="trk-tab'+(has60?' on':'')+'" data-trk="60"'+(has60?'':' style="display:none"')+'>중기<span>60분봉</span></button>';
-  html+='<button class="trk-tab'+(has60?'':' on')+'" data-trk="" >중장기<span>일봉</span></button>';
+  html+='<button class="trk-tab" data-trk="10"'+(has10?'':' style="display:none"')+'>'+(JC_FO?'3분':'단기<span>'+minName+'</span>')+'</button>';
+  html+='<button class="trk-tab'+(has60?' on':'')+'" data-trk="60"'+(has60?'':' style="display:none"')+'>'+(JC_FO?'5분':'중기<span>60분봉</span>')+'</button>';
+  html+='<button class="trk-tab'+(has60?'':' on')+'" data-trk="" >'+(JC_FO?'10분':'중장기<span>일봉</span>')+'</button>';
   html+='</div>';
 
   // 패널들 (기본: 중기 보임, 없으면 장기)
@@ -189,8 +199,9 @@ function render(x){
   html+='<div class="trk-panel" data-pnl="60" style="display:'+(has60?'block':'none')+'">'+trackHtml('60', '60분봉', '중기추세', IS_US)+'</div>';
   html+='<div class="trk-panel" data-pnl="" style="display:'+(has60?'none':'block')+'">'+trackHtml('', '일봉', '장기추세', IS_US)+'</div>';
 
-  // 최종 리포트
-  html+='<button id="repBtn" class="report-btn"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>최종 결과 리포트 보기</button>';
+  // 최종 리포트 (선물·옵션 화면은 리포트 없이 판정 표시만)
+  if(JC_FO) html+=foJudgeRow(d, pj, t10, t60);
+  else html+='<button id="repBtn" class="report-btn"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>최종 결과 리포트 보기</button>';
   html+='<div id="reportArea"></div>';
   box.innerHTML=html;
 
@@ -309,8 +320,13 @@ function waveShows(pj, d, dir){
   if(front.length<2) return false;
   // 1) 앞쪽이 그 방향으로 제대로 가는가 (앞쪽 최대 도달이 시작가 대비 의미있게)
   var reach;
+  if(pj.judge_pct!=null){   // 선물·옵션: 판정 폭을 서버가 종목별로 계산해 보냄
+    if(dir==='up'){ reach=Math.max.apply(null,front); if(reach <= startV*(1+pj.judge_pct)) return false; }
+    else         { reach=Math.min.apply(null,front); if(reach >= startV*(1-pj.judge_pct)) return false; }
+  } else {
   if(dir==='up'){ reach=Math.max.apply(null,front); if(reach <= startV*1.015) return false; }
   else         { reach=Math.min.apply(null,front); if(reach >= startV*0.985) return false; }
+  }
   // 2) 앞쪽이 밋밋하지 않은가 (출렁임=변곡 또는 충분한 이동폭)
   var turns=0;
   for(var i=2;i<front.length;i++){
@@ -330,6 +346,26 @@ function judgeDir(pj, d, isWeek){
   if(upWave && !dnWave) return 'up';
   if(dnWave && !upWave) return 'dn';
   return 'flat';
+}
+// 선물·옵션 화면 판정 표시 (리포트의 축별 판정 칸과 같은 모양, 3분·5분·10분)
+function foJudgeRow(d, pj, t10, t60){
+  var dirName={up:'상방',dn:'하방',flat:'횡보'};
+  var dirCls={up:'d-up',dn:'d-dn',flat:'d-fl'};
+  function miniSvg(dir){
+    var pts = dir==='up'?'6,56 40,50 74,52 108,42 142,30 154,18'
+            : dir==='dn'?'6,16 40,24 74,22 108,34 142,52 154,60'
+            : '6,38 40,44 74,34 108,40 142,36 154,38';
+    var col = dir==='up'?'#dd5b54':dir==='dn'?'#3f7fd0':'#6e7c8a';
+    return '<svg viewBox="0 0 160 70" width="100%" height="60" preserveAspectRatio="none"><polyline points="'+pts+'" fill="none" stroke="'+col+'" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  }
+  function ax(nm, p, dd){
+    if(!p) return '';
+    var r=judgeDir(p, dd, false);
+    return '<div class="axis"><div class="axis-top"><span class="axis-nm">'+nm+'</span><span class="axis-dir '+dirCls[r]+'">'+dirName[r]+'</span></div><div class="mini-chart">'+miniSvg(r)+'</div></div>';
+  }
+  return '<div class="report"><div class="axis-row">'+
+    ax('3분', t10&&t10.projection, t10)+ax('5분', t60&&t60.projection, t60)+ax('10분', pj&&pj.cur?pj:null, d)+
+    '</div></div>';
 }
 
 // ===== 최종 리포트 생성 =====
@@ -438,7 +474,7 @@ function mkChart(data,pj,sfx){
   sfx=sfx||'';
   var IS_US=!!window.__IS_US;
   var IS_JP=!!window.__IS_JP;
-  function fmtP(v){ if(PREVIEW) return '***'; return IS_US ? ('$'+Number(v).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})) : IS_JP ? ('¥'+Math.round(v).toLocaleString()) : Math.round(v).toLocaleString(); }
+  function fmtP(v){ if(PREVIEW) return '***'; if(JC_FO) return Number(v).toFixed(2); return IS_US ? ('$'+Number(v).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})) : IS_JP ? ('¥'+Math.round(v).toLocaleString()) : Math.round(v).toLocaleString(); }
   // ===== v3 모든 데이터 변수 최상단 선언 (TDZ 방지) =====
   var cv=document.getElementById('cv'+sfx), tip=document.getElementById('tip'+sfx);
   var scope=document.getElementById('host'+sfx)||document;

@@ -273,9 +273,12 @@ def trim_adjust(bars):
         return bars[cut:]
     return bars
 
-def build_drawings(bars):
-    """작도 다수: 모든 하락-상승-하락(상승파동1개) 작도. 교차점/녹색선 다."""
-    bars=trim_adjust(bars)  # 권리조정 구간 제거
+def build_drawings(bars, fo=False):
+    """작도 다수: 모든 하락-상승-하락(상승파동1개) 작도. 교차점/녹색선 다.
+    fo=True(선물·옵션): 권리조정 자르기 안 함 · 값 소수 2자리 · 시간 라벨 분까지"""
+    if not fo:
+        bars=trim_adjust(bars)  # 권리조정 구간 제거
+    nd=2 if fo else 1
     c=[b['c'] for b in bars]
     MA2=ma(c,2)
     tn=turns(MA2,2)
@@ -317,15 +320,15 @@ def build_drawings(bars):
         green_slope=s2 if (s2 is not None and s2>0) else m_slope
         target=MA2[mt1]+green_slope*(last_i-mt1)
         draws.append({
-            'A_t1':A['t1'],'A_y1':round(MA2[A['t1']],1),'A_slope':round(sa,2),
-            'B_t1':B['t1'],'B_y1':round(MA2[B['t1']],1),'B_slope':round(sb,2),
-            'xc':round(xc,2),'yc':round(yc,1),
-            'M_t0':mt0,'M_y0':round(MA2[mt0],1),'M_t1':mt1,'M_y1':round(MA2[mt1],1),
-            'M_slope':round(m_slope,2),'M_k':mk,
-            'M_s1':round(s1,2) if s1 is not None else None,'M_s2':round(s2,2) if s2 is not None else None,
-            'M_ky':round(MA2[mk],1) if mk is not None else None,
-            'entry':entry,'ep':round(ep,1),
-            'target':round(target,1),  # 녹색선 예상 목표가
+            'A_t1':A['t1'],'A_y1':round(MA2[A['t1']],nd),'A_slope':round(sa,2 if not fo else 4),
+            'B_t1':B['t1'],'B_y1':round(MA2[B['t1']],nd),'B_slope':round(sb,2 if not fo else 4),
+            'xc':round(xc,2),'yc':round(yc,nd),
+            'M_t0':mt0,'M_y0':round(MA2[mt0],nd),'M_t1':mt1,'M_y1':round(MA2[mt1],nd),
+            'M_slope':round(m_slope,2 if not fo else 4),'M_k':mk,
+            'M_s1':round(s1,2 if not fo else 4) if s1 is not None else None,'M_s2':round(s2,2 if not fo else 4) if s2 is not None else None,
+            'M_ky':round(MA2[mk],nd) if mk is not None else None,
+            'entry':entry,'ep':round(ep,nd),
+            'target':round(target,nd),  # 녹색선 예상 목표가
             'alive': yc>ep
         })
     # 최근 5개 작도만
@@ -351,20 +354,26 @@ def build_drawings(bars):
         if yc<=0: continue       # 주가는 0 밑으로 못 감 — 음수 교차점 제외
         if yc < cur_p*0.3: continue  # 현재가의 30% 미만은 비현실적 위험선, 제외
         all_risks.append({
-            'A_t1':A['t1'],'A_y1':round(MA2[A['t1']],1),
-            'B_t1':B['t1'],'B_y1':round(MA2[B['t1']],1),
-            'xc':round(xc,2),'yc':round(yc,1),
+            'A_t1':A['t1'],'A_y1':round(MA2[A['t1']],nd),
+            'B_t1':B['t1'],'B_y1':round(MA2[B['t1']],nd),
+            'xc':round(xc,2),'yc':round(yc,nd),
             'entry':B['t1']+1
         })
 
-    chart=[{'i':i,'d':(bars[i].get('d','')[4:6]+'/'+bars[i].get('d','')[6:8]+(' '+str(bars[i]['t']).zfill(6)[:2]+'시' if 't' in bars[i] else '')),
+    def _lb(b):
+        if fo and 't' in b:
+            t=str(b['t']).zfill(6)
+            return b.get('d','')[4:6]+'/'+b.get('d','')[6:8]+' '+t[:2]+':'+t[2:4]
+        return b.get('d','')[4:6]+'/'+b.get('d','')[6:8]+(' '+str(b['t']).zfill(6)[:2]+'시' if 't' in b else '')
+    chart=[{'i':i,'d':_lb(bars[i]),
             'rawd':bars[i].get('d',''),
             'o':round(bars[i]['o'],2),'h':round(bars[i]['h'],2),'l':round(bars[i]['l'],2),'c':round(bars[i]['c'],2),
             'v':int(bars[i].get('v',0) or 0),
             'm2':round(MA2[i],2) if MA2[i] is not None else None} for i in range(len(bars))]
     return {'chart':chart,'draws':draws,'all_risks':all_risks,'draws_start':draws_start,'cur':round(c[-1],2)}
 
-def build_projection(bars, draws, risk_level, fut=63, market='', period='quarter', all_risks=None):
+def build_projection(bars, draws, risk_level, fut=63, market='', period='quarter', all_risks=None, fo=None):
+    # fo(선물·옵션 전용): {'thr':변곡 기준, 'touch':경유점 허용폭, 'judge':판정 폭} — None이면 주식 그대로
     """미래 예측: 몬테카를로로 양방향 확률 + 각 기법 목표 도달 확률(통일).
     fut = 미래 영업일 수 (약 3개월)"""
     import math, random
@@ -535,6 +544,7 @@ def build_projection(bars, draws, risk_level, fut=63, market='', period='quarter
             return None
         # period별 임계 (주간10%/중기20%/중장기30%)
         THR = {'week':0.10, 'month':0.20, 'quarter':0.30}.get(period, 0.20)
+        if fo: THR = fo['thr']
         cc=[b['c'] for b in bars]
         N=len(bars)
         # ZigZag로 변곡점 추출 (임계% 이상 꺾일 때마다 확정 — 순수하게 % 넘는 것만)
@@ -577,7 +587,7 @@ def build_projection(bars, draws, risk_level, fut=63, market='', period='quarter
         fut_min = {'week':10, 'month':15, 'quarter':20}.get(period, 15)
         fut = max(fut_min, passed_bars)
     except: pass
-    return {
+    out = {
         'fut':fut, 'cur':round(cur,2),
         'up_slope':round(up_slope,3), 'up_target':round(up_target,2), 'green_max':round(green_max,2),
         'dn_target':round(dn_target,2),
@@ -601,6 +611,12 @@ def build_projection(bars, draws, risk_level, fut=63, market='', period='quarter
         'touch_buf': {'week':0.03, 'month':0.05, 'quarter':0.05}.get(period, 0.05),
         'recent_pivot_price': recent_pivot_price,
     }
+    if fo:
+        out['fib_levels']=[round(cur*f,2) for f in (1.236,1.382,1.618,0.786,0.618)]
+        out['touch_buf']=round(fo['touch'],6)
+        out['judge_pct']=round(fo['judge'],6)
+        out['thr']=round(fo['thr'],6)
+    return out
 
 def analyze_pattern(bars, draws):
     """과거 5개 작도의 녹색선 시작(M_t1) 이후 실제 주가 반응을 보고
