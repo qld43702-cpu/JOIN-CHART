@@ -1,7 +1,7 @@
 # ============================================================
 #  [임시] 선물옵션 TR 조사용 — 조사 끝나면 삭제
 #  POST /api/probe {tr, body, cont}   관리자(role=admin)만
-#  허용 TR: t8467, t8433, t2301, t2111, t8415
+#  허용 TR: t8467, t8433, t2301, t2111, t8465
 # ============================================================
 import os, sys, json, time, requests
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -13,7 +13,7 @@ urllib3.disable_warnings()
 BASE="https://openapi.ls-sec.co.kr:8080"
 ALLOW={"t8467":"/futureoption/market-data","t8433":"/futureoption/market-data",
        "t2301":"/futureoption/market-data","t2111":"/futureoption/market-data",
-       "t8415":"/futureoption/chart"}
+       "t8465":"/futureoption/chart"}
 
 _token_cache={"tk":None,"exp":0}
 def token():
