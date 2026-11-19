@@ -18,10 +18,11 @@ MD = "/futureoption/market-data"
 CH = "/futureoption/chart"
 _KST = _dt.timezone(_dt.timedelta(hours=9))
 
-# ===== 변곡 기준 = 그 종목 분봉의 평균 움직임 × 배수 =====
-# 배수 = 주식 기준%(15분 10% / 60분 20% / 일봉 30%) ÷ 주식 표본의 그 봉 평균 움직임(|종가 변화율| 평균)
-# 표본: 국내 30종목(코스피 20·코스닥 10), 야후 15분 60일 / 60분 2년 / 일봉 2년, 종목별 평균의 평균
-MULT = {3: 23.28, 5: 24.84, 10: 12.13}
+# ===== 변곡 기준 = 그 종목·그 분봉의 20봉 구간 폭 × 배수 =====
+# 20봉 구간 폭: 받은 봉에서 20봉 구간(5봉씩 이동)마다 (최고가-최저가)/최저가, 그 중앙값
+# 배수: 주식 기준 10/20/30% ÷ 주식 한 달(20거래일) 폭 중앙값 21.3% → 3분 0.47 / 5분 0.94 / 10분 1.41
+MULT = {3: 0.47, 5: 0.94, 10: 1.41}
+RANGE_W = 20
 # 주식에서 각 축의 기준값 (판정 1.5%·touch_buf를 변곡 기준 대비 같은 비율로 옮기기 위함)
 STOCK = {3: {'thr': 0.10, 'touch': 0.03, 'period': 'week', 'fut': 39},
          5: {'thr': 0.20, 'touch': 0.05, 'period': 'month', 'fut': 52},
@@ -95,15 +96,34 @@ def nearest_weekly():
         p = (r.get('hname') or '').split()
         if len(p) < 4 or p[1] not in ('월', '목') or not p[2].startswith('W'): continue
         key = (p[1], p[2])
-        groups.setdefault(key, set()).add((r.get('shcode') or '')[:5])
+        g = groups.setdefault(key, {'prefix': set(), 'codes': []})
+        g['prefix'].add((r.get('shcode') or '')[:5]); g['codes'].append(r.get('shcode') or '')
     best = None
-    for (day, wk), pref in groups.items():
+    for (day, wk), g in groups.items():
         try: n = int(wk[1:])
         except Exception: continue
         ex = next_nth(0 if day == '월' else 3, n, t)
         if ex and (best is None or ex < best['expiry']):
-            best = {'day': day, 'wk': wk, 'expiry': ex, 'prefix': pref}
+            best = {'day': day, 'wk': wk, 'expiry': ex, 'prefix': g['prefix'], 'codes': g['codes']}
     return best
+
+def monday_rows(wk, names):
+    """월요일 만기: t8435의 그 만기 콜·풋 코드를 50개씩 t8434(멀티현재가)로 조회"""
+    codes = [c for c in wk['codes'] if c]
+    px = {}
+    for i in range(0, len(codes), 50):
+        ch = codes[i:i + 50]
+        j, _ = ls('t8434', MD, {'qrycnt': len(ch), 'focode': ''.join(ch)})
+        for r in j.get('t8434OutBlock1') or []:
+            px[r.get('focode')] = fnum(r.get('price'))
+    calls, puts = [], []
+    for c in codes:
+        p = px.get(c)
+        if p is None or not (0.10 <= p < 0.60): continue
+        nm = names.get(c, c)
+        ap = fnum((nm.split() or [''])[-1].replace(',', ''))
+        (calls if c.startswith('B') else puts).append({'code': c, 'name': nm, 'price': p, 'actprice': ap})
+    return calls, puts
 
 def fnum(v):
     try: return float(v)
@@ -118,18 +138,21 @@ def board():
            'change': fnum(fb.get('change')), 'diff': fnum(fb.get('diff')), 'sign': fb.get('sign')}
     wk = nearest_weekly()
     if not wk: raise LSError('위클리옵션 만기를 찾지 못했습니다')
-    j, _ = ls('t2301', MD, {'yyyymm': wk['wk'].ljust(6), 'gubun': 'W'})
     names = {r.get('shcode'): (r.get('hname') or '').strip() for r in master('t8435')}
-    calls, puts, got = [], [], set()
-    for blk, dst in (('t2301OutBlock1', calls), ('t2301OutBlock2', puts)):
-        for r in j.get(blk) or []:
-            code = r.get('optcode') or ''; got.add(code[:5])
-            p = fnum(r.get('price'))
-            if p is None or not (0.10 <= p < 0.60): continue
-            dst.append({'code': code, 'name': names.get(code, code), 'price': p, 'actprice': fnum(r.get('actprice'))})
-    # 받은 만기가 고른 만기(월/목)와 다르면 표시하지 않음
-    if got and not (got & wk['prefix']):
-        raise LSError('위클리 %s %s 만기 전광판을 받지 못했습니다' % (wk['day'], wk['wk']))
+    if wk['day'] == '월':
+        calls, puts = monday_rows(wk, names)
+    else:
+        j, _ = ls('t2301', MD, {'yyyymm': wk['wk'].ljust(6), 'gubun': 'W'})
+        calls, puts, got = [], [], set()
+        for blk, dst in (('t2301OutBlock1', calls), ('t2301OutBlock2', puts)):
+            for r in j.get(blk) or []:
+                code = r.get('optcode') or ''; got.add(code[:5])
+                p = fnum(r.get('price'))
+                if p is None or not (0.10 <= p < 0.60): continue
+                dst.append({'code': code, 'name': names.get(code, code), 'price': p, 'actprice': fnum(r.get('actprice'))})
+        # 받은 만기가 고른 만기(월/목)와 다르면 표시하지 않음
+        if got and not (got & wk['prefix']):
+            raise LSError('위클리 %s %s 만기 전광판을 받지 못했습니다' % (wk['day'], wk['wk']))
     calls.sort(key=lambda x: x['actprice'] or 0); puts.sort(key=lambda x: x['actprice'] or 0)
     return {'fut': fut, 'weekly': {'day': wk['day'], 'wk': wk['wk'], 'expiry': wk['expiry'].strftime('%Y%m%d')},
             'calls': calls, 'puts': puts}
@@ -161,9 +184,17 @@ def bars(code, ncnt):
         out = out[i:]
     return out
 
-def avg_move(b):
-    r = [abs(b[i]['c'] / b[i - 1]['c'] - 1) for i in range(1, len(b)) if b[i - 1]['c'] > 0]
-    return sum(r) / len(r) if r else None
+def range20(b):
+    """20봉 구간(5봉씩 이동)마다 (최고가-최저가)/최저가 → 중앙값"""
+    w = RANGE_W
+    if len(b) < w: return None
+    out = []
+    for s in range(0, len(b) - w + 1, max(1, w // 4)):
+        seg = b[s:s + w]; lo = min(x['l'] for x in seg); hi = max(x['h'] for x in seg)
+        if lo > 0: out.append((hi - lo) / lo)
+    if not out: return None
+    out.sort(); m = len(out) // 2
+    return out[m] if len(out) % 2 else (out[m - 1] + out[m]) / 2
 
 def analyze_code(code):
     names = {r.get('shcode'): (r.get('hname') or '').strip() for r in master('t8435')}
@@ -177,11 +208,11 @@ def analyze_code(code):
         b = bars(code, n)
         if not b or len(b) < 15:
             blk[n] = {'error': '데이터 부족'}; continue
-        am = avg_move(b) or 0
-        thr = MULT[n] * am
+        rg = range20(b) or 0
+        thr = MULT[n] * rg
         st = STOCK[n]
         fo = {'thr': thr, 'judge': thr * (JUDGE_STOCK / st['thr']), 'touch': thr * (st['touch'] / st['thr'])}
-        thr_info[n] = {'avg_move': round(am, 6), 'thr': round(thr, 6), 'bars': len(b)}
+        thr_info[n] = {'range20': round(rg, 6), 'thr': round(thr, 6), 'bars': len(b)}
         blk[n] = {'bars': b, 'fo': fo}
     tt = A.build_drawings(blk[3]['bars'], fo=True) if 'bars' in blk[3] else {'error': '데이터 부족'}
     mm = A.build_drawings(blk[5]['bars'], fo=True) if 'bars' in blk[5] else {'error': '데이터 부족'}
