@@ -5,6 +5,7 @@
 var STOCKS=[];
 // window.JC_FO = 선물·옵션 화면(futures.html). 주식 화면에서는 정의되지 않음 → 아래 동작 모두 기존 그대로.
 var JC_FO=!!window.JC_FO;
+var FO_TABS=['3분','5분','10분'];   // 선물·옵션 화면 탭 이름 (서버 tabs: 선물 5·30·60 / 옵션 3·5·10)
 if(!JC_FO) fetch('/stocks.json?t='+Date.now()).then(function(r){return r.json();}).then(function(s){STOCKS=s||[];}).catch(function(){STOCKS=[];});
 // URL 파라미터 자동 검색
 if(!JC_FO)(function(){var p=new URLSearchParams(window.location.search),c=p.get('code');if(c)setTimeout(function(){go(c.toUpperCase());},300);})();
@@ -137,13 +138,14 @@ function render(x){
   var d=x['일봉'];
   var box=document.getElementById('result');
   var _t60=x['60분'], _t10=x['10분'];
+  if(JC_FO) FO_TABS=(x.tabs&&x.tabs.length===3)?x.tabs.map(function(n){return n+'분';}):['3분','5분','10분'];
   // 셋 중 하나라도 부족하면 → 친절한 안내만, 차트 영역으로 안 넘김
   var dOK=(d&&!d.error&&d.chart), t60OK=(_t60&&!_t60.error&&_t60.chart), t10OK=(_t10&&!_t10.error&&_t10.chart);
   if(!dOK||!t60OK||!t10OK){
     var miss=[];
-    if(!t10OK) miss.push(JC_FO?'3분':'단기(15분봉)');
-    if(!t60OK) miss.push(JC_FO?'5분':'중기(60분봉)');
-    if(!dOK) miss.push(JC_FO?'10분':'중장기(일봉)');
+    if(!t10OK) miss.push(JC_FO?FO_TABS[0]:'단기(15분봉)');
+    if(!t60OK) miss.push(JC_FO?FO_TABS[1]:'중기(60분봉)');
+    if(!dOK) miss.push(JC_FO?FO_TABS[2]:'중장기(일봉)');
     var emsg=(d&&d.error&&d.error.length>20)?d.error
       :(_t60&&_t60.error&&_t60.error.length>20)?_t60.error
       :(_t10&&_t10.error&&_t10.error.length>20)?_t10.error
@@ -189,9 +191,9 @@ function render(x){
 
   // ===== 탭 =====
   html+='<div class="trk-tabs">';
-  html+='<button class="trk-tab" data-trk="10"'+(has10?'':' style="display:none"')+'>'+(JC_FO?'3분':'단기<span>'+minName+'</span>')+'</button>';
-  html+='<button class="trk-tab'+(has60?' on':'')+'" data-trk="60"'+(has60?'':' style="display:none"')+'>'+(JC_FO?'5분':'중기<span>60분봉</span>')+'</button>';
-  html+='<button class="trk-tab'+(has60?'':' on')+'" data-trk="" >'+(JC_FO?'10분':'중장기<span>일봉</span>')+'</button>';
+  html+='<button class="trk-tab" data-trk="10"'+(has10?'':' style="display:none"')+'>'+(JC_FO?FO_TABS[0]:'단기<span>'+minName+'</span>')+'</button>';
+  html+='<button class="trk-tab'+(has60?' on':'')+'" data-trk="60"'+(has60?'':' style="display:none"')+'>'+(JC_FO?FO_TABS[1]:'중기<span>60분봉</span>')+'</button>';
+  html+='<button class="trk-tab'+(has60?'':' on')+'" data-trk="" >'+(JC_FO?FO_TABS[2]:'중장기<span>일봉</span>')+'</button>';
   html+='</div>';
 
   // 패널들 (기본: 중기 보임, 없으면 장기)
@@ -347,7 +349,7 @@ function judgeDir(pj, d, isWeek){
   if(dnWave && !upWave) return 'dn';
   return 'flat';
 }
-// 선물·옵션 화면 판정 표시 (리포트의 축별 판정 칸과 같은 모양, 3분·5분·10분)
+// 선물·옵션 화면 판정 표시 (리포트의 축별 판정 칸과 같은 모양, 탭 이름은 FO_TABS)
 function foJudgeRow(d, pj, t10, t60){
   var dirName={up:'상방',dn:'하방',flat:'횡보'};
   var dirCls={up:'d-up',dn:'d-dn',flat:'d-fl'};
@@ -364,7 +366,7 @@ function foJudgeRow(d, pj, t10, t60){
     return '<div class="axis"><div class="axis-top"><span class="axis-nm">'+nm+'</span><span class="axis-dir '+dirCls[r]+'">'+dirName[r]+'</span></div><div class="mini-chart">'+miniSvg(r)+'</div></div>';
   }
   return '<div class="report"><div class="axis-row">'+
-    ax('3분', t10&&t10.projection, t10)+ax('5분', t60&&t60.projection, t60)+ax('10분', pj&&pj.cur?pj:null, d)+
+    ax(FO_TABS[0], t10&&t10.projection, t10)+ax(FO_TABS[1], t60&&t60.projection, t60)+ax(FO_TABS[2], pj&&pj.cur?pj:null, d)+
     '</div></div>';
 }
 

@@ -1,7 +1,7 @@
 # ============================================================
 #  선물·위클리옵션 API (코스피200) — 시세 LS증권, 조회 방식(실시간 아님)
-#  GET /api/fo?board=1      → 선물 최근월물 1개 + 위클리옵션 전광판(가장 가까운 만기, 현재가 0.10 이상 0.60 미만)
-#  GET /api/fo?code=XXXX    → 그 종목 3분·5분·10분 분석 (작도는 주식과 같은 함수)
+#  GET /api/fo?board=1      → 선물 최근월물 1개 + 위클리옵션 전광판(가장 가까운 만기, 현재가 1.00 이상 2.00 미만)
+#  GET /api/fo?code=XXXX    → 그 종목 분석: 선물 5분·30분·60분 / 옵션 3분·5분·10분 (작도는 주식과 같은 함수)
 #  이용중(active)만 실제 값. 그 외는 preview(가격 숨김) — /api/analyze와 같은 규칙.
 #  LS 호출은 인스턴스 안에서 1.1초 간격(초당 1회 제한).
 # ============================================================
@@ -20,13 +20,16 @@ _KST = _dt.timezone(_dt.timedelta(hours=9))
 
 # ===== 변곡 기준 = 그 종목·그 분봉의 20봉 구간 폭 × 배수 =====
 # 20봉 구간 폭: 받은 봉에서 20봉 구간(5봉씩 이동)마다 (최고가-최저가)/최저가, 그 중앙값
-# 배수: 주식 기준 10/20/30% ÷ 주식 한 달(20거래일) 폭 중앙값 21.3% → 3분 0.47 / 5분 0.94 / 10분 1.41
-MULT = {3: 0.47, 5: 0.94, 10: 1.41}
+# 배수: 주식 기준 10/20/30% ÷ 주식 한 달(20거래일) 폭 중앙값 21.3% → 첫 탭 0.47 / 둘째 탭 0.94 / 셋째 탭 1.41
+# 탭(분): 선물 5·30·60 / 옵션 3·5·10 — 배수·주식 기준값은 탭 자리(첫·둘째·셋째)로 정한다
+TABS_FUT = (5, 30, 60)
+TABS_OPT = (3, 5, 10)
+MULT = (0.47, 0.94, 1.41)
 RANGE_W = 20
 # 주식에서 각 축의 기준값 (판정 1.5%·touch_buf를 변곡 기준 대비 같은 비율로 옮기기 위함)
-STOCK = {3: {'thr': 0.10, 'touch': 0.03, 'period': 'week', 'fut': 39},
-         5: {'thr': 0.20, 'touch': 0.05, 'period': 'month', 'fut': 52},
-         10: {'thr': 0.30, 'touch': 0.05, 'period': 'quarter', 'fut': 63}}
+STOCK = ({'thr': 0.10, 'touch': 0.03, 'period': 'week', 'fut': 39},
+         {'thr': 0.20, 'touch': 0.05, 'period': 'month', 'fut': 52},
+         {'thr': 0.30, 'touch': 0.05, 'period': 'quarter', 'fut': 63})
 JUDGE_STOCK = 0.015
 PAGES = 2          # 분봉 연속조회 페이지 수(500봉씩)
 
@@ -50,16 +53,17 @@ def ls(tr, path, body, cont='N', ckey=''):
 
 def today(): return _dt.datetime.now(_KST).date()
 
-# ===== 마스터(하루 1번) =====
+# ===== 마스터(t8467 선물 목록: 하루 1번 / t8435 위클리 목록: 10분) =====
 _MASTER = {}
+WK_TTL = 600
 def master(tr):
-    k = (tr, today().isoformat())
-    if k not in _MASTER:
-        if tr == 't8467': j, _ = ls('t8467', MD, {'gubun': ''})
-        else: j, _ = ls('t8435', MD, {'gubun': 'WK'})
-        _MASTER.clear() if len(_MASTER) > 8 else None
-        _MASTER[k] = j.get(f'{tr}OutBlock') or []
-    return _MASTER[k]
+    k = (tr, today().isoformat()); hit = _MASTER.get(k)
+    if hit and (tr != 't8435' or time.time() - hit[0] < WK_TTL): return hit[1]
+    if tr == 't8467': j, _ = ls('t8467', MD, {'gubun': ''})
+    else: j, _ = ls('t8435', MD, {'gubun': 'WK'})
+    _MASTER.clear() if len(_MASTER) > 8 else None
+    _MASTER[k] = (time.time(), j.get(f'{tr}OutBlock') or [])
+    return _MASTER[k][1]
 
 def nth_weekday(y, m, wd, n):
     """y년 m월의 n번째 요일(wd: 월=0 … 목=3). 없으면 None"""
@@ -119,7 +123,7 @@ def monday_rows(wk, names):
     calls, puts = [], []
     for c in codes:
         p = px.get(c)
-        if p is None or not (0.10 <= p < 0.60): continue
+        if p is None or not (1.00 <= p < 2.00): continue
         nm = names.get(c, c)
         ap = fnum((nm.split() or [''])[-1].replace(',', ''))
         (calls if c.startswith('B') else puts).append({'code': c, 'name': nm, 'price': p, 'actprice': ap})
@@ -148,7 +152,7 @@ def board():
             for r in j.get(blk) or []:
                 code = r.get('optcode') or ''; got.add(code[:5])
                 p = fnum(r.get('price'))
-                if p is None or not (0.10 <= p < 0.60): continue
+                if p is None or not (1.00 <= p < 2.00): continue
                 dst.append({'code': code, 'name': names.get(code, code), 'price': p, 'actprice': fnum(r.get('actprice'))})
         # 받은 만기가 고른 만기(월/목)와 다르면 표시하지 않음
         if got and not (got & wk['prefix']):
@@ -203,21 +207,23 @@ def analyze_code(code):
         return {'error': '선물 최근월물 또는 위클리옵션 코드가 아닙니다'}
     j, _ = ls('t2111', MD, {'focode': code}); cb = j.get('t2111OutBlock') or {}
     name = cb.get('hname') or names.get(code) or code
+    tabs = TABS_FUT if (ff and code == ff[1]['shcode']) else TABS_OPT
+    T1, T2, T3 = tabs
     blk = {}; thr_info = {}
-    for n in (3, 5, 10):
+    for i, n in enumerate(tabs):
         b = bars(code, n)
         if not b or len(b) < 15:
             blk[n] = {'error': '데이터 부족'}; continue
         rg = range20(b) or 0
-        thr = MULT[n] * rg
-        st = STOCK[n]
+        thr = MULT[i] * rg
+        st = STOCK[i]
         fo = {'thr': thr, 'judge': thr * (JUDGE_STOCK / st['thr']), 'touch': thr * (st['touch'] / st['thr'])}
         thr_info[n] = {'range20': round(rg, 6), 'thr': round(thr, 6), 'bars': len(b)}
         blk[n] = {'bars': b, 'fo': fo}
-    tt = A.build_drawings(blk[3]['bars'], fo=True) if 'bars' in blk[3] else {'error': '데이터 부족'}
-    mm = A.build_drawings(blk[5]['bars'], fo=True) if 'bars' in blk[5] else {'error': '데이터 부족'}
-    dd = A.build_drawings(blk[10]['bars'], fo=True) if 'bars' in blk[10] else {'error': '데이터 부족'}
-    # 위험선: 주식과 같은 순서 (10분 ← 5분 끌어옴, 5분·3분 자체)
+    tt = A.build_drawings(blk[T1]['bars'], fo=True) if 'bars' in blk[T1] else {'error': '데이터 부족'}
+    mm = A.build_drawings(blk[T2]['bars'], fo=True) if 'bars' in blk[T2] else {'error': '데이터 부족'}
+    dd = A.build_drawings(blk[T3]['bars'], fo=True) if 'bars' in blk[T3] else {'error': '데이터 부족'}
+    # 위험선: 주식과 같은 순서 (셋째 탭 ← 둘째 탭 끌어옴, 둘째·첫 탭 자체)
     if 'draws' in dd: A.resolve_risk(dd, mm if 'draws' in mm else None)
     if 'draws' in mm: A.resolve_risk(mm, None)
     if 'draws' in tt: A.resolve_risk(tt, None)
@@ -238,17 +244,17 @@ def analyze_code(code):
     def proj(t, n, sr):
         if 'draws' not in t or not t.get('chart'): return
         risk = t['risks'][0]['yc'] if t.get('risks') else None
-        st = STOCK[n]
+        st = STOCK[tabs.index(n)]
         try:
             t['projection'] = A.build_projection(t['chart'], t['draws'], risk, fut=st['fut'], market='',
                                                  period=st['period'], all_risks=t.get('all_risks'), fo=blk[n]['fo'])
             if t['projection']: t['projection']['sr_levels'] = sr
         except Exception:
             t['projection'] = None
-    proj(dd, 10, sr_levels)
-    proj(tt, 3, sr3)
+    proj(dd, T3, sr_levels)
+    proj(tt, T1, sr3)
     sr5 = sorted(set(round(d['yc'], 2) for d in (mm.get('draws') or []) if d.get('yc') and d['yc'] > 0)) if 'draws' in mm else []
-    proj(mm, 5, sr5)
+    proj(mm, T2, sr5)
     for t in (dd, mm, tt):
         if isinstance(t, dict):
             xp = []
@@ -260,7 +266,7 @@ def analyze_code(code):
             t.pop('all_risks', None)
     chg = {'change': fnum(cb.get('change')), 'diff': fnum(cb.get('diff')), 'sign': cb.get('sign'), 'price': fnum(cb.get('price'))}
     return {'종목코드': code, '종목명': name, '시장': '', '일봉': dd, '60분': mm, '10분': tt, '등락': chg,
-            'fo': True, 'thr_info': {str(k): v for k, v in thr_info.items()}}
+            'fo': True, 'tabs': list(tabs), 'thr_info': {str(k): v for k, v in thr_info.items()}}
 
 def preview_board(b):
     pv = json.loads(json.dumps(b))
