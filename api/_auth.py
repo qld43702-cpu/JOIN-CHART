@@ -21,13 +21,18 @@ def custom_token(uid):
     _app(); t=fb_auth.create_custom_token(uid)
     return t.decode() if isinstance(t,bytes) else t
 
-def uid_from(headers):
-    """Authorization: Bearer <Firebase ID 토큰> → uid. 없거나 무효면 None"""
+def claims_from(headers):
+    """Authorization: Bearer <Firebase ID 토큰> → 토큰 내용(uid, email, email_verified …). 없거나 무효면 None"""
     h=headers.get('Authorization') or ''
     if not h.startswith('Bearer '): return None
     _app()
-    try: return fb_auth.verify_id_token(h[7:].strip())['uid']
+    try: return fb_auth.verify_id_token(h[7:].strip())
     except Exception: return None
+
+def uid_from(headers):
+    """Authorization: Bearer <Firebase ID 토큰> → uid. 없거나 무효면 None"""
+    c=claims_from(headers)
+    return c['uid'] if c else None
 
 def get_user(uid):
     s=db().collection('users').document(uid).get()

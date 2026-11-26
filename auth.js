@@ -25,9 +25,26 @@ var FORM='<div class="jc-l">'+JT(24)+'</div>'
   +'<button class="jc-btn jc-ok">'+JT('77a')+'</button></div>'
   +'<div class="jc-err"></div>';
 var OUT='<button class="jc-out">'+JT(29)+'</button>';
+// ----- 영어 화면: 이메일 링크 로그인 (비밀번호 없음). 한국어 화면·어드민은 위 휴대폰 인증 그대로 -----
+var EM=!!window.JC_EN&&MODE!=='admin';
+var EKEY='jc_email';              // 링크를 요청한 이메일 (같은 브라우저로 돌아오면 다시 묻지 않음)
+var linkHref='', linkAsk=false, linkErr='', justLinked=false;
+var EFORM='<div class="jc-l">'+JT('e24')+'</div>'
+  +'<input class="jc-in jc-email" type="email" autocomplete="email">'
+  +'<button class="jc-btn jc-esend">'+JT(25)+'</button>'
+  +'<div class="jc-sentbox" style="display:none">'
+  +'<div class="jc-l jc-sent" style="margin-top:14px;line-height:1.5"></div>'
+  +'<div class="jc-links"><button class="jc-link jc-eresend" disabled>'+JT(27)+'</button><button class="jc-link jc-echange">'+JT('e28')+'</button></div></div>'
+  +'<div class="jc-err"></div>';
+// 다른 기기·브라우저에서 링크를 열었을 때: 요청한 이메일을 한 번 더 받는다
+var EASK='<div class="jc-l">'+JT('e1')+'</div>'
+  +'<input class="jc-in jc-email" type="email" autocomplete="email">'
+  +'<button class="jc-btn jc-eok">'+JT('77a')+'</button>'
+  +'<div class="jc-err"></div>';
+function escH(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
 
 function cardHtml(st){
-  if(st==='none') return T+sub(JT(41))+'<div class="jc-price">'+JT(37)+'</div>'+FORM
+  if(st==='none') return T+sub(JT(41))+'<div class="jc-price">'+JT(37)+'</div>'+(EM?(linkAsk?EASK:EFORM):FORM)
     +'<div class="jc-note">'+JT(42)+'</div>';
   if(st==='pending') return isNew
     ? T+sub(JT(43))+'<div class="jc-b"><p>'+JT(44)+'</p>'+PRICE+ACC+'</div>'+COPY+OUT
@@ -103,7 +120,33 @@ var ready=new Promise(function(r){readyRes=r;});      // + 첫 /api/me 완료
     authRes();
     await refresh(!first); first=false; readyRes();
   });
+  // 메일의 로그인 링크로 돌아온 경우 (영어 화면)
+  if(EM&&MODE==='user'&&fa.isSignInWithEmailLink(auth,location.href)){
+    linkHref=location.href;
+    var saved=''; try{ saved=localStorage.getItem(EKEY)||''; }catch(e){}
+    if(saved) finishLink(saved);
+    else { linkAsk=true; window.jcLogin(); }
+  }
 })();
+
+// 주소창에서 로그인 링크 값을 지운다 (새로고침해도 다시 쓰이지 않게). 영어 화면 표시는 유지
+function cleanUrl(){ try{ history.replaceState(null,'',location.pathname+'?lang=en'); }catch(e){} }
+// 링크 로그인 마무리. 실패: 주소가 다르면 다시 묻고, 그 외(만료·이미 쓰임)는 안내 후 이메일 입력 단계로
+async function finishLink(email, onErr){
+  try{
+    justLinked=true;
+    await fa.signInWithEmailLink(auth,email,linkHref);
+    try{ localStorage.removeItem(EKEY); }catch(e){}
+    linkAsk=false; linkHref=''; cleanUrl();
+    openModal(); if(ME) paintModal();   // 지금 상태의 카드(가입 완료·대기 등)를 보여 준다. 이용 중이면 바로 닫힌다. (상태 조회 중이면 refresh 가 그린다)
+  }catch(e){
+    justLinked=false;
+    if(linkAsk&&e&&e.code==='auth/invalid-email'){ if(onErr) onErr(JT('e19')); return; }
+    try{ localStorage.removeItem(EKEY); }catch(e2){}
+    linkAsk=false; linkHref=''; linkErr=JT(23); cleanUrl();
+    window.jcLogin();
+  }
+}
 
 async function idToken(){ await authReady; return auth.currentUser?auth.currentUser.getIdToken():''; }
 async function api(path,opt){
@@ -120,10 +163,11 @@ window.jcApi=api;
 window.jcOverlay=function(el,code){ cur={el:el,code:code}; ready.then(function(){ paintOverlay(false); }); };
 // 홈의 로그인·가입 버튼: 지금의 카드를 화면 가운데에 띄운다 (카드 내용·인증 방식은 오버레이와 같음)
 var modal=null;
-window.jcLogin=function(){
+function openModal(){
   if(!modal){ modal=document.createElement('div'); modal.className='jc-modal'; document.body.appendChild(modal); }
-  modal.style.display='flex'; ready.then(paintModal);
-};
+  modal.style.display='flex';
+}
+window.jcLogin=function(){ openModal(); ready.then(paintModal); };
 function closeModal(){ if(modal){ modal.style.display='none'; modal.innerHTML=''; } }
 function paintModal(){
   if(!modal||modal.style.display==='none') return;
@@ -138,8 +182,10 @@ function paintModal(){
 async function refresh(changed){
   ME=null;
   if(auth.currentUser){
-    try{ ME=await api('/api/me'); }catch(e){ ME={status:'error'}; }
+    var jl=justLinked; justLinked=false;
+    try{ ME=await api('/api/me'+(jl?'?login=1':'')); }catch(e){ ME={status:'error'}; }
     if(ME.status==='login'){ ME=null; fa.signOut(auth); return; }
+    if(ME.isNew) isNew=true;   // 이메일 회원: 첫 로그인(가입) 여부는 서버가 알려 준다
   }
   paintHeader();
   paintModal();
@@ -181,7 +227,7 @@ function paintHeader(){
   else if(ME.status==='active') line2=JTF(31,[(ME.until||'')]);
   else line2={pending:JT(32),expired:JT(33),suspended:JT(34)}[ME.status]||'';
   hdr.innerHTML='<button class="jc-mebtn" aria-label="'+JT(35)+'"><svg viewBox="0 0 24 24" fill="none" stroke="#f4a06a" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"/></svg></button>'
-    +'<div class="jc-menu"><div class="jc-m1">010-****-'+p.slice(-4)+'</div><div class="jc-m2">'+line2+'</div><button class="jc-hout">'+JT(29)+'</button></div>';
+    +'<div class="jc-menu"><div class="jc-m1">'+(ME.email?escH(ME.email):'010-****-'+p.slice(-4))+'</div><div class="jc-m2">'+line2+'</div><button class="jc-hout">'+JT(29)+'</button></div>';
   hdr.querySelector('.jc-mebtn').onclick=function(){ hdr.classList.toggle('open'); };
   hdr.querySelector('.jc-hout').onclick=logout;
   hdr.classList.remove('open');
@@ -212,6 +258,7 @@ function bind(box){
     cp.textContent=JT(50);
     setTimeout(function(){ cp.textContent=JT(40); },1500);
   };
+  if(box.querySelector('.jc-email')){ bindEmail(box); return; }
   var bSend=box.querySelector('.jc-send'); if(!bSend) return;
   var ph=box.querySelector('.jc-phone'), cd=box.querySelector('.jc-code'), bOk=box.querySelector('.jc-ok');
   var cbox=box.querySelector('.jc-codebox'), bRe=box.querySelector('.jc-resend'), bChg=box.querySelector('.jc-change');
@@ -257,6 +304,59 @@ function bind(box){
   };
   ph.addEventListener('keydown',function(e){ if(e.key==='Enter') bSend.click(); });
   cd.addEventListener('keydown',function(e){ if(e.key==='Enter') bOk.click(); });
+}
+// 영어 화면: 이메일 입력 → 로그인 링크 메일 발송 (Firebase 이메일 링크). 메일은 영어로 나간다
+function bindEmail(box){
+  var em=box.querySelector('.jc-email');
+  var err=function(m){ box.querySelector('.jc-err').textContent=m||''; };
+  var valid=function(v){ return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v); };
+  if(linkErr){ err(linkErr); linkErr=''; }
+  var bOk=box.querySelector('.jc-eok');
+  if(bOk){   // 다른 기기·브라우저에서 링크를 연 경우
+    bOk.onclick=async function(){
+      var v=em.value.trim();
+      if(!valid(v)){ err(JT('e19')); return; }
+      bOk.disabled=true; err('');
+      await finishLink(v,function(m){ err(m); bOk.disabled=false; });
+    };
+    em.addEventListener('keydown',function(e){ if(e.key==='Enter') bOk.click(); });
+    return;
+  }
+  var bSend=box.querySelector('.jc-esend'), sbox=box.querySelector('.jc-sentbox'), sent=box.querySelector('.jc-sent');
+  var bRe=box.querySelector('.jc-eresend'), bChg=box.querySelector('.jc-echange');
+  var sentTo='', cool=null;
+  function cooldown(){ bRe.disabled=true; clearTimeout(cool); cool=setTimeout(function(){ bRe.disabled=false; },60000); }   // 다시 보내기: 60초 뒤 활성
+  async function send(v){
+    try{
+      auth.languageCode='en';
+      await fa.sendSignInLinkToEmail(auth,v,{url:location.origin+location.pathname+'?lang=en',handleCodeInApp:true});
+      try{ localStorage.setItem(EKEY,v); }catch(e){}
+      return true;
+    }catch(e){
+      var c=(e&&e.code)||''; console.error('sign-in link:',c);
+      err(c==='auth/invalid-email'?JT('e19'):(c==='auth/too-many-requests'?JT(20):JT(21)));
+    }
+    return false;
+  }
+  bSend.onclick=async function(){
+    var v=em.value.trim();
+    if(!valid(v)){ err(JT('e19')); return; }
+    bSend.disabled=true; err('');
+    if(await send(v)){
+      sentTo=v; em.readOnly=true; bSend.style.display='none';
+      sent.textContent=JTF('e26',[v]); sbox.style.display='block'; cooldown();
+    }
+    bSend.disabled=false;
+  };
+  bRe.onclick=async function(){
+    bRe.disabled=true; err('');
+    if(await send(sentTo)) cooldown(); else bRe.disabled=false;
+  };
+  bChg.onclick=function(){
+    clearTimeout(cool); sentTo=''; em.readOnly=false; bSend.style.display='';
+    sbox.style.display='none'; err(''); em.focus();
+  };
+  em.addEventListener('keydown',function(e){ if(e.key==='Enter') bSend.click(); });
 }
 function copyText(s){
   if(navigator.clipboard&&window.isSecureContext){ navigator.clipboard.writeText(s).catch(function(){}); return; }

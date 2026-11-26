@@ -3,7 +3,7 @@
 #  GET  /api/admin                       → 가입자 목록
 #  POST /api/admin {uid, action}          action: approve(승인 30일) / extend(연장 +30일) / suspend(정지) / unsuspend(해제)
 # ============================================================
-import os, sys, datetime as _dt
+import os, sys, html, datetime as _dt
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from http.server import BaseHTTPRequestHandler
 import _auth
@@ -21,7 +21,8 @@ class handler(BaseHTTPRequestHandler):
             rows=[]
             for s in _auth.db().collection('users').stream():
                 u=s.to_dict()
-                rows.append({'uid':s.id,'phone':u.get('phone') or s.id,'status':_auth.status_of(u),
+                # 이메일 회원(영어 화면)은 휴대폰 칸에 이메일을 보여 준다
+                rows.append({'uid':s.id,'phone':u.get('phone') or html.escape(str(u.get('email') or '')) or s.id,'status':_auth.status_of(u),
                     'createdAt':_auth.kst(u.get('createdAt')),'expiresAt':_auth.kst(u.get('expiresAt')),
                     'lastLoginAt':_auth.kst(u.get('lastLoginAt'),"%Y-%m-%d %H:%M"),'_c':u.get('createdAt')})
             rows.sort(key=lambda r:r['_c'] or _auth.now(),reverse=True)
