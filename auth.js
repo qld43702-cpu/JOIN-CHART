@@ -63,7 +63,8 @@ css.textContent='body.jc-lock .admin-wrap{display:none!important}'
  +'.jc-m1{padding:4px 16px;font-size:13px;font-weight:800}'
  +'.jc-m2{padding:2px 16px 8px;font-size:12px;font-weight:600;color:#a8bdd6;border-bottom:1px solid rgba(255,255,255,.1)}'
  +'.jc-hout{display:block;width:100%;padding:9px 16px 4px;border:none;background:none;color:#fff;font-size:13px;font-weight:700;text-align:left;cursor:pointer}'
- +'.jc-foot{max-width:960px;margin:24px auto 0;padding:16px;font-size:11px;color:#a8b3c0;line-height:1.7;text-align:center;word-break:keep-all}';
+ +'.jc-foot{max-width:960px;margin:24px auto 0;padding:16px;font-size:11px;color:#a8b3c0;line-height:1.7;text-align:center;word-break:keep-all}'
+ +'.jc-modal{position:fixed;inset:0;z-index:9000;display:none;padding:12px;overflow-y:auto;background:rgba(15,25,40,.55)}';
 document.head.appendChild(css);
 
 // 어드민: role=admin 확인 전까지 화면 잠금 + 로그인 카드 영역
@@ -101,6 +102,22 @@ window.jcIdToken=idToken;
 window.jcApi=api;
 // chart-core: /api/analyze가 미리보기(preview)를 주면 흐린 차트 위 오버레이 칸(el)을 넘겨줌
 window.jcOverlay=function(el,code){ cur={el:el,code:code}; ready.then(function(){ paintOverlay(false); }); };
+// 홈의 로그인·가입 버튼: 지금의 카드를 화면 가운데에 띄운다 (카드 내용·인증 방식은 오버레이와 같음)
+var modal=null;
+window.jcLogin=function(){
+  if(!modal){ modal=document.createElement('div'); modal.className='jc-modal'; document.body.appendChild(modal); }
+  modal.style.display='flex'; ready.then(paintModal);
+};
+function closeModal(){ if(modal){ modal.style.display='none'; modal.innerHTML=''; } }
+function paintModal(){
+  if(!modal||modal.style.display==='none') return;
+  var st=isActive()?'active':(ME?ME.status:'none');
+  var h=(st==='active')?'':cardHtml(st);
+  if(!h){ closeModal(); return; }
+  modal.innerHTML='<div class="jc-card"><button class="jc-x" aria-label="'+JT(49)+'">×</button>'+h+'</div>';
+  modal.querySelector('.jc-x').onclick=closeModal;
+  bind(modal);
+}
 
 async function refresh(changed){
   ME=null;
@@ -109,6 +126,7 @@ async function refresh(changed){
     if(ME.status==='login'){ ME=null; fa.signOut(auth); return; }
   }
   paintHeader();
+  paintModal();
   if(MODE==='admin') paintAdmin();
   else paintOverlay(changed);
 }
@@ -139,6 +157,7 @@ function paintHeader(){
     document.addEventListener('click',function(e){ if(!hdr.contains(e.target)) hdr.classList.remove('open'); });   // 바깥 클릭 → 닫힘
   }
   // 로그인 상태면 사람 아이콘 + 드롭다운(번호 / 상태 / 로그아웃). 비로그인이면 없음.
+  var lb=document.querySelector('.jc-login'); if(lb) lb.style.display=(!ME||ME.status==='error')?'':'none';   // 홈의 로그인 버튼: 로그인하면 숨김
   if(!ME||ME.status==='error'){ hdr.style.display='none'; return; }
   var p=String(ME.phone||''), line2;
   if(ME.role==='admin') line2=JT(30);

@@ -794,6 +794,26 @@ def build_preview(out):
     pv['preview']=True
     return pv
 
+# ===== 홈의 예시 차트 — 이 두 종목만 로그인 없이 실제 값 (사용자 결정) =====
+#   /api/analyze?code=005930&sample=1 처럼 sample=1 이 붙고, 종목이 아래 목록에 있을 때만.
+#   세 탭의 차트를 그리는 데 필요한 값만 내보내고 리포트·판정용 값은 뺀다. 그 밖의 요청은 지금 차단 그대로.
+SAMPLE_CODES=('005930','NVDA')
+_SAMPLE_PJ=('fut','cur','up_slope','up_target','green_max','dn_target','volatility','green_start',
+            'anchor_idx','anchor_price','recent_pivot','xpoints')
+def _sample_bytes(ent):
+    if 'sample' not in ent:
+        o=ent['obj']; out={'종목코드':o.get('종목코드'),'종목명':o.get('종목명'),'시장':o.get('시장'),'sample':True}
+        for key in ('일봉','60분','10분'):
+            b=o.get(key)
+            if not isinstance(b,dict) or 'chart' not in b:
+                out[key]={'error':b.get('error')} if isinstance(b,dict) and b.get('error') else None
+                continue
+            pj=b.get('projection')
+            out[key]={'chart':b.get('chart'),'draws':b.get('draws'),'risks':b.get('risks'),'cur':b.get('cur'),
+                      'projection':{k:pj[k] for k in _SAMPLE_PJ if k in pj} if isinstance(pj,dict) else None}
+        ent['sample']=json.dumps(out,ensure_ascii=False).encode()
+    return ent['sample']
+
 def _preview_bytes(ent, st):
     """캐시 항목마다 미리보기를 한 번만 만든다 → 캐시 기간 동안 같은 흔들림"""
     if 'pv' not in ent: ent['pv']=build_preview(ent['obj'])
@@ -804,6 +824,7 @@ class handler(BaseHTTPRequestHandler):
     def do_GET(self):
         qs=parse_qs(urlparse(self.path).query); code=(qs.get('code',[''])[0] or '').strip()
         _lang=_i18n.lang_of(qs)   # 영어 화면(?lang=en)이면 오류·안내 문구를 영어로. 없으면 한국어 그대로
+        _sample=(qs.get('sample',[''])[0]=='1') and code.upper() in SAMPLE_CODES   # 홈의 예시 차트(두 종목만)
         # ===== 이용권한 확인 — 승인 + 만료 전(active)만 실제 결과, 그 외는 미리보기(preview) =====
         try: _st=_auth.access(self.headers)[2]
         except Exception: _st='login'
@@ -818,6 +839,7 @@ class handler(BaseHTTPRequestHandler):
             _ck=code.upper()
             _hit=_RESULT_CACHE.get(_ck)
             if _hit and _t.time() < _hit["exp"]:
+                if _sample: self.wfile.write(_sample_bytes(_hit)); return
                 self.wfile.write(_hit["data"] if _st=='active' else _preview_bytes(_hit,_st)); return
             if is_jp(code):
                 # ===== 일본 주식 (야후, .T) =====
@@ -953,6 +975,7 @@ class handler(BaseHTTPRequestHandler):
             # 캐시 저장 (30분)
             _ttl=300 if _is_market_open() else 1800  # 장중 5분, 장외 30분
             _RESULT_CACHE[_ck]={"data":_payload,"obj":out,"exp":_t.time()+_ttl}
+            if _sample: self.wfile.write(_sample_bytes(_RESULT_CACHE[_ck])); return
             self.wfile.write(_payload if _st=='active' else _preview_bytes(_RESULT_CACHE[_ck],_st))
         except Exception as ex:
             self.wfile.write(json.dumps({'error':_i18n.t(228,_lang,_i18n.text(ex,_lang))}).encode())

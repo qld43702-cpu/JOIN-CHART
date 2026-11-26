@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<!-- BUILD:1795710005 -->
+<!-- BUILD:1795722615 -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <script>try{(function(){var q=new URLSearchParams(location.search).get('lang');if(q==='en')sessionStorage.setItem('jc_lang','en');else if(q==='ko')sessionStorage.removeItem('jc_lang');if(sessionStorage.getItem('jc_lang')==='en'){document.documentElement.className+=' jc-en jc-wait';setTimeout(function(){document.documentElement.className=document.documentElement.className.replace(/\s*\bjc-wait\b/g,'');},3000);}})();}catch(e){}</script><style>html.jc-wait body{visibility:hidden}</style>
@@ -298,65 +298,290 @@ header{display:flex;align-items:center;gap:11px;margin-bottom:16px}
   .track{padding:0}
 }
 </style>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&amp;family=Inter:wght@400;500;700&amp;display=swap" rel="stylesheet">
+<style>
+/* ===== 새 홈 (design/home_ko.html · home_en.html · mobile_ko.html 의 값 그대로) ===== */
+body{padding:0;background:#f2f4f7}
+body.jc-res{background:var(--bg);padding:0 0 60px}
+.hm,.hm *{box-sizing:content-box}
+.hm{font-family:'Noto Sans KR',system-ui,sans-serif;color:#14304d}
+html.jc-en .hm{font-family:Inter,system-ui,sans-serif}
+.hm .hd-ac,.hm .hd-ac *,.hm .jc-me,.hm .jc-me *,.hm-host,.hm-host *{box-sizing:border-box}
+.hm-m{display:none}
+.hm-sr{position:absolute;left:-9999px}
+.hm-top{background:#14304d;display:block;margin:0}
+.hm-top-in{max-width:1120px;margin:0 auto;padding:14px 24px;display:flex;flex-wrap:wrap;align-items:center;gap:20px}
+.hm-logo{display:flex;align-items:center;gap:10px;text-decoration:none;color:#fff;font-size:20px;font-weight:700}
+.hm-logo-j{display:inline-flex;width:40px;height:40px;border-radius:10px;background:#f28c38;color:#14304d;align-items:center;justify-content:center;font-weight:700}
+.hm-logo-c{color:#f6a55e}
+.hm-nav{display:flex;align-items:center;gap:4px;margin-left:12px}
+.hm-nav a{color:#fff;text-decoration:none;font-size:17px;font-weight:500;padding:10px 14px}
+.hm-top .appbar-in{max-width:none;margin:0 0 0 auto;padding:0;display:flex;align-items:center;gap:12px;position:static;overflow:visible}
+.hm-login{padding:11px 20px;border-radius:8px;background:#f28c38;color:#14304d;font-size:17px;font-weight:700;text-decoration:none}
+.hm-mnav{background:#0f2740;padding:0 8px;justify-content:space-between}
+.hm-mnav a{flex:1;text-align:center;padding:14px 0;color:#d5dee8;text-decoration:none;font-size:17px}
+.hm-mnav a.on{color:#fff;font-weight:700;border-bottom:3px solid #f28c38}
+.hm-hero{background:#14304d;padding:56px 24px 72px}
+.hm-hero-in{max-width:820px;margin:0 auto;display:flex;flex-direction:column;align-items:center;gap:24px;text-align:center}
+.hm-h1{margin:0;font-size:44px;line-height:1.3;font-weight:700;color:#fff}
+html.jc-en .hm-h1{line-height:1.25}
+.hm-sub{margin:0;font-size:20px;line-height:1.6;color:#d5dee8}
+.hm-form{width:100%;display:flex;gap:10px;margin-top:8px;position:relative}
+.hm-form.hero-search input{flex:1;width:auto;min-width:0;height:64px;border-radius:12px;border:0;padding:0 22px;font-size:20px;font-weight:400;font-family:inherit;color:#14304d;background:#fff;box-shadow:none;outline:revert}
+.hm-form.hero-search input::placeholder{color:#757575;font-weight:400}
+.hm-go{height:64px;padding:0 30px;border-radius:12px;border:0;background:#f28c38;color:#14304d;font-size:20px;font-weight:700;font-family:inherit;cursor:pointer}
+.hm-form .hd-ac{top:68px;border-radius:10px;text-align:left}
+.hm-chips{display:flex;flex-wrap:wrap;justify-content:center;gap:10px}
+.hm-chips a{padding:10px 18px;border-radius:999px;border:1px solid #5f7790;color:#fff;text-decoration:none;font-size:17px}
+body.jc-res .hm-h1,body.jc-res .hm-sub,body.jc-res .hm-chips{display:none}
+.hm-ex{padding:0 24px;margin-top:-40px}
+.hm-card{max-width:1120px;margin:0 auto;background:#fff;border-radius:16px;border:1px solid #dfe5ec;padding:28px;display:flex;flex-direction:column;gap:20px}
+.hm-ex-head{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:12px}
+.hm-ex-h{margin:0;font-size:26px;font-weight:700}
+.hm-ex-sub{font-size:17px;font-weight:500;color:#56687c}
+.hm-tabs{display:flex;gap:8px}
+.hm-tab{padding:8px 16px;border-radius:8px;border:1px solid #c9d3de;font-size:16px;color:#56687c;background:none;font-family:inherit;cursor:pointer}
+.hm-tab.on{background:#14304d;color:#fff;font-weight:700;border:0}
+.hm-load{width:100%;aspect-ratio:720/330;background:#f4f6f9;display:flex;align-items:center;justify-content:center;font-size:17px;color:#56687c}
+.hm-cvwrap{position:relative}
+.hm-cvwrap canvas{width:100%;aspect-ratio:720/330;height:auto;display:block;cursor:crosshair;touch-action:pan-y}
+.hm-legend{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px}
+.hm-legend>div{display:flex;flex-direction:column;gap:6px}
+.hm-legend strong{font-size:18px}
+.hm-legend span{font-size:17px;line-height:1.6;color:#3c4d60}
+.hm-mlegend{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.hm-mlegend>div{display:flex;align-items:center;gap:8px;font-size:16px}
+.hm-mlegend i{width:22px;height:0;border-top:4px solid}
+.hm-menu{padding:40px 24px 0}
+.hm-menu-in{max-width:1120px;margin:0 auto;display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px}
+.hm-mcard{background:#fff;border:1px solid #dfe5ec;border-radius:16px;padding:28px;text-decoration:none;display:flex;flex-direction:column;gap:10px;color:#14304d}
+.hm-mcard:hover{color:#0b1f33}
+.hm-mtx{display:flex;flex-direction:column;gap:10px}
+.hm-mcard strong{font-size:24px}
+.hm-md{font-size:18px;line-height:1.6;color:#3c4d60}
+.hm-ma{font-size:17px;font-weight:700;color:#b9560c;margin-top:6px}
+.hm-price{padding:40px 24px 0}
+.hm-price-in{max-width:1120px;margin:0 auto;background:#14304d;border-radius:16px;padding:36px;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:24px}
+.hm-price-tx{display:flex;flex-direction:column;gap:8px}
+.hm-price-tx strong{font-size:30px;color:#fff}
+.hm-price-tx span{font-size:18px;color:#d5dee8}
+.hm-join{padding:18px 40px;border-radius:12px;background:#f28c38;color:#14304d;font-size:21px;font-weight:700;text-decoration:none}
+.hm-note{padding:24px 24px 0}
+.hm-note p{max-width:1120px;margin:0 auto;box-sizing:border-box;background:#fff6ee;border:1px solid #f3d3b6;border-radius:12px;padding:18px 22px;font-size:17px;line-height:1.7;color:#7a3a08}
+.hm-foot{padding:36px 24px 48px;text-align:center;font-size:15px;line-height:1.9;color:#56687c}
+@media(max-width:767px){
+  .hm-pc{display:none}
+  .hm-m{display:revert}
+  .hm-mnav.hm-m{display:flex}
+  .hm-mlegend.hm-m{display:grid}
+  .hm-top-in{max-width:none;margin:0;padding:12px 16px;flex-wrap:nowrap;gap:10px}
+  .hm-logo{gap:8px;font-size:18px}
+  .hm-logo-j{width:36px;height:36px;border-radius:9px}
+  .hm-top .appbar-in{gap:8px}
+  .hm-login{padding:11px 14px;font-size:16px}
+  .hm-hero{padding:28px 16px 56px}
+  .hm-hero-in{max-width:none;gap:16px;align-items:stretch}
+  .hm-h1{font-size:28px;line-height:1.35}
+  html.jc-en .hm-h1{line-height:1.35}
+  .hm-form{width:auto;gap:8px;margin-top:0}
+  .hm-form.hero-search input{height:56px;padding:0 16px;font-size:18px}
+  .hm-go{height:56px;padding:0 20px;font-size:18px}
+  .hm-form .hd-ac{top:60px}
+  .hm-chips{gap:8px}
+  .hm-chips a{padding:11px 16px;font-size:16px}
+  .hm-ex{padding:0;margin:-36px 16px 0}
+  .hm-card{max-width:none;padding:18px;gap:14px}
+  .hm-ex-head{display:flex;flex-direction:column;align-items:stretch;gap:14px}
+  .hm-ex-h{font-size:22px}
+  .hm-ex-sub{font-size:15px}
+  .hm-tabs{gap:6px}
+  .hm-tab{flex:1;text-align:center;padding:10px 0}
+  .hm-load{aspect-ratio:auto;height:260px}
+  .hm-cvwrap canvas{aspect-ratio:auto;height:260px}
+  .hm-menu{padding:20px 16px 0}
+  .hm-menu-in{max-width:none;display:flex;flex-direction:column;gap:12px}
+  .hm-mcard{border-radius:14px;padding:20px;flex-direction:row;align-items:center;justify-content:space-between;gap:12px}
+  .hm-mtx{gap:4px}
+  .hm-mcard strong{font-size:21px}
+  .hm-md{font-size:16px;line-height:normal}
+  .hm-price{padding:0;margin:20px 16px 0}
+  .hm-price-in{max-width:none;border-radius:14px;padding:24px 20px;flex-direction:column;flex-wrap:nowrap;align-items:stretch;justify-content:flex-start;gap:14px;text-align:center}
+  .hm-price-tx strong{font-size:22px;line-height:1.4}
+  .hm-join{padding:16px 0;font-size:20px}
+  .hm-note{padding:0}
+  .hm-note p{max-width:none;margin:16px 16px 0;padding:16px;font-size:15px}
+  .hm-foot{padding:24px 16px;font-size:13px;line-height:1.8}
+}
+</style>
 </head>
 <body>
-<div class="appbar">
-  <div class="appbar-in">
-    <svg class="hbg" viewBox="0 0 200 100"><polyline points="0,80 30,60 60,68 90,40 120,48 150,20 200,10" fill="none" stroke="#fff" stroke-width="3"/></svg>
-    <div class="logo" onclick="goHome()">J</div>
-    <div onclick="goHome()" style="cursor:pointer;flex-shrink:0">
-      <div class="ttl">JOIN<span class="accent"> CHART</span></div>
-    </div>
-    <div class="hd-search">
-      <input type="text" id="codeInput" placeholder="종목명 · 코드 · AAPL · 7203" autocomplete="off">
-      <svg class="hd-ic" id="hdSearchIcon" viewBox="0 0 24 24" fill="none" stroke="#f4a06a" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg>
-      <div class="hd-ac" id="acList"></div>
-    </div>
-  </div>
+<header class="hm hm-top">
+<div class="hm-top-in">
+<a class="hm-logo" href="/" onclick="goHome();return false;"><span class="hm-logo-j">J</span><span>JOIN <span class="hm-logo-c">CHART</span></span></a>
+<nav class="hm-nav hm-pc">
+<a href="#top" onclick="hmTop();return false;" data-i18n="246">주식</a>
+<a href="/futures.html" data-i18n="247">선물</a>
+<a href="#chart" onclick="hmTo('chart');return false;" data-i18n="248">이용 방법</a>
+<a href="#price" onclick="hmTo('price');return false;" data-i18n="249">가격</a>
+</nav>
+<div class="appbar-in">
+<a class="hm-login jc-login" href="#" onclick="jcLogin();return false;" data-i18n="250">로그인</a>
 </div>
-<script src="/i18n.js?v=1795710005"></script>
-<script src="/auth.js?v=1795710005" data-mode="user"></script>
+</div>
+</header>
+<nav class="hm hm-mnav hm-m">
+<a class="on" href="#top" onclick="hmTop();return false;" data-i18n="246">주식</a>
+<a href="/futures.html" data-i18n="247">선물</a>
+<a href="#chart" onclick="hmTo('chart');return false;" data-i18n="248">이용 방법</a>
+<a href="#price" onclick="hmTo('price');return false;" data-i18n="249">가격</a>
+</nav>
+
+<section id="top" class="hm hm-hero">
+<div class="hm-hero-in">
+<h1 class="hm-h1" data-i18n="243">종목을 검색하면, 싸우는 자리가 보입니다</h1>
+<p class="hm-sub hm-pc" data-i18n="244">한국 · 미국 · 일본 종목과 선물의 공방선, 위험선, 시나리오</p>
+<form class="hm-form hero-search" onsubmit="doSearch();return false;">
+<label for="codeInput" class="hm-sr" data-i18n="251">종목 검색</label>
+<input type="text" id="codeInput" placeholder="종목명 · 코드 · AAPL · 7203" autocomplete="off" data-i18n-skip>
+<button type="button" class="hm-go" onclick="doSearch()" data-i18n="245">검색</button>
+<div class="hd-ac" id="acList"></div>
+</form>
+<div class="hm-chips" id="hmChips"></div>
+</div>
+</section>
+
+<div id="guide">
+<section id="chart" class="hm hm-ex">
+<div class="hm-card">
+<div class="hm-ex-head">
+<h2 class="hm-ex-h"><span data-i18n="255">삼성전자</span> <span class="hm-ex-sub hm-pc" data-i18n="256">005930 · 장기추세</span><span class="hm-ex-sub hm-m" id="hmExCode">005930</span></h2>
+<div class="hm-tabs">
+<button type="button" class="hm-tab" data-t="10" data-i18n="257">단기추세</button>
+<button type="button" class="hm-tab" data-t="60" data-i18n="258">중기추세</button>
+<button type="button" class="hm-tab on" data-t="L" data-i18n="259">장기추세</button>
+</div>
+</div>
+<div id="hmEx"><div class="hm-load" id="hmLoad"></div></div>
+<div class="hm-legend hm-pc">
+<div><strong style="color:#b02a5f" data-i18n="57">공방선</strong><span data-i18n="260">매수와 매도가 맞붙었던 가격대입니다.</span></div>
+<div><strong style="color:#137a55" data-i18n="261">목표선 · 위험선</strong><span data-i18n="262">시작점에서 위아래로 뻗은 기준선입니다.</span></div>
+<div><strong style="color:#1f56a8" data-i18n="263">시나리오</strong><span data-i18n="264">공방선을 지나며 그려 본 상승·하락 두 가지 경로입니다.</span></div>
+</div>
+<div class="hm-mlegend hm-m" id="hmMLeg">
+<div><i style="border-top-color:#d4537e"></i><span data-i18n="57">공방선</span></div>
+<div><i style="border-top-style:dashed;border-top-color:#1d9e75"></i><span data-i18n="265">목표선</span></div>
+<div><i style="border-top-style:dashed;border-top-color:#d4537e"></i><span data-i18n="266">위험선</span></div>
+<div><i id="hmSwUp" style="border-top-color:#e24b4a"></i><span data-i18n="62">상승 시나리오</span></div>
+<div><i id="hmSwDn" style="border-top-color:#378add"></i><span data-i18n="63">하락 시나리오</span></div>
+<div><i style="border-top-style:dashed;border-top-color:#e8743b"></i><span data-i18n="267">시작점</span></div>
+</div>
+</div>
+</section>
+
+<section id="menu" class="hm hm-menu">
+<div class="hm-menu-in">
+<a class="hm-mcard" href="#top" onclick="hmTop();return false;"><span class="hm-mtx"><strong data-i18n="268">주식 차트</strong><span class="hm-md" data-i18n="269">한국 · 미국 · 일본 종목</span><span class="hm-ma hm-pc" data-i18n="270">종목 검색하기</span></span><svg class="hm-m" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#b9560c" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg></a>
+<a class="hm-mcard" href="/futures.html"><span class="hm-mtx"><strong data-i18n="247">선물</strong><span class="hm-md" data-i18n="271">국내선물 · 나스닥 선물</span><span class="hm-ma hm-pc" data-i18n="272">선물 차트 보기</span></span><svg class="hm-m" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#b9560c" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg></a>
+<a class="hm-mcard" href="#chart" onclick="hmTo('chart');return false;"><span class="hm-mtx"><strong data-i18n="248">이용 방법</strong><span class="hm-md" data-i18n="273">종목을 검색하고 세 가지 추세 탭을 넘겨 보세요.</span><span class="hm-ma hm-pc" data-i18n="274">화면 읽는 법 보기</span></span><svg class="hm-m" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#b9560c" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg></a>
+</div>
+</section>
+
+<section id="price" class="hm hm-price">
+<div class="hm-price-in">
+<div class="hm-price-tx"><strong data-i18n="12">월 이용료 99,000원 · 회원 전용</strong><span class="hm-pc" data-i18n="275">휴대폰 인증으로 가입합니다</span></div>
+<a class="hm-join" href="#" onclick="jcLogin();return false;" data-i18n="276">가입하기</a>
+</div>
+</section>
+
+<section class="hm hm-note">
+<p data-i18n="277">모든 분석은 통계·작도 기반 참고 자료이며 매수·매도 추천이 아닙니다. 방향 판단은 추세 유지 시에만 유효하며 전환점은 잡지 못합니다.</p>
+</section>
+</div>
+
 <div class="wrap">
 <div class="body-pad">
-<!-- 히어로: 문구 + 검색창 + 주월분기 설명 -->
-<div class="engine-hero" id="heroIntro" style="margin-top:16px">
-  <div class="eh-tag"><svg viewBox="0 0 24 24" fill="none" stroke="#f4a06a" stroke-width="2.4" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>JOIN 분석 엔진</div>
-  <div class="eh-title">하나의 종목을<br><span class="o">세 개의 시간</span>으로 읽습니다</div>
-  <div class="eh-subline">단기·중기·장기 흐름이 <b>만나는 지점</b>에서 방향을 읽어냅니다.</div>
-  <div class="hero-tf">
-    <div class="tfr"><span class="k">주</span><span>매주 <b>월요일</b> 방향성 초기화 — 다음 한 주를 읽습니다</span></div>
-    <div class="tfr"><span class="k">월</span><span>매월 <b>초</b> 초기화 — 한 달 중기 흐름</span></div>
-    <div class="tfr"><span class="k">분기</span><span>분기 <b>시작</b> 초기화 — 3개월 큰 추세</span></div>
-  </div>
-  <div class="hero-once">국내·미국 어떤 종목이든 <b>한 번에</b></div>
-  <div class="hero-price">월 이용료 99,000원 · 회원 전용</div>
-</div>
-<div id="guide">
-  <!-- 횡보 경고 -->
-  <div class="warn" style="margin-top:14px">
-    <div class="wq">매수도 매도도 아닌 자리.</div>
-    <div class="wa"><b>가장 많은 계좌가 무너지는 곳입니다.</b> JOIN CHART는 상승·하락만이 아니라, 방향 없는 횡보 구간까지 함께 짚어드립니다.</div>
-  </div>
-  <div class="guide-foot2"><svg viewBox="0 0 24 24" fill="none" stroke="#9a6b4a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9l-8 14A2 2 0 004 21h16a2 2 0 001.7-3l-8-14a2 2 0 00-3.4 0z"/></svg><span>모든 분석은 통계·작도 기반 <b>참고 자료</b>이며 매수·매도 추천이 아닙니다. 방향 판단은 추세 유지 시에만 유효하며 전환점은 잡지 못합니다.</span></div>
-</div>
 <div id="result"></div>
-<button class="report-btn" onclick="location.href='/futures.html'">선물</button>
 </div>
-<script src="/chart-core.js?v=1795710005"></script>
 </div>
-<div class="jc-foot">주식회사 조인홀딩스 | 대표 김상문 | 사업자등록번호 753-87-03679 | 통신판매업신고 제2026-서울양천-1009호<br>서울특별시 양천구 목동중앙서로8길 14, B101 | 070-8985-8221 | help@joinpeople.kr | 개인정보 보호책임자 김시현</div>
+
+<footer class="hm hm-foot" data-i18n-br="236">
+<div>주식회사 조인홀딩스 | 대표 김상문 | 사업자등록번호 753-87-03679 | 통신판매업신고 제2026-서울양천-1009호</div>
+<div>서울특별시 양천구 목동중앙서로8길 14, B101 | 070-8985-8221 | help@joinpeople.kr | 개인정보 보호책임자 김시현</div>
+</footer>
+
 <div id="exitModal" style="display:none;position:fixed;inset:0;background:rgba(15,25,40,.55);z-index:9999;align-items:center;justify-content:center">
   <div style="background:#fff;border-radius:18px;padding:28px 24px;max-width:320px;width:86%;text-align:center;box-shadow:0 16px 50px rgba(0,0,0,.25)">
     <div style="font-size:34px;margin-bottom:10px">👋</div>
-    <div style="font-size:17px;font-weight:800;color:#1b3a5c;margin-bottom:8px">정말 종료하시겠어요?</div>
-    <div style="font-size:13px;color:#6e7c8a;line-height:1.6;margin-bottom:20px">오늘도 성공적인 투자 되시길 응원할게요.<br>현명한 선택의 곁에 늘 함께하겠습니다.</div>
+    <div style="font-size:17px;font-weight:800;color:#1b3a5c;margin-bottom:8px" data-i18n="237">정말 종료하시겠어요?</div>
+    <div style="font-size:13px;color:#6e7c8a;line-height:1.6;margin-bottom:20px" data-i18n-html="238">오늘도 성공적인 투자 되시길 응원할게요.<br>현명한 선택의 곁에 늘 함께하겠습니다.</div>
     <div style="display:flex;gap:10px">
-      <button id="exitStay" style="flex:1;padding:11px 0;border:1px solid #d7dee6;background:#f7f9fb;border-radius:10px;font-size:14px;font-weight:700;color:#41506a;cursor:pointer">머무르기</button>
-      <button id="exitGo" style="flex:1;padding:11px 0;border:none;background:#1b3a5c;color:#fff;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer">종료</button>
+      <button id="exitStay" style="flex:1;padding:11px 0;border:1px solid #d7dee6;background:#f7f9fb;border-radius:10px;font-size:14px;font-weight:700;color:#41506a;cursor:pointer" data-i18n="239">머무르기</button>
+      <button id="exitGo" style="flex:1;padding:11px 0;border:none;background:#1b3a5c;color:#fff;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer" data-i18n="240">종료</button>
     </div>
   </div>
 </div>
+<script src="/i18n.js?v=1795722615"></script>
+<script src="/auth.js?v=1795722615" data-mode="user"></script>
+<script src="/chart-core.js?v=1795722615"></script>
 <script>
+// ===== 새 홈: 종목 버튼 · 메뉴 이동 · 검색 뒤 화면 전환 · 예시 차트 =====
+(function(){
+  var EN=!!window.JC_EN, MQ=window.matchMedia('(max-width:767px)');
+  var inp=document.getElementById('codeInput');
+  // 검색한 뒤에는 제목·소개·종목 버튼을 숨기고 검색창만 남긴다(body.jc-res). 로고 = 홈으로.
+  var _go=window.go, _home=window.goHome;
+  window.go=function(c){ document.body.classList.add('jc-res'); return _go(c); };
+  window.goHome=function(){ document.body.classList.remove('jc-res'); PREVIEW=false; _home(); window.scrollTo(0,0); };
+  window.hmTop=function(){ window.scrollTo(0,0); inp.focus(); };
+  window.hmTo=function(id){ if(document.body.classList.contains('jc-res')) window.goHome(); var el=document.getElementById(id); if(el) el.scrollIntoView({behavior:'smooth',block:'start'}); };
+  // 종목 버튼과 검색창 안내글 (PC / 모바일)
+  function chips(){
+    var m=MQ.matches, L;
+    if(EN) L=m?[['NVDA','NVDA'],['AAPL','AAPL'],['TSLA','TSLA'],[JT(217),'/futures.html']]
+              :[['NVDA','NVDA'],['AAPL','AAPL'],['TSLA','TSLA'],['MSFT','MSFT'],[JT(217),'/futures.html']];
+    else L=m?[[JT(252),'005930',1],[JT(253),'000660',1],[JT(254),'005380',1],['NVDA','NVDA']]
+            :[[JT(252),'005930',1],[JT(253),'000660',1],[JT(254),'005380',1],['AAPL','AAPL'],['NVDA','NVDA']];
+    var box=document.getElementById('hmChips'); box.innerHTML='';
+    L.forEach(function(x){
+      var a=document.createElement('a'); a.textContent=x[0];
+      if(x[1].charAt(0)==='/') a.href=x[1];
+      else { a.href='#'; a.onclick=function(){ if(x[2]) pick(x[1],x[0]); else go(x[1]); return false; }; }
+      box.appendChild(a);
+    });
+    inp.setAttribute('placeholder', JT(m?278:1));
+  }
+  chips(); if(MQ.addEventListener) MQ.addEventListener('change',chips); else if(MQ.addListener) MQ.addListener(chips);
+  // 예시 차트: 한국어 삼성전자(005930) / 영어 엔비디아(NVDA). 이 두 종목만 로그인 없이 세 탭을 보여 준다(서버 sample=1).
+  var CODE=EN?'NVDA':'005930', DATA=null, drawn={};
+  document.getElementById('hmExCode').textContent=CODE;
+  if(EN && window.JC_C){ document.getElementById('hmSwUp').style.borderTopColor=JC_C.scenUpHex; var dn=document.getElementById('hmSwDn'); dn.style.borderTopColor=JC_C.scenDnHex; dn.style.borderTopStyle='dashed'; }
+  var KEY={'10':'10분','60':'60분','L':'일봉'};
+  function show(t){
+    var tabs=document.querySelectorAll('.hm-tab');
+    for(var i=0;i<tabs.length;i++) tabs[i].classList.toggle('on', tabs[i].getAttribute('data-t')===t);
+    if(!DATA) return;
+    var hosts=document.querySelectorAll('.hm-host');
+    for(var j=0;j<hosts.length;j++) hosts[j].style.display=(hosts[j].getAttribute('data-t')===t)?'block':'none';
+    var blk=DATA[KEY[t]], load=document.getElementById('hmLoad');
+    if(!blk||!blk.chart||!blk.projection){ load.style.display='flex'; load.textContent=JT(218); return; }
+    load.style.display='none';
+    if(!drawn[t]){ drawn[t]=1; window.__IS_US=(DATA['시장']==='미국'); window.__IS_JP=(DATA['시장']==='일본'); try{ mkChart(blk, blk.projection, 'h'+t); }catch(e){ console.error('example chart:',e); } }
+  }
+  var tb=document.querySelectorAll('.hm-tab');
+  for(var i=0;i<tb.length;i++) tb[i].onclick=function(){ show(this.getAttribute('data-t')); };
+  fetch('/api/analyze?code='+CODE+'&sample=1'+JC_Q).then(function(r){ return r.json(); }).then(function(x){
+    if(!x||x.error||!x.sample) throw new Error('sample');
+    DATA=x; var h='';
+    ['10','60','L'].forEach(function(t){
+      var s='h'+t;
+      h+='<div class="hm-host" id="host'+s+'" data-t="'+t+'" style="display:none"><div style="display:none"><button id="zin'+s+'"></button><button id="zout'+s+'"></button><button id="zall'+s+'"></button></div>'
+        +'<div class="hm-cvwrap"><canvas id="cv'+s+'"></canvas><div class="linetip" id="tip'+s+'"></div><div class="chart-notice" id="notice'+s+'" style="display:none"></div></div></div>';
+    });
+    document.getElementById('hmEx').insertAdjacentHTML('beforeend',h);
+    show('L');
+  }).catch(function(){ var l=document.getElementById('hmLoad'); l.style.display='flex'; l.textContent=JT(218); });
+})();
+// ===== 종료 확인 모달 (기존 그대로) =====
 (function(){
   try{ history.pushState({jc:1},'',location.href); }catch(e){}
   var modal=document.getElementById('exitModal');
