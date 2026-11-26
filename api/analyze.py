@@ -9,6 +9,7 @@ from urllib.parse import urlparse, parse_qs
 import os, sys, json, requests
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import _auth
+import _i18n
 
 
 import datetime as _dt
@@ -126,13 +127,13 @@ def token():
     key=os.environ.get("LS_APP_KEY","").strip()
     secret=os.environ.get("LS_APP_SECRET","").strip()
     if not key or not secret:
-        raise RuntimeError("환경변수 미설정 (LS_APP_KEY/LS_APP_SECRET)")
+        raise _i18n.Msg(223)
     r=requests.post(f"{BASE}/oauth2/token",verify=False,timeout=8,
         headers={"Content-Type":"application/x-www-form-urlencoded"},
         params={"grant_type":"client_credentials","appkey":key,"appsecretkey":secret,"scope":"oob"})
     j=r.json()
     if "access_token" not in j:
-        raise RuntimeError("토큰 발급 실패: "+str(j.get("error_description") or j.get("error") or j))
+        raise _i18n.Msg(224, str(j.get("error_description") or j.get("error") or j))
     tk=j["access_token"]
     _token_cache["tk"]=tk
     _token_cache["exp"]=now + 23*3600  # 23시간 캐싱
@@ -802,6 +803,7 @@ def _preview_bytes(ent, st):
 class handler(BaseHTTPRequestHandler):
     def do_GET(self):
         qs=parse_qs(urlparse(self.path).query); code=(qs.get('code',[''])[0] or '').strip()
+        _lang=_i18n.lang_of(qs)   # 영어 화면(?lang=en)이면 오류·안내 문구를 영어로. 없으면 한국어 그대로
         # ===== 이용권한 확인 — 승인 + 만료 전(active)만 실제 결과, 그 외는 미리보기(preview) =====
         try: _st=_auth.access(self.headers)[2]
         except Exception: _st='login'
@@ -810,7 +812,7 @@ class handler(BaseHTTPRequestHandler):
         self.send_header('Access-Control-Allow-Origin','*'); self.end_headers()
         try:
             if not code:
-                self.wfile.write(json.dumps({'error':'종목코드를 입력하세요'}).encode()); return
+                self.wfile.write(json.dumps({'error':_i18n.t(225,_lang)}).encode()); return
             # ===== 결과 캐시 확인 (30분) — 일봉 3개월/10분봉 주 기준이라 자주 안 바뀜 =====
             import time as _t
             _ck=code.upper()
@@ -837,7 +839,7 @@ class handler(BaseHTTPRequestHandler):
             else:
                 # ===== 한국 주식 (LS) =====
                 if not code.isdigit() or len(code)!=6:
-                    self.wfile.write(json.dumps({'error':'국내는 6자리 코드, 해외는 영문 티커(AAPL 등)'}).encode()); return
+                    self.wfile.write(json.dumps({'error':_i18n.t(226,_lang)}).encode()); return
                 tk=token(); nm,mk=get_name(tk,code)
                 # 일봉/60분/15분 = 야후 (지연 낮음), 오늘 현재가만 LS t1102로 씌우기
                 day=get_day_kr(code)
@@ -867,14 +869,7 @@ class handler(BaseHTTPRequestHandler):
             # 셋 다 데이터가 없을 때만 차단. 하나라도 있으면 보여줌 (신규상장주는 단기/중기만 가능)
             _nd=len(day) if day else 0; _n60=len(m60) if m60 else 0; _n10=len(m10) if m10 else 0
             if (not day or len(day)<10) and (not m60 or len(m60)<10) and (not m10 or len(m10)<10):
-                _msg=('아직 차트를 분석할 만큼 봉(캔들)이 형성되지 않았어요. '
-                      + nm + '은(는) 상장 초기이거나 거래가 매우 적은 종목으로 보여요.\n\n'
-                      + '차트 분석에는 봉이 일정 수 이상 쌓여야 해요:\n'
-                      + '· 단기(15분봉): 약 2~3거래일 필요\n'
-                      + '· 중기(60분봉): 약 1~2주 필요\n'
-                      + '· 중장기(일봉): 약 30거래일 필요\n\n'
-                      + '현재 형성된 봉 — 일봉 ' + str(_nd) + '개 / 60분봉 ' + str(_n60) + '개 / 15분봉 ' + str(_n10) + '개\n'
-                      + '봉이 더 쌓이면 단기부터 순차적으로 분석할 수 있어요. 며칠 후 다시 확인해 주세요.')
+                _msg=_i18n.t(227,_lang,nm,_nd,_n60,_n10)
                 self.wfile.write(json.dumps({'error':_msg}).encode()); return
             # 탭별 독립 판단: 봉 15개 이상이면 작도 시도, 미만이면 '데이터 부족'
             dd = build_drawings(day) if day and len(day)>=15 else {'error':'데이터 부족'}
@@ -960,4 +955,4 @@ class handler(BaseHTTPRequestHandler):
             _RESULT_CACHE[_ck]={"data":_payload,"obj":out,"exp":_t.time()+_ttl}
             self.wfile.write(_payload if _st=='active' else _preview_bytes(_RESULT_CACHE[_ck],_st))
         except Exception as ex:
-            self.wfile.write(json.dumps({'error':'분석 실패: '+str(ex)}).encode())
+            self.wfile.write(json.dumps({'error':_i18n.t(228,_lang,_i18n.text(ex,_lang))}).encode())

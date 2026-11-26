@@ -6,34 +6,34 @@
 var MODE=(document.currentScript&&document.currentScript.getAttribute('data-mode'))||'user';
 var FB='https://www.gstatic.com/firebasejs/10.12.2/';
 var CFG={apiKey:"AIzaSyA1r8bCwuAhIT2TrCYh2mZvXFjORxr_arc",authDomain:"chart-join.firebaseapp.com",projectId:"chart-join",storageBucket:"chart-join.firebasestorage.app",messagingSenderId:"435211355056",appId:"1:435211355056:web:e278693b08778ca23c4c75"};
-var MSG={format:'010으로 시작하는 숫자만 입력해 주세요',too_fast:'잠시 후 다시 요청해 주세요',send_fail:'인증번호 발송에 실패했습니다. 잠시 후 다시 시도해 주세요',mismatch:'인증번호가 맞지 않습니다',expired:'인증번호가 만료되었습니다. 다시 받아주세요'};
+var MSG={format:JT(19),too_fast:JT(20),send_fail:JT(21),mismatch:JT(22),expired:JT(23)};
 var ACCOUNT='140-016-447637';
 
 // ----- 카드 문구 (확정 문구 그대로) -----
 var T='<div class="jc-t">JOIN CHART</div>';
 function sub(s){ return '<div class="jc-s">'+s+'</div>'; }
-var PRICE='<p>월 이용료 99,000원</p>';
-var ACC='<p>입금계좌 신한은행 140-016-447637 (주)조인홀딩스</p><p>입금 후 070-8985-8221 또는 help@joinpeople.kr 로 입금자명과 휴대폰번호를 보내주세요.</p>';
-var COPY='<button class="jc-btn jc-copy">계좌번호 복사</button>';
-var FORM='<div class="jc-l">휴대폰번호를 입력해 주세요</div>'
+var PRICE='<p>'+JT(37)+'</p>';
+var ACC='<p>'+JT(38)+'</p><p>'+JT(39)+'</p>';
+var COPY='<button class="jc-btn jc-copy">'+JT(40)+'</button>';
+var FORM='<div class="jc-l">'+JT(24)+'</div>'
   +'<input class="jc-in jc-phone" type="tel" inputmode="numeric" autocomplete="tel">'
-  +'<button class="jc-btn jc-send">인증번호 받기</button>'
+  +'<button class="jc-btn jc-send">'+JT(25)+'</button>'
   +'<div class="jc-codebox" style="display:none">'
-  +'<div class="jc-l" style="margin-top:14px">카카오톡으로 받은 인증번호 6자리를 입력해 주세요</div>'
+  +'<div class="jc-l" style="margin-top:14px">'+JT(26)+'</div>'
   +'<input class="jc-in jc-code" type="text" inputmode="numeric" maxlength="6" autocomplete="one-time-code">'
-  +'<div class="jc-links"><button class="jc-link jc-resend" disabled>다시 받기</button><button class="jc-link jc-change">번호 변경</button></div>'
-  +'<button class="jc-btn jc-ok">확인</button></div>'
+  +'<div class="jc-links"><button class="jc-link jc-resend" disabled>'+JT(27)+'</button><button class="jc-link jc-change">'+JT(28)+'</button></div>'
+  +'<button class="jc-btn jc-ok">'+JT('77a')+'</button></div>'
   +'<div class="jc-err"></div>';
-var OUT='<button class="jc-out">로그아웃</button>';
+var OUT='<button class="jc-out">'+JT(29)+'</button>';
 
 function cardHtml(st){
-  if(st==='none') return T+sub('회원 전용 서비스입니다')+'<div class="jc-price">월 이용료 99,000원</div>'+FORM
-    +'<div class="jc-note">이미 회원이신가요? 같은 번호로 인증하면 바로 이용됩니다</div>';
+  if(st==='none') return T+sub(JT(41))+'<div class="jc-price">'+JT(37)+'</div>'+FORM
+    +'<div class="jc-note">'+JT(42)+'</div>';
   if(st==='pending') return isNew
-    ? T+sub('가입이 완료되었습니다')+'<div class="jc-b"><p>입금 확인 후 이용하실 수 있습니다</p>'+PRICE+ACC+'</div>'+COPY+OUT
-    : T+sub('입금 확인 후 이용하실 수 있습니다')+'<div class="jc-b">'+PRICE+ACC+'</div>'+COPY+OUT;
-  if(st==='expired') return T+sub('이용 기간이 만료되었습니다')+'<div class="jc-b"><p>재입금 후 다시 이용하실 수 있습니다.</p>'+PRICE+ACC+'</div>'+COPY+OUT;
-  if(st==='suspended') return T+sub('이용이 정지되었습니다')+'<div class="jc-b"><p>문의: 070-8985-8221 / help@joinpeople.kr</p></div>'+OUT;
+    ? T+sub(JT(43))+'<div class="jc-b"><p>'+JT(44)+'</p>'+PRICE+ACC+'</div>'+COPY+OUT
+    : T+sub(JT(44))+'<div class="jc-b">'+PRICE+ACC+'</div>'+COPY+OUT;
+  if(st==='expired') return T+sub(JT(45))+'<div class="jc-b"><p>'+JT(46)+'</p>'+PRICE+ACC+'</div>'+COPY+OUT;
+  if(st==='suspended') return T+sub(JT(47))+'<div class="jc-b"><p>'+JT(48)+'</p></div>'+OUT;
   return '';
 }
 
@@ -125,7 +125,7 @@ function paintOverlay(changed){
     return;
   }
   var h=cardHtml(st);
-  cur.el.innerHTML=h?'<div class="jc-card"><button class="jc-x" aria-label="닫기">×</button>'+h+'</div>':'';
+  cur.el.innerHTML=h?'<div class="jc-card"><button class="jc-x" aria-label="'+JT(49)+'">×</button>'+h+'</div>':'';
   var x=cur.el.querySelector('.jc-x');
   if(x) x.onclick=function(){ cur=null; if(window.goHome) window.goHome(); };   // 오버레이 닫고 홈 첫 화면으로
   bind(cur.el);
@@ -141,11 +141,11 @@ function paintHeader(){
   // 로그인 상태면 사람 아이콘 + 드롭다운(번호 / 상태 / 로그아웃). 비로그인이면 없음.
   if(!ME||ME.status==='error'){ hdr.style.display='none'; return; }
   var p=String(ME.phone||''), line2;
-  if(ME.role==='admin') line2='관리자';
-  else if(ME.status==='active') line2=(ME.until||'')+'까지';
-  else line2={pending:'입금 확인 대기',expired:'이용 기간 만료',suspended:'이용 정지'}[ME.status]||'';
-  hdr.innerHTML='<button class="jc-mebtn" aria-label="계정"><svg viewBox="0 0 24 24" fill="none" stroke="#f4a06a" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"/></svg></button>'
-    +'<div class="jc-menu"><div class="jc-m1">010-****-'+p.slice(-4)+'</div><div class="jc-m2">'+line2+'</div><button class="jc-hout">로그아웃</button></div>';
+  if(ME.role==='admin') line2=JT(30);
+  else if(ME.status==='active') line2=JTF(31,[(ME.until||'')]);
+  else line2={pending:JT(32),expired:JT(33),suspended:JT(34)}[ME.status]||'';
+  hdr.innerHTML='<button class="jc-mebtn" aria-label="'+JT(35)+'"><svg viewBox="0 0 24 24" fill="none" stroke="#f4a06a" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"/></svg></button>'
+    +'<div class="jc-menu"><div class="jc-m1">010-****-'+p.slice(-4)+'</div><div class="jc-m2">'+line2+'</div><button class="jc-hout">'+JT(29)+'</button></div>';
   hdr.querySelector('.jc-mebtn').onclick=function(){ hdr.classList.toggle('open'); };
   hdr.querySelector('.jc-hout').onclick=logout;
   hdr.classList.remove('open');
@@ -156,14 +156,14 @@ function paintAdmin(){
   if(ME&&ME.role==='admin'){
     gate.innerHTML=''; document.body.classList.remove('jc-lock');
     if(!aout){
-      aout=document.createElement('button'); aout.className='btn btn-o btn-sm'; aout.textContent='로그아웃'; aout.onclick=logout;
+      aout=document.createElement('button'); aout.className='btn btn-o btn-sm'; aout.textContent=JT(29); aout.onclick=logout;
       var top=document.querySelector('.topbar'); if(top) top.appendChild(aout);
     }
     if(!adminInit){ adminInit=true; if(window.jcAdminReady) window.jcAdminReady(); }
     return;
   }
   document.body.classList.add('jc-lock');
-  gate.innerHTML='<div class="jc-card">'+(ME?T+sub('접근 권한이 없습니다')+OUT:T+FORM)+'</div>';
+  gate.innerHTML='<div class="jc-card">'+(ME?T+sub(JT(36))+OUT:T+FORM)+'</div>';
   bind(gate);
 }
 
@@ -173,8 +173,8 @@ function bind(box){
   var cp=box.querySelector('.jc-copy');
   if(cp) cp.onclick=function(){
     copyText(ACCOUNT);
-    cp.textContent='복사되었습니다';
-    setTimeout(function(){ cp.textContent='계좌번호 복사'; },1500);
+    cp.textContent=JT(50);
+    setTimeout(function(){ cp.textContent=JT(40); },1500);
   };
   var bSend=box.querySelector('.jc-send'); if(!bSend) return;
   var ph=box.querySelector('.jc-phone'), cd=box.querySelector('.jc-code'), bOk=box.querySelector('.jc-ok');

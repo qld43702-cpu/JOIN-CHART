@@ -11,6 +11,7 @@ from http.server import BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
 import requests
 import _auth
+import _i18n as I
 import analyze as A
 
 BASE = "https://openapi.ls-sec.co.kr:8080"
@@ -23,8 +24,8 @@ _KST = _dt.timezone(_dt.timedelta(hours=9))
 # 배수: 주식 기준 10/20/30% ÷ 주식 한 달(20거래일) 폭 중앙값 21.3% → 첫 탭 0.47 / 둘째 탭 0.94 / 셋째 탭 1.41
 # 탭(분): 선물 5·30·60 — 배수·주식 기준값은 탭 자리(첫·둘째·셋째)로 정한다
 TABS_FUT = (5, 30, 60)
-NAME_KR = '국내선물'
-NAME_NQ = '나스닥 선물'
+NAME_KR = 216      # 문구 번호(api/_i18n.py): 국내선물
+NAME_NQ = 217      # 문구 번호: 나스닥 선물
 NQ = 'NQ=F'        # 나스닥100 선물 (야후)
 NQ_RANGE = {5: '10d', 30: '60d', 60: '3mo'}   # 분봉별 야후 조회 구간 (최근 MAXBARS봉을 채울 만큼)
 MAXBARS = 1000     # 작도에 쓰는 봉 수 — 국내선물(500봉 × 2쪽)과 같게
@@ -37,8 +38,11 @@ STOCK = ({'thr': 0.10, 'touch': 0.03, 'period': 'week', 'fut': 39},
 JUDGE_STOCK = 0.015
 PAGES = 2          # 분봉 연속조회 페이지 수(500봉씩)
 
-class LSError(Exception):
-    pass
+class LSError(I.Msg):
+    """LSError(문구 번호, 값…) 또는 LSError(raw=LS가 준 글)"""
+    def __init__(self, n=None, *vals, raw=None):
+        if n is None: Exception.__init__(self, raw); self.n = None; self.vals = ()
+        else: super().__init__(n, *vals)
 
 _last = [0.0]
 def ls(tr, path, body, cont='N', ckey=''):
@@ -50,9 +54,10 @@ def ls(tr, path, body, cont='N', ckey=''):
     if ckey: hd["tr_cont_key"] = ckey
     r = requests.post(f"{BASE}{path}", verify=False, timeout=15, headers=hd, json={f"{tr}InBlock": body})
     try: j = r.json()
-    except Exception: raise LSError('LS 응답 오류 (HTTP %s)' % r.status_code)
+    except Exception: raise LSError(229, r.status_code)
     if j.get('rsp_cd') != '00000':
-        raise LSError(str(j.get('rsp_msg') or 'LS 오류') )
+        _m = j.get('rsp_msg')
+        raise (LSError(raw=str(_m)) if _m else LSError(230))
     return j, r.headers
 
 def today(): return _dt.datetime.now(_KST).date()
@@ -95,7 +100,7 @@ def nq_fetch(interval, rng):
     r = requests.get(f"{A.YBASE}/{NQ}", headers=A.YHEAD, timeout=10,
                      params={"range": rng, "interval": interval, "includePrePost": "false"})
     res = (r.json().get("chart") or {}).get("result")
-    if not res: raise Exception('야후 %s 응답 없음' % NQ)
+    if not res: raise I.Msg(231, NQ)
     res = res[0]; ts = res.get("timestamp") or []
     q = (res.get("indicators", {}).get("quote") or [{}])[0]
     o, h, l, c, v = (q.get(k) or [] for k in ('open', 'high', 'low', 'close', 'volume'))
@@ -115,15 +120,15 @@ def nq_quote(meta):
     return {'price': p, 'change': round(abs(ch), 2), 'diff': round(abs(ch) / pc * 100, 2),
             'sign': '2' if ch > 0 else ('5' if ch < 0 else '3')}
 
-def board():
+def board(lang='ko'):
     ff = front_future()
-    if not ff: raise LSError('선물 최근월물을 찾지 못했습니다')
+    if not ff: raise LSError(232)
     fcode = ff[1]['shcode']
     j, _ = ls('t2111', MD, {'focode': fcode}); fb = j.get('t2111OutBlock') or {}
-    fut = {'code': fcode, 'name': NAME_KR, 'price': fnum(fb.get('price')),
+    fut = {'code': fcode, 'name': I.t(NAME_KR, lang), 'price': fnum(fb.get('price')),
            'change': fnum(fb.get('change')), 'diff': fnum(fb.get('diff')), 'sign': fb.get('sign')}
     _, meta = nq_fetch('5m', '1d')
-    nq = dict({'code': NQ, 'name': NAME_NQ}, **nq_quote(meta))
+    nq = dict({'code': NQ, 'name': I.t(NAME_NQ, lang)}, **nq_quote(meta))
     return {'fut': fut, 'nq': nq}
 
 def bars(code, ncnt):
@@ -165,16 +170,16 @@ def range20(b):
     out.sort(); m = len(out) // 2
     return out[m] if len(out) % 2 else (out[m - 1] + out[m]) / 2
 
-def analyze_code(code):
+def analyze_code(code, lang='ko'):
     is_nq = (code == NQ)
     if is_nq:
-        name = NAME_NQ; chg = None
+        name = I.t(NAME_NQ, lang); chg = None
     else:
         ff = front_future()
         if not (ff and code == ff[1]['shcode']):
-            return {'error': '선물 최근월물 또는 위클리옵션 코드가 아닙니다'}
+            return {'error': I.t(233, lang)}
         j, _ = ls('t2111', MD, {'focode': code}); cb = j.get('t2111OutBlock') or {}
-        name = NAME_KR
+        name = I.t(NAME_KR, lang)
         chg = {'change': fnum(cb.get('change')), 'diff': fnum(cb.get('diff')), 'sign': cb.get('sign'), 'price': fnum(cb.get('price'))}
     tabs = TABS_FUT
     T1, T2, T3 = tabs
@@ -252,19 +257,20 @@ class handler(BaseHTTPRequestHandler):
     def do_GET(self):
         qs = parse_qs(urlparse(self.path).query)
         code = (qs.get('code', [''])[0] or '').strip().upper()
+        lang = I.lang_of(qs)   # 영어 화면(?lang=en)이면 이름·오류 문구를 영어로. 없으면 한국어 그대로
         try: st = _auth.access(self.headers)[2]
         except Exception: st = 'login'
         try:
             if qs.get('board'):
-                b = board()
+                b = board(lang)
                 if st != 'active': b = preview_board(b); b['auth'] = st
                 return _auth.send_json(self, 200, b)
-            if not code: return _auth.send_json(self, 200, {'error': '종목코드가 없습니다'})
-            out = analyze_code(code)
+            if not code: return _auth.send_json(self, 200, {'error': I.t(234, lang)})
+            out = analyze_code(code, lang)
             if out.get('error') or st == 'active': return _auth.send_json(self, 200, out)
             pv = A.build_preview(out); pv.pop('등락', None); pv['auth'] = st
             return _auth.send_json(self, 200, pv)
         except LSError as e:
-            return _auth.send_json(self, 200, {'error': str(e), 'ls_error': True})
+            return _auth.send_json(self, 200, {'error': I.text(e, lang), 'ls_error': True})
         except Exception as e:
-            return _auth.send_json(self, 200, {'error': '조회 실패: ' + str(e)[:200]})
+            return _auth.send_json(self, 200, {'error': I.t(235, lang, I.text(e, lang)[:200])})
