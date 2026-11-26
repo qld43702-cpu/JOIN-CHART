@@ -1,5 +1,5 @@
-// ===== 선물·위클리옵션 화면 (futures.html) =====
-// 첫 화면: 코스피200 선물 최근월물 1개 + 위클리옵션 전광판. 누르면 그 종목 차트(chart-core.js render 재사용).
+// ===== 선물 화면 (futures.html) =====
+// 첫 화면: 선물 2개(코스피200 선물 최근월물, 나스닥 선물). 누르면 그 종목 차트(chart-core.js render 재사용).
 // 조회 방식 — 수동 새로고침. 이용중이 아니면 서버가 가격을 숨긴 응답(preview)을 주고, 흐리게 + auth.js 카드.
 var FO_CUR=null;   // 지금 열린 차트 종목코드
 
@@ -19,16 +19,11 @@ function foLoadBoard(){
     if(b.error){ el.innerHTML='<div class="empty data-notice">'+foEsc(b.error)+'</div>'; return; }
     var pv=!!b.preview;
     var h='<div class="fo-top"><button class="fo-rf" onclick="foRefresh()">새로고침</button></div>';
-    var f=b.fut||{};
-    var dn=(f.sign==='4'||f.sign==='5');
-    h+='<div class="fo-fut" onclick="foOpen(\''+foEsc(f.code)+'\')"><span class="fo-nm">'+foEsc(f.name)+'</span>'+
-       '<span class="fo-p" style="color:'+(f.change?(dn?'#378add':'#e24b4a'):'#5a6b7d')+'">'+foNum(f.price)+'</span></div>';
-    function list(L){
-      return L.map(function(r){
-        return '<div class="fo-row" onclick="foOpen(\''+foEsc(r.code)+'\')"><span class="fo-nm">'+foEsc(r.name)+'</span><span class="fo-p">'+foNum(r.price)+'</span></div>';
-      }).join('');
-    }
-    h+='<div class="fo-cols"><div class="fo-col">'+list(b.calls||[])+'</div><div class="fo-col">'+list(b.puts||[])+'</div></div>';
+    [b.fut||{}, b.nq||{}].forEach(function(f){
+      var dn=(f.sign==='4'||f.sign==='5');
+      h+='<div class="fo-fut" onclick="foOpen(\''+foEsc(f.code)+'\')"><span class="fo-nm">'+foEsc(f.name)+'</span>'+
+         '<span class="fo-p" style="color:'+(f.change?(dn?'#378add':'#e24b4a'):'#5a6b7d')+'">'+foNum(f.price)+'</span></div>';
+    });
     if(pv){
       el.innerHTML='<div class="jc-pvblur">'+h+'</div><div class="jc-ov"></div>';
       el.style.position='relative';
@@ -51,7 +46,7 @@ function foOpen(code){
   }).catch(function(){ box.innerHTML='<div class="empty">분석 실패. 잠시 후 다시 시도하세요.</div>'; });
 }
 
-// 수동 새로고침: 전광판 다시 조회 → 열린 차트가 있으면 그 차트도 다시 조회
+// 수동 새로고침: 첫 화면 다시 조회 → 열린 차트가 있으면 그 차트도 다시 조회
 function foRefresh(){
   foLoadBoard().then(function(){ if(FO_CUR) foOpen(FO_CUR); });
 }

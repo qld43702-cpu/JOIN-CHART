@@ -1,7 +1,7 @@
 # ============================================================
-#  선물·위클리옵션 API (코스피200) — 시세 LS증권, 조회 방식(실시간 아님)
-#  GET /api/fo?board=1      → 선물 최근월물 1개 + 위클리옵션 전광판(가장 가까운 만기, 현재가 1.00 이상 2.00 미만)
-#  GET /api/fo?code=XXXX    → 그 종목 분석: 선물 5분·30분·60분 / 옵션 3분·5분·10분 (작도는 주식과 같은 함수)
+#  선물 API — 코스피200 선물 최근월물(시세 LS증권) + 나스닥100 선물(시세 야후 NQ=F), 조회 방식(실시간 아님)
+#  GET /api/fo?board=1      → 선물 2개 (코스피200 선물 최근월물, 나스닥 선물)
+#  GET /api/fo?code=XXXX    → 그 종목 분석: 5분·30분·60분 (작도는 주식과 같은 함수)
 #  이용중(active)만 실제 값. 그 외는 preview(가격 숨김) — /api/analyze와 같은 규칙.
 #  LS 호출은 인스턴스 안에서 1.1초 간격(초당 1회 제한).
 # ============================================================
@@ -21,9 +21,13 @@ _KST = _dt.timezone(_dt.timedelta(hours=9))
 # ===== 변곡 기준 = 그 종목·그 분봉의 20봉 구간 폭 × 배수 =====
 # 20봉 구간 폭: 받은 봉에서 20봉 구간(5봉씩 이동)마다 (최고가-최저가)/최저가, 그 중앙값
 # 배수: 주식 기준 10/20/30% ÷ 주식 한 달(20거래일) 폭 중앙값 21.3% → 첫 탭 0.47 / 둘째 탭 0.94 / 셋째 탭 1.41
-# 탭(분): 선물 5·30·60 / 옵션 3·5·10 — 배수·주식 기준값은 탭 자리(첫·둘째·셋째)로 정한다
+# 탭(분): 선물 5·30·60 — 배수·주식 기준값은 탭 자리(첫·둘째·셋째)로 정한다
 TABS_FUT = (5, 30, 60)
-TABS_OPT = (3, 5, 10)
+NAME_KR = '국내선물'
+NAME_NQ = '나스닥 선물'
+NQ = 'NQ=F'        # 나스닥100 선물 (야후)
+NQ_RANGE = {5: '10d', 30: '60d', 60: '3mo'}   # 분봉별 야후 조회 구간 (최근 MAXBARS봉을 채울 만큼)
+MAXBARS = 1000     # 작도에 쓰는 봉 수 — 국내선물(500봉 × 2쪽)과 같게
 MULT = (0.47, 0.94, 1.41)
 RANGE_W = 20
 # 주식에서 각 축의 기준값 (판정 1.5%·touch_buf를 변곡 기준 대비 같은 비율로 옮기기 위함)
@@ -53,14 +57,12 @@ def ls(tr, path, body, cont='N', ckey=''):
 
 def today(): return _dt.datetime.now(_KST).date()
 
-# ===== 마스터(t8467 선물 목록: 하루 1번 / t8435 위클리 목록: 10분) =====
+# ===== 마스터(t8467 선물 목록: 하루 1번) =====
 _MASTER = {}
-WK_TTL = 600
 def master(tr):
     k = (tr, today().isoformat()); hit = _MASTER.get(k)
-    if hit and (tr != 't8435' or time.time() - hit[0] < WK_TTL): return hit[1]
-    if tr == 't8467': j, _ = ls('t8467', MD, {'gubun': ''})
-    else: j, _ = ls('t8435', MD, {'gubun': 'WK'})
+    if hit: return hit[1]
+    j, _ = ls('t8467', MD, {'gubun': ''})
     _MASTER.clear() if len(_MASTER) > 8 else None
     _MASTER[k] = (time.time(), j.get(f'{tr}OutBlock') or [])
     return _MASTER[k][1]
@@ -69,16 +71,6 @@ def nth_weekday(y, m, wd, n):
     """y년 m월의 n번째 요일(wd: 월=0 … 목=3). 없으면 None"""
     d = _dt.date(y, m, 1); d += _dt.timedelta(days=(wd - d.weekday()) % 7); d += _dt.timedelta(days=7 * (n - 1))
     return d if d.month == m else None
-
-def next_nth(wd, n, base):
-    """base 이후(당일 포함) 가장 가까운 '그 달의 n번째 요일'"""
-    y, m = base.year, base.month
-    for _ in range(3):
-        d = nth_weekday(y, m, wd, n)
-        if d and d >= base: return d
-        m += 1
-        if m > 12: y, m = y + 1, 1
-    return None
 
 def front_future():
     """최근월물: 만기(월물 둘째 목요일) 당일까지 그 월물, 다음 날 다음 월물"""
@@ -93,73 +85,46 @@ def front_future():
         if ex and ex >= t and (best is None or ex < best[0]): best = (ex, r)
     return best
 
-def nearest_weekly():
-    """위클리: 월요일·목요일 만기 중 가장 가까운 1개 (만기 당일까지 그 만기, 다음 날 넘김)"""
-    t = today(); groups = {}
-    for r in master('t8435'):
-        p = (r.get('hname') or '').split()
-        if len(p) < 4 or p[1] not in ('월', '목') or not p[2].startswith('W'): continue
-        key = (p[1], p[2])
-        g = groups.setdefault(key, {'prefix': set(), 'codes': []})
-        g['prefix'].add((r.get('shcode') or '')[:5]); g['codes'].append(r.get('shcode') or '')
-    best = None
-    for (day, wk), g in groups.items():
-        try: n = int(wk[1:])
-        except Exception: continue
-        ex = next_nth(0 if day == '월' else 3, n, t)
-        if ex and (best is None or ex < best['expiry']):
-            best = {'day': day, 'wk': wk, 'expiry': ex, 'prefix': g['prefix'], 'codes': g['codes']}
-    return best
-
-def monday_rows(wk, names):
-    """월요일 만기: t8435의 그 만기 콜·풋 코드를 50개씩 t8434(멀티현재가)로 조회"""
-    codes = [c for c in wk['codes'] if c]
-    px = {}
-    for i in range(0, len(codes), 50):
-        ch = codes[i:i + 50]
-        j, _ = ls('t8434', MD, {'qrycnt': len(ch), 'focode': ''.join(ch)})
-        for r in j.get('t8434OutBlock1') or []:
-            px[r.get('focode')] = fnum(r.get('price'))
-    calls, puts = [], []
-    for c in codes:
-        p = px.get(c)
-        if p is None or not (1.00 <= p < 2.00): continue
-        nm = names.get(c, c)
-        ap = fnum((nm.split() or [''])[-1].replace(',', ''))
-        (calls if c.startswith('B') else puts).append({'code': c, 'name': nm, 'price': p, 'actprice': ap})
-    return calls, puts
-
 def fnum(v):
     try: return float(v)
     except Exception: return None
+
+# ===== 나스닥100 선물 (야후 NQ=F) =====
+def nq_fetch(interval, rng):
+    """야후 분봉 → (봉 목록[한국 시간], meta). 값이 없는 봉(휴장 구간)은 뺀다"""
+    r = requests.get(f"{A.YBASE}/{NQ}", headers=A.YHEAD, timeout=10,
+                     params={"range": rng, "interval": interval, "includePrePost": "false"})
+    res = (r.json().get("chart") or {}).get("result")
+    if not res: raise Exception('야후 %s 응답 없음' % NQ)
+    res = res[0]; ts = res.get("timestamp") or []
+    q = (res.get("indicators", {}).get("quote") or [{}])[0]
+    o, h, l, c, v = (q.get(k) or [] for k in ('open', 'high', 'low', 'close', 'volume'))
+    out = []
+    for i in range(len(ts)):
+        if i >= len(c) or c[i] is None: continue
+        dt = _dt.datetime.fromtimestamp(ts[i], _KST)
+        out.append({'d': dt.strftime("%Y%m%d"), 't': dt.strftime("%H%M%S"), 'o': float(o[i] or c[i]), 'h': float(h[i] or c[i]),
+                    'l': float(l[i] or c[i]), 'c': float(c[i]), 'v': float(v[i] or 0)})
+    return out, (res.get("meta") or {})
+
+def nq_quote(meta):
+    """현재가·전일 대비 (LS 등락과 같은 모양: change 절댓값, sign 2=상승 5=하락)"""
+    p = fnum(meta.get('regularMarketPrice')); pc = fnum(meta.get('previousClose'))
+    if p is None or not pc: return {'price': p, 'change': None, 'diff': None, 'sign': None}
+    ch = p - pc
+    return {'price': p, 'change': round(abs(ch), 2), 'diff': round(abs(ch) / pc * 100, 2),
+            'sign': '2' if ch > 0 else ('5' if ch < 0 else '3')}
 
 def board():
     ff = front_future()
     if not ff: raise LSError('선물 최근월물을 찾지 못했습니다')
     fcode = ff[1]['shcode']
     j, _ = ls('t2111', MD, {'focode': fcode}); fb = j.get('t2111OutBlock') or {}
-    fut = {'code': fcode, 'name': fb.get('hname') or ff[1].get('hname'), 'price': fnum(fb.get('price')),
+    fut = {'code': fcode, 'name': NAME_KR, 'price': fnum(fb.get('price')),
            'change': fnum(fb.get('change')), 'diff': fnum(fb.get('diff')), 'sign': fb.get('sign')}
-    wk = nearest_weekly()
-    if not wk: raise LSError('위클리옵션 만기를 찾지 못했습니다')
-    names = {r.get('shcode'): (r.get('hname') or '').strip() for r in master('t8435')}
-    if wk['day'] == '월':
-        calls, puts = monday_rows(wk, names)
-    else:
-        j, _ = ls('t2301', MD, {'yyyymm': wk['wk'].ljust(6), 'gubun': 'W'})
-        calls, puts, got = [], [], set()
-        for blk, dst in (('t2301OutBlock1', calls), ('t2301OutBlock2', puts)):
-            for r in j.get(blk) or []:
-                code = r.get('optcode') or ''; got.add(code[:5])
-                p = fnum(r.get('price'))
-                if p is None or not (1.00 <= p < 2.00): continue
-                dst.append({'code': code, 'name': names.get(code, code), 'price': p, 'actprice': fnum(r.get('actprice'))})
-        # 받은 만기가 고른 만기(월/목)와 다르면 표시하지 않음
-        if got and not (got & wk['prefix']):
-            raise LSError('위클리 %s %s 만기 전광판을 받지 못했습니다' % (wk['day'], wk['wk']))
-    calls.sort(key=lambda x: x['actprice'] or 0); puts.sort(key=lambda x: x['actprice'] or 0)
-    return {'fut': fut, 'weekly': {'day': wk['day'], 'wk': wk['wk'], 'expiry': wk['expiry'].strftime('%Y%m%d')},
-            'calls': calls, 'puts': puts}
+    _, meta = nq_fetch('5m', '1d')
+    nq = dict({'code': NQ, 'name': NAME_NQ}, **nq_quote(meta))
+    return {'fut': fut, 'nq': nq}
 
 def bars(code, ncnt):
     rows = []; cd = ct = ''; cont = 'N'; ck = ''; more = False
@@ -201,17 +166,26 @@ def range20(b):
     return out[m] if len(out) % 2 else (out[m - 1] + out[m]) / 2
 
 def analyze_code(code):
-    names = {r.get('shcode'): (r.get('hname') or '').strip() for r in master('t8435')}
-    ff = front_future()
-    if not (code in names or (ff and code == ff[1]['shcode'])):
-        return {'error': '선물 최근월물 또는 위클리옵션 코드가 아닙니다'}
-    j, _ = ls('t2111', MD, {'focode': code}); cb = j.get('t2111OutBlock') or {}
-    name = cb.get('hname') or names.get(code) or code
-    tabs = TABS_FUT if (ff and code == ff[1]['shcode']) else TABS_OPT
+    is_nq = (code == NQ)
+    if is_nq:
+        name = NAME_NQ; chg = None
+    else:
+        ff = front_future()
+        if not (ff and code == ff[1]['shcode']):
+            return {'error': '선물 최근월물 또는 위클리옵션 코드가 아닙니다'}
+        j, _ = ls('t2111', MD, {'focode': code}); cb = j.get('t2111OutBlock') or {}
+        name = NAME_KR
+        chg = {'change': fnum(cb.get('change')), 'diff': fnum(cb.get('diff')), 'sign': cb.get('sign'), 'price': fnum(cb.get('price'))}
+    tabs = TABS_FUT
     T1, T2, T3 = tabs
     blk = {}; thr_info = {}
     for i, n in enumerate(tabs):
-        b = bars(code, n)
+        if is_nq:
+            b, meta = nq_fetch('%dm' % n, NQ_RANGE[n])
+            b = b[-MAXBARS:]
+            if chg is None: chg = nq_quote(meta)
+        else:
+            b = bars(code, n)
         if not b or len(b) < 15:
             blk[n] = {'error': '데이터 부족'}; continue
         rg = range20(b) or 0
@@ -264,15 +238,13 @@ def analyze_code(code):
                 if d.get('yc', 0) > 0: xp.append(round(d['yc'], 2))
             if xp and isinstance(t.get('projection'), dict): t['projection']['xpoints'] = xp
             t.pop('all_risks', None)
-    chg = {'change': fnum(cb.get('change')), 'diff': fnum(cb.get('diff')), 'sign': cb.get('sign'), 'price': fnum(cb.get('price'))}
-    return {'종목코드': code, '종목명': name, '시장': '', '일봉': dd, '60분': mm, '10분': tt, '등락': chg,
+    return {'종목코드': '', '종목명': name, '시장': '', '일봉': dd, '60분': mm, '10분': tt, '등락': chg,
             'fo': True, 'tabs': list(tabs), 'thr_info': {str(k): v for k, v in thr_info.items()}}
 
 def preview_board(b):
     pv = json.loads(json.dumps(b))
-    for k in ('price', 'change', 'diff', 'sign'): pv['fut'][k] = None
-    for L in (pv['calls'], pv['puts']):
-        for r in L: r['price'] = None
+    for it in (pv['fut'], pv['nq']):
+        for k in ('price', 'change', 'diff', 'sign'): it[k] = None
     pv['preview'] = True
     return pv
 
