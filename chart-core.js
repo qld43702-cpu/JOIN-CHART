@@ -192,14 +192,14 @@ function render(x){
   // ===== 탭 =====
   html+='<div class="trk-tabs">';
   html+='<button class="trk-tab" data-trk="10"'+(has10?'':' style="display:none"')+'>'+(JC_FO?FO_TABS[0]:JT(67)+'<span>'+minName+'</span>')+'</button>';
-  html+='<button class="trk-tab'+(has60?' on':'')+'" data-trk="60"'+(has60?'':' style="display:none"')+'>'+(JC_FO?FO_TABS[1]:JT(68)+'<span>'+JT(69)+'</span>')+'</button>';
-  html+='<button class="trk-tab'+(has60?'':' on')+'" data-trk="" >'+(JC_FO?FO_TABS[2]:JT(70)+'<span>'+JT(71)+'</span>')+'</button>';
+  html+='<button class="trk-tab" data-trk="60"'+(has60?'':' style="display:none"')+'>'+(JC_FO?FO_TABS[1]:JT(68)+'<span>'+JT(69)+'</span>')+'</button>';
+  html+='<button class="trk-tab on" data-trk="" >'+(JC_FO?FO_TABS[2]:JT(70)+'<span>'+JT(71)+'</span>')+'</button>';
   html+='</div>';
 
-  // 패널들 (기본: 중기 보임, 없으면 장기)
+  // 패널들 (기본: 셋째 탭(장기 / 선물 60분) 보임)
   html+='<div class="trk-panel" data-pnl="10" style="display:none">'+trackHtml('10', minName, JT(72), IS_US)+'</div>';
-  html+='<div class="trk-panel" data-pnl="60" style="display:'+(has60?'block':'none')+'">'+trackHtml('60', JT(69), JT(73), IS_US)+'</div>';
-  html+='<div class="trk-panel" data-pnl="" style="display:'+(has60?'none':'block')+'">'+trackHtml('', JT(71), JT(74), IS_US)+'</div>';
+  html+='<div class="trk-panel" data-pnl="60" style="display:none">'+trackHtml('60', JT(69), JT(73), IS_US)+'</div>';
+  html+='<div class="trk-panel" data-pnl="" style="display:block">'+trackHtml('', JT(71), JT(74), IS_US)+'</div>';
 
   // 최종 리포트 (선물·옵션 화면은 리포트 없이 판정 표시만)
   if(JC_FO) html+=foJudgeRow(d, pj, t10, t60);
@@ -230,13 +230,12 @@ function render(x){
   var rb=document.getElementById('repBtn');
   if(rb) rb.addEventListener('click',function(){ buildReport(x, d, pj, t10, t60); });
 
-  // 최초: 보이는 디폴트 트랙만 그림 (중기 우선, 없으면 장기)
+  // 최초: 보이는 디폴트 트랙(셋째 탭 = 장기 / 선물 60분)을 그림
   requestAnimationFrame(function(){requestAnimationFrame(function(){
-    if(has60){ try{ mkChart(t60, t60.projection, '60'); }catch(e){console.error('60분봉:',e); mkChart(d,pj,'');} }
-    else { mkChart(d,pj,''); }
+    mkChart(d,pj,'');
     // 나머지 트랙도 드로잉 초기화를 위해 백그라운드 렌더
     if(has10){ try{ mkChart(t10, t10.projection, '10'); }catch(e){} }
-    if(has60){ try{ mkChart(d, pj, ''); }catch(e){} }
+    if(has60){ try{ mkChart(t60, t60.projection, '60'); }catch(e){} }
   });});
 }
 
@@ -511,6 +510,7 @@ function mkChart(data,pj,sfx){
   var isMob=false,padR=64,padL=8,padT=14,padB=38,FONT_SM=11,FONT_MD=12;
   var SCEN=null;
   var scenFade=0;
+  var userView=false;   // 사용자가 직접 확대·축소했는가 (했으면 세로 범위는 캔들에만 맞춤)
   var srLevels=(pj&&pj.sr_levels)||[];
   // 초기 뷰: 현재 봉 기준 과거 25개 + 미래 15개 (증권사처럼 캔들 굵게)
   (function(){
@@ -588,7 +588,27 @@ function mkChart(data,pj,sfx){
     // 캔들이 하나도 안 보이면 종가 기준
     if(lo>hi){lo=Math.min.apply(null,c);hi=Math.max.apply(null,c);}
     // 증권사 방식: 가격 범위는 오직 보이는 캔들에만 맞춤.
+    var cSpan=hi-lo;   // 보이는 캔들의 가격 폭
     lo*=0.99; hi*=1.01;
+    // 처음 뜰 때(사용자가 확대·축소하기 전)만: 세로 범위를 넓혀 ① 현재가에서 가장 가까운 공방선 ② 목표선·위험선 끝 가격표가 화면 안에 들어오게.
+    // 넓힌 쪽에 6% 여백. 넣었을 때 캔들 영역이 차트 높이의 절반 아래로 줄면 넣지 않는다(①을 먼저, 그다음 ②).
+    if(!userView&&pj&&cSpan>0){
+      var fitV=function(vals){
+        var nlo=lo,nhi=hi;
+        for(var k=0;k<vals.length;k++){ var v=vals[k]; if(v==null||!isFinite(v)||v<=0) continue; if(v<nlo)nlo=v; if(v>nhi)nhi=v; }
+        if(nlo===lo&&nhi===hi) return;
+        var pad=(nhi-nlo)*0.06;
+        if(nlo<lo)nlo-=pad; if(nhi>hi)nhi+=pad;
+        if(cSpan/(nhi-nlo)>=0.5){ lo=nlo; hi=nhi; }
+      };
+      var gNear=null;
+      for(var ri=0;ri<risks.length;ri++){ var gy=risks[ri].yc; if(gy>0&&(gNear==null||Math.abs(gy-cur)<Math.abs(gNear-cur))) gNear=gy; }
+      if(gNear!=null) fitV([gNear]);
+      if(pj.up_target!=null&&pj.dn_target!=null&&ve>=MAIN_I){
+        var fr=Math.max(0,Math.min(1,(ve-MAIN_I)/Math.max(1,(TOTAL-1)-MAIN_I)));
+        fitV([MAIN_P+(pj.up_target-MAIN_P)*fr, MAIN_P+(pj.dn_target-MAIN_P)*fr]);
+      }
+    }
     plot={lo:lo,hi:hi,x0:padL,x1:W-padR,y0:padT,y1:H-padB};
   }
   function getSpan(){return viewE-viewS+1;}
@@ -717,6 +737,8 @@ function mkChart(data,pj,sfx){
         ctx.beginPath();ctx.moveTo(ex,ey-6);ctx.lineTo(ex-5,ey+5);ctx.lineTo(ex+5,ey+5);ctx.closePath();ctx.fill();
       }
     });
+    // 미래 선·시나리오는 차트 칸 안에서만 그린다 (가격 눈금 칸·날짜 줄로 삐져나오지 않게 자름)
+    ctx.save();ctx.beginPath();ctx.rect(plot.x0,plot.y0,plot.x1-plot.x0,plot.y1-plot.y0);ctx.clip();
     // 미래 예측 (전부 직선) — 메인 기준점(최근 변곡)부터 그림
     if(viewE>=MAIN_I&&pj){
       var us=pj.up_slope||0, upT=pj.up_target, dnT=pj.dn_target, vol=pj.volatility||0.02;
@@ -841,6 +863,7 @@ function mkChart(data,pj,sfx){
       else drawScen(SCEN!=='dn');
       ctx.restore();
     }
+    ctx.restore();   // 자르기 끝
     // 목표선(녹색 점선)·위험선(분홍 점선)의 오른쪽 끝 가격표 — 선과 같은 색 바탕에 흰 글씨, 공방선 가격표와 같은 크기.
     // 숫자 = 선이 끝나는 지점의 가격. 선 끝이 보이는 가격 범위 밖이면 위·아래 가장자리에 붙이고, 둘이 겹치면 위아래로 비켜 놓는다.
     if(viewE>=MAIN_I&&pj&&pj.up_target!=null&&pj.dn_target!=null){
@@ -897,7 +920,7 @@ function mkChart(data,pj,sfx){
     var ratio=(center-viewS)/sp;
     var s=Math.round(center-ns*ratio), en=s+ns-1;
     if(s<0){s=0;en=ns-1;}if(en>TOTAL-1){en=TOTAL-1;s=Math.max(0,en-ns+1);}
-    viewS=s;viewE=en;lay();draw(lastMx,lastMy);
+    userView=true;viewS=s;viewE=en;lay();draw(lastMx,lastMy);
   },{passive:false});
   var drag=false, dx0=0, dvs=0;
   cv.addEventListener('mousedown',function(e){drag=true;dx0=e.clientX;dvs=viewS;});
@@ -942,7 +965,7 @@ function mkChart(data,pj,sfx){
         var ratio=(pinchCenter-viewS)/Math.max(1,getSpan());
         var s=Math.round(pinchCenter-ns*ratio), en=s+ns-1;
         if(s<0){s=0;en=ns-1;}if(en>TOTAL-1){en=TOTAL-1;s=Math.max(0,en-ns+1);}
-        viewS=s;viewE=en;lay();draw(lastMx,lastMy);
+        userView=true;viewS=s;viewE=en;lay();draw(lastMx,lastMy);
       }
       return;
     }
@@ -983,9 +1006,9 @@ function mkChart(data,pj,sfx){
     // 손 떼면 잠시 후 가격선·툴팁 정리
     setTimeout(function(){ lastMx=lastMy=null; draw(null,null); tip.style.display='none'; }, 1500);
   },{passive:true});
-  document.getElementById('zin'+sfx).onclick=function(){var sp=getSpan(),ns=Math.max(15,Math.round(sp*0.7)),md=Math.round((viewS+viewE)/2);viewS=Math.max(0,md-Math.round(ns/2));viewE=Math.min(TOTAL-1,viewS+ns-1);lay();draw();};
-  document.getElementById('zout'+sfx).onclick=function(){var sp=getSpan(),ns=Math.min(TOTAL,Math.round(sp*1.4)),md=Math.round((viewS+viewE)/2);viewS=Math.max(0,md-Math.round(ns/2));viewE=Math.min(TOTAL-1,viewS+ns-1);lay();draw();};
-  document.getElementById('zall'+sfx).onclick=function(){viewS=0;viewE=TOTAL-1;lay();draw();};
+  document.getElementById('zin'+sfx).onclick=function(){userView=true;var sp=getSpan(),ns=Math.max(15,Math.round(sp*0.7)),md=Math.round((viewS+viewE)/2);viewS=Math.max(0,md-Math.round(ns/2));viewE=Math.min(TOTAL-1,viewS+ns-1);lay();draw();};
+  document.getElementById('zout'+sfx).onclick=function(){userView=true;var sp=getSpan(),ns=Math.min(TOTAL,Math.round(sp*1.4)),md=Math.round((viewS+viewE)/2);viewS=Math.max(0,md-Math.round(ns/2));viewE=Math.min(TOTAL-1,viewS+ns-1);lay();draw();};
+  document.getElementById('zall'+sfx).onclick=function(){userView=true;viewS=0;viewE=TOTAL-1;lay();draw();};
   initDrawCanvas(sfx);
   scope.querySelectorAll('.mtd').forEach(function(el){el.addEventListener('change',function(){draw(lastMx,lastMy);});});
   // 시나리오 버튼 이벤트 + 페이드 애니메이션
