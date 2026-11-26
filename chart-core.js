@@ -573,8 +573,8 @@ function mkChart(data,pj,sfx){
     W=cv.clientWidth; H=cv.clientHeight;
     if(!W||!H){W=cv.clientWidth||cv.parentElement.clientWidth-20||900;H=cv.clientHeight||440;}
     isMob=W<480;
-    padR=isMob?52:64; padL=isMob?8:8; padT=isMob?10:14; padB=isMob?28:38;
-    FONT_SM=isMob?9:11; FONT_MD=isMob?10:12;
+    padR=isMob?60:76; padL=isMob?8:8; padT=isMob?10:14; padB=isMob?30:40;   // 글씨를 키우면서 오른쪽·아래 여백을 늘림
+    FONT_SM=isMob?12:13; FONT_MD=isMob?10:12;
     cv.width=W*DPR; cv.height=H*DPR;
     cv.getContext('2d').setTransform(DPR,0,0,DPR,0,0);
     // keepY=true면 기존 세로 범위 유지 (좌우 스크롤 시 출렁임 방지)
@@ -634,7 +634,7 @@ function mkChart(data,pj,sfx){
     ctx.clearRect(0,0,W,H);
     ctx.font=FONT_MD+'px '+FF();
     // 격자
-    ctx.strokeStyle='#eef1f5';ctx.lineWidth=1;ctx.fillStyle='#9aa6b2';ctx.textAlign='left';
+    ctx.strokeStyle='#eef1f5';ctx.lineWidth=1;ctx.fillStyle='#56687c';ctx.textAlign='left';
     var gridCnt=isMob?3:4;
     for(var g=0;g<=gridCnt;g++){
       var v=plot.lo+(plot.hi-plot.lo)*g/gridCnt, y=yOf(v);
@@ -645,7 +645,7 @@ function mkChart(data,pj,sfx){
       ctx.fillText(lv,plot.x1+4,y+4);
     }
     // X축 날짜 — 모바일은 3개, PC는 6개, 겹침 방지
-    ctx.fillStyle='#5a6b7d';ctx.textAlign='center';ctx.font=FONT_SM+'px '+FF();
+    ctx.fillStyle='#56687c';ctx.textAlign='center';ctx.font=FONT_SM+'px '+FF();
     var xCnt=isMob?3:6;
     var lastXEnd=-999;
     for(var t=0;t<xCnt;t++){
@@ -668,7 +668,7 @@ function mkChart(data,pj,sfx){
       ctx.fillStyle='rgba(120,140,160,.05)';ctx.fillRect(nowX,plot.y0,plot.x1-nowX,plot.y1-plot.y0);
       ctx.strokeStyle='rgba(26,58,92,.3)';ctx.setLineDash([5,4]);ctx.lineWidth=1;
       ctx.beginPath();ctx.moveTo(nowX,plot.y0);ctx.lineTo(nowX,plot.y1);ctx.stroke();ctx.setLineDash([]);
-      if(!isMob){ctx.fillStyle='#8a98a8';ctx.font=FONT_SM+'px '+FF();ctx.fillText(JT(79),nowX,plot.y0+10);}
+      ctx.fillStyle='#8a98a8';ctx.font='bold '+(isMob?12:14)+'px '+FF();ctx.textAlign='center';ctx.fillText(JT(79),nowX,plot.y0+12);
     }
     // ===== 매물대/매물집중 제거됨 =====
 
@@ -698,10 +698,12 @@ function mkChart(data,pj,sfx){
       }
       ctx.strokeStyle='rgba(212,83,126,.85)';ctx.lineWidth=1.4;ctx.setLineDash(d.price_only?[6,4]:[]);
       ctx.beginPath();ctx.moveTo(plot.x0,yOf(d.yc));ctx.lineTo(plot.x1,yOf(d.yc));ctx.stroke();ctx.setLineDash([]);
-      var glbl=JTF(80,[fmtP(d.yc)]); ctx.font='11px '+FF();
-      var glw=ctx.measureText(glbl).width+10;
-      ctx.fillStyle='#d4537e';ctx.fillRect(plot.x0+4,yOf(d.yc)-9,glw,18);
-      ctx.font=FONT_SM+'px '+FF();ctx.fillStyle='#fff';ctx.fillText(glbl,plot.x0+6,yOf(d.yc)+3);
+      // 공방선 가격표: 굵게 PC 15px / 모바일 13px, 상자 높이 24 / 21
+      var gh=isMob?21:24;
+      var glbl=JTF(80,[fmtP(d.yc)]); ctx.font='bold '+(isMob?13:15)+'px '+FF();
+      var glw=ctx.measureText(glbl).width+14;
+      ctx.fillStyle='#d4537e';ctx.fillRect(plot.x0+4,yOf(d.yc)-gh/2,glw,gh);
+      ctx.fillStyle='#fff';ctx.textAlign='left';ctx.textBaseline='middle';ctx.fillText(glbl,plot.x0+11,yOf(d.yc)+1);ctx.textBaseline='alphabetic';
     });
     // 작도선
     draws.forEach(function(d){
@@ -829,7 +831,7 @@ function mkChart(data,pj,sfx){
         }
         ctx.stroke();
         var labels=['1','2','3','4','5','6','7','8'];
-        ctx.fillStyle=color+'0.9)';ctx.font='bold 12px '+FF();ctx.textAlign='center';
+        ctx.fillStyle=color+'0.9)';ctx.font='bold '+(isMob?12:14)+'px '+FF();ctx.textAlign='center';
         for(var ai=1;ai<seq.length;ai++){
           var px=MAIN_I+tpos[ai]*steps;
           if(px<=endI&&labels[ai-1]) ctx.fillText(labels[ai-1], xOf(px), yOf(seq[ai])-(dirUp?6:-14));
@@ -838,6 +840,32 @@ function mkChart(data,pj,sfx){
       if(SCEN==='both'){ drawScen(true); drawScen(false); }
       else drawScen(SCEN!=='dn');
       ctx.restore();
+    }
+    // 목표선(녹색 점선)·위험선(분홍 점선)의 오른쪽 끝 가격표 — 선과 같은 색 바탕에 흰 글씨, 공방선 가격표와 같은 크기.
+    // 숫자 = 선이 끝나는 지점의 가격. 선 끝이 보이는 가격 범위 밖이면 위·아래 가장자리에 붙이고, 둘이 겹치면 위아래로 비켜 놓는다.
+    if(viewE>=MAIN_I&&pj&&pj.up_target!=null&&pj.dn_target!=null){
+      var th=isMob?21:24, tEnd=Math.min(viewE,TOTAL-1);
+      var tRatio=Math.max(0,Math.min(1,(tEnd-MAIN_I)/Math.max(1,(TOTAL-1)-MAIN_I)));
+      var tags=[{v:pj.up_target,col:'#1d9e75'},{v:pj.dn_target,col:'#d4537e'}];
+      var tyMin=plot.y0+th/2, tyMax=plot.y1-th/2;
+      ctx.font='bold '+(isMob?13:15)+'px '+FF();
+      tags.forEach(function(g){
+        g.y=Math.max(tyMin,Math.min(tyMax,yOf(MAIN_P+(g.v-MAIN_P)*tRatio)));
+        g.txt=fmtP(g.v); g.w=ctx.measureText(g.txt).width+14;
+      });
+      var tTop=(tags[0].y<=tags[1].y)?tags[0]:tags[1], tBot=(tTop===tags[0])?tags[1]:tags[0];
+      var tNeed=(th+2)-(tBot.y-tTop.y);
+      if(tNeed>0){
+        tTop.y-=tNeed/2; tBot.y+=tNeed/2;
+        if(tTop.y<tyMin){ tBot.y+=(tyMin-tTop.y); tTop.y=tyMin; }
+        if(tBot.y>tyMax){ tTop.y-=(tBot.y-tyMax); tBot.y=tyMax; }
+      }
+      ctx.textAlign='left';ctx.textBaseline='middle';
+      tags.forEach(function(g){
+        ctx.fillStyle=g.col;ctx.fillRect(plot.x1-g.w,g.y-th/2,g.w,th);
+        ctx.fillStyle='#fff';ctx.fillText(g.txt,plot.x1-g.w+7,g.y+1);
+      });
+      ctx.textBaseline='alphabetic';
     }
     // 크로스헤어
     if(mx!=null&&mx>=plot.x0&&mx<=plot.x1&&my!=null){
