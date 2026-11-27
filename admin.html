@@ -1,51 +1,74 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<!-- BUILD:1793515836 -->
+<!-- BUILD:1795786856 -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>JOIN CHART — 어드민</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f5f7fa;color:#1a2a3a;font-size:14px}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f5f7fa;color:#1a2a3a;font-size:16px}
 .admin-wrap{display:flex;min-height:100vh}
-.sidebar{width:200px;background:#1b3a5c;flex-shrink:0}
-.sb-logo{padding:18px 16px 14px;border-bottom:1px solid rgba(255,255,255,.1)}
-.sb-logo .lt{color:#fff;font-size:15px;font-weight:700}
+.sidebar{width:230px;background:#1b3a5c;flex-shrink:0}
+.sb-logo{padding:22px 20px 18px;border-bottom:1px solid rgba(255,255,255,.1)}
+.sb-logo .lt{color:#fff;font-size:20px;font-weight:700}
 .sb-logo .lt span{color:#ed7d31}
-.sb-logo .ls{color:#a8bdd6;font-size:11px;margin-top:2px}
-.sb-menu{padding:8px 0}
-.sb-item{display:flex;align-items:center;gap:9px;padding:10px 16px;color:#a8bdd6;cursor:pointer;font-size:13px;border-left:3px solid transparent}
+.sb-logo .ls{color:#a8bdd6;font-size:14px;margin-top:4px}
+.sb-menu{padding:10px 0}
+.sb-item{display:flex;align-items:center;gap:10px;padding:15px 20px;color:#a8bdd6;cursor:pointer;font-size:16px;border-left:3px solid transparent}
 .sb-item:hover{background:rgba(255,255,255,.06);color:#fff}
 .sb-item.on{background:rgba(255,255,255,.1);color:#fff;border-left-color:#ed7d31}
-.content{flex:1;overflow:auto;display:flex;flex-direction:column}
-.topbar{background:#fff;border-bottom:1px solid #e5eaf0;padding:12px 20px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
-.topbar h1{font-size:15px;font-weight:700;color:#1b3a5c}
-.topbar .tdate{font-size:12px;color:#888}
-.page{display:none;padding:20px;flex:1}
+.content{flex:1;overflow:auto;display:flex;flex-direction:column;min-width:0}
+.topbar{background:#fff;border-bottom:1px solid #e5eaf0;padding:16px 24px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-shrink:0}
+.topbar h1{font-size:22px;font-weight:700;color:#1b3a5c;margin-right:auto}
+.topbar .tdate{font-size:15px;color:#56687c}
+.page{display:none;padding:24px;flex:1;max-width:1248px;width:100%}
 .page.on{display:block}
-.page.drawing-page{padding:0;display:none;flex-direction:column;}
+.page.drawing-page{padding:0;display:none;flex-direction:column;max-width:none;}
 .page.drawing-page.on{display:flex;}
-.stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px}
-.stat-card{background:#fff;border-radius:10px;border:1px solid #e5eaf0;padding:14px 16px}
-.stat-card .sl{font-size:11px;color:#888;margin-bottom:5px}
-.stat-card .sv{font-size:22px;font-weight:700;color:#1b3a5c}
-.stat-card .sd{font-size:11px;color:#1d9e75;margin-top:2px}
-.card{background:#fff;border-radius:10px;border:1px solid #e5eaf0;padding:16px;margin-bottom:14px}
-.card-title{font-size:13px;font-weight:700;color:#1b3a5c;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between}
-table{width:100%;border-collapse:collapse;font-size:13px}
-th{text-align:left;padding:8px 10px;font-size:11px;color:#888;font-weight:700;border-bottom:1px solid #e5eaf0;background:#f9fafb}
-td{padding:9px 10px;border-bottom:1px solid #f0f3f7;color:#333;vertical-align:middle}
+.stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:22px}
+.stat-card{background:#fff;border-radius:10px;border:1px solid #e5eaf0;padding:18px 20px}
+.stat-card .sl{font-size:14px;color:#56687c;margin-bottom:8px}
+.stat-card .sv{font-size:28px;font-weight:700;color:#1b3a5c}
+.card{background:#fff;border-radius:10px;border:1px solid #e5eaf0;padding:20px;margin-bottom:16px}
+.card-title{font-size:17px;font-weight:700;color:#1b3a5c;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between}
+.tbl-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:16px}
+th{text-align:left;padding:12px;font-size:14px;color:#2f4257;font-weight:700;border-bottom:1px solid #d5dce4;background:#f1f4f8;white-space:nowrap}
+td{height:48px;padding:6px 12px;border-bottom:1px solid #f0f3f7;color:#1a2a3a;vertical-align:middle;white-space:nowrap}
 tr:last-child td{border-bottom:none}
-.badge{display:inline-block;padding:3px 8px;border-radius:20px;font-size:11px;font-weight:600}
+.badge{display:inline-block;padding:5px 12px;border-radius:20px;font-size:14px;font-weight:600}
 .bg{background:#e1f5ee;color:#0f6e56}.bb{background:#e6f1fb;color:#185fa5}
 .bgr{background:#f1eff8;color:#5a5a6a}.bo{background:#faeeda;color:#854f0b}.br{background:#fcebeb;color:#a32d2d}
-.btn{padding:7px 14px;border-radius:8px;border:none;cursor:pointer;font-size:12px;font-weight:600}
+.btn{min-height:40px;padding:0 16px;border-radius:8px;border:none;cursor:pointer;font-size:14px;font-weight:600}
 .btn-p{background:#1b3a5c;color:#fff}.btn-o{background:#fff;color:#1b3a5c;border:1px solid #1b3a5c}
-.btn-sm{padding:4px 10px;font-size:11px;border-radius:6px}
-.sbar{display:flex;gap:8px;margin-bottom:12px}
-.sbar input,.sbar select{height:34px;border:1px solid #e5eaf0;border-radius:8px;padding:0 10px;font-size:13px;outline:none;background:#fff}
-.sbar input{flex:1}
+.btn-d{background:#c0392b;color:#fff}
+.btn:disabled{opacity:.55;cursor:default}
+.btn-sm{padding:0 14px}
+.sbar{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:14px}
+.sbar input,.sbar select{height:42px;border:1px solid #d5dce4;border-radius:8px;padding:0 12px;font-size:16px;outline:none;background:#fff;color:#1a2a3a}
+.sbar input{flex:1;min-width:220px}
+/* 회원 관리: 걸러 보기 · 만료 임박 · 메모 */
+.mfilter{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}
+.mf{min-height:40px;padding:0 16px;border-radius:20px;border:1px solid #d5dce4;background:#fff;color:#2f4257;font-size:15px;font-weight:600;cursor:pointer}
+.mf.on{background:#1b3a5c;border-color:#1b3a5c;color:#fff}
+.mf b{font-weight:700;margin-left:6px}
+td.soon{background:#fdebd0;color:#8a4b00;font-weight:700}
+.left{color:#56687c;font-size:14px;margin-left:6px}
+td.soon .left{color:#8a4b00}
+.memo-in{width:170px;height:40px;border:1px solid #d5dce4;border-radius:8px;padding:0 10px;font-size:16px;outline:none;color:#1a2a3a}
+.mempty{padding:30px 0;text-align:center;color:#56687c;font-size:16px}
+.mmore{display:block;margin:14px auto 0}
+/* 화면 안 확인 창 · 결과 알림 */
+.amodal{display:none;position:fixed;inset:0;z-index:9500;background:rgba(15,25,40,.55);align-items:center;justify-content:center;padding:16px}
+.amodal.on{display:flex}
+.am-box{background:#fff;border-radius:14px;padding:28px 26px 22px;width:100%;max-width:460px;box-shadow:0 16px 50px rgba(0,0,0,.25)}
+.am-msg{font-size:18px;line-height:1.6;color:#1a2a3a;font-weight:600;word-break:keep-all}
+.am-btns{display:flex;gap:10px;margin-top:22px}
+.am-btns .btn{flex:1;min-height:48px;font-size:16px}
+.atoast{display:none;position:fixed;top:18px;left:50%;transform:translateX(-50%);z-index:9600;background:#1b3a5c;color:#fff;font-size:16px;font-weight:600;padding:14px 24px;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.25)}
+.atoast.on{display:block}
+.atoast.bad{background:#c0392b}
 /* 작도 도구 */
 .draw-topbar{background:#1b3a5c;padding:10px 16px;display:flex;align-items:center;gap:10px;flex-shrink:0}
 .draw-logo{display:flex;align-items:center;gap:7px;flex-shrink:0}
@@ -74,8 +97,8 @@ tr:last-child td{border-bottom:none}
 </style>
 </head>
 <body>
-<script src="/i18n.js?v=1795710005"></script>
-<script src="/auth.js?v=1793515836" data-mode="admin"></script>
+<script src="/i18n.js?v=1795786856"></script>
+<script src="/auth.js?v=1795786856" data-mode="admin"></script>
 <div class="admin-wrap">
   <div class="sidebar">
     <div class="sb-logo">
@@ -85,8 +108,6 @@ tr:last-child td{border-bottom:none}
     <div class="sb-menu">
       <div class="sb-item on" onclick="showPage('dashboard',this)">📊 대시보드</div>
       <div class="sb-item" onclick="showPage('members',this)">👥 회원 관리</div>
-      <div class="sb-item" onclick="showPage('payments',this)">💳 결제 내역</div>
-      <div class="sb-item" onclick="showPage('stats',this)">📈 접속 통계</div>
       <div class="sb-item" onclick="showPage('drawing',this)">✏️ 작도 도구</div>
     </div>
   </div>
@@ -101,43 +122,37 @@ tr:last-child td{border-bottom:none}
     <div class="page on" id="page-dashboard">
       <div class="stat-grid">
         <div class="stat-card"><div class="sl">전체 회원</div><div class="sv" id="dTotal">—</div></div>
-        <div class="stat-card"><div class="sl">유료 구독자</div><div class="sv" style="font-size:16px;color:#888">준비 중</div></div>
-        <div class="stat-card"><div class="sl">오늘 방문자</div><div class="sv" style="font-size:16px;color:#888">준비 중</div></div>
-        <div class="stat-card"><div class="sl">이번 달 매출</div><div class="sv" style="font-size:16px;color:#888">준비 중</div></div>
+        <div class="stat-card"><div class="sl">이용중</div><div class="sv" id="dActive">—</div></div>
+        <div class="stat-card"><div class="sl">승인 대기</div><div class="sv" id="dPending">—</div></div>
+        <div class="stat-card"><div class="sl">7일 안에 만료</div><div class="sv" id="dSoon">—</div></div>
       </div>
       <div class="card">
         <div class="card-title">최근 가입 회원</div>
-        <table>
-          <thead><tr><th>번호</th><th>가입일</th><th>상태</th></tr></thead>
+        <div class="tbl-wrap"><table>
+          <thead><tr><th>회원</th><th>가입일</th><th>상태</th><th>관리</th></tr></thead>
           <tbody id="dRecent"></tbody>
-        </table>
+        </table></div>
       </div>
     </div>
 
     <!-- 회원 관리 -->
     <div class="page" id="page-members">
       <div class="card">
-        <div class="card-title"><span>회원 관리 <span id="mcount" style="font-size:11px;color:#888;font-weight:400"></span></span></div>
-        <table>
-          <thead><tr><th>번호</th><th>가입일</th><th>상태</th><th>만료일</th><th>마지막 로그인</th><th>관리</th></tr></thead>
+        <div class="mfilter" id="mfilter"></div>
+        <div class="sbar">
+          <input type="text" id="msearch" placeholder="휴대폰번호 또는 이메일 검색" autocomplete="off">
+          <select id="msort">
+            <option value="created">가입일 최신순</option>
+            <option value="expires">만료일 빠른순</option>
+            <option value="login">마지막 로그인 최신순</option>
+          </select>
+        </div>
+        <div class="tbl-wrap"><table>
+          <thead><tr><th>회원</th><th>가입 방식</th><th>가입일</th><th>상태</th><th>만료일</th><th>마지막 로그인</th><th>승인일</th><th>최근 연장</th><th>메모</th><th>관리</th></tr></thead>
           <tbody id="mtable"></tbody>
-        </table>
-      </div>
-    </div>
-
-    <!-- 결제 내역 -->
-    <div class="page" id="page-payments">
-      <div class="card">
-        <div class="card-title">결제 내역</div>
-        <div style="padding:30px 0;text-align:center;color:#888">준비 중</div>
-      </div>
-    </div>
-
-    <!-- 접속 통계 -->
-    <div class="page" id="page-stats">
-      <div class="card">
-        <div class="card-title">접속 통계</div>
-        <div style="padding:30px 0;text-align:center;color:#888">준비 중</div>
+        </table></div>
+        <div class="mempty" id="mempty" style="display:none">해당하는 회원이 없습니다</div>
+        <button class="btn btn-o mmore" id="mmore" style="display:none">더 보기</button>
       </div>
     </div>
 
@@ -154,8 +169,8 @@ tr:last-child td{border-bottom:none}
         </div>
         <div class="draw-tabs">
           <button class="dtab" id="dtab-10" onclick="switchTab('10',this)">단기</button>
-          <button class="dtab on" id="dtab-60" onclick="switchTab('60',this)">중기</button>
-          <button class="dtab" id="dtab-" onclick="switchTab('',this)">중장기</button>
+          <button class="dtab" id="dtab-60" onclick="switchTab('60',this)">중기</button>
+          <button class="dtab on" id="dtab-" onclick="switchTab('',this)">중장기</button>
         </div>
       </div>
       <div class="draw-toolbar">
@@ -179,6 +194,8 @@ tr:last-child td{border-bottom:none}
 
   </div>
 </div>
+<div class="amodal" id="amodal"><div class="am-box"><div class="am-msg" id="amMsg"></div><div class="am-btns"><button class="btn btn-o" id="amNo">취소</button><button class="btn btn-p" id="amYes">확인</button></div></div></div>
+<div class="atoast" id="atoast"></div>
 <div class="jc-foot">주식회사 조인홀딩스 | 대표 김상문 | 사업자등록번호 753-87-03679 | 통신판매업신고 제2026-서울양천-1009호<br>서울특별시 양천구 목동중앙서로8길 14, B101 | 070-8985-8221 | help@joinpeople.kr | 개인정보 보호책임자 김시현</div>
 
 <script>
@@ -189,34 +206,151 @@ function showPage(id, el) {
   document.querySelectorAll('.sb-item').forEach(function(i){i.classList.remove('on');});
   document.getElementById('page-'+id).classList.add('on');
   el.classList.add('on');
-  var titles={dashboard:'대시보드',members:'회원 관리',payments:'결제 내역',stats:'접속 통계',drawing:'작도 도구'};
+  var titles={dashboard:'대시보드',members:'회원 관리',drawing:'작도 도구'};
   document.getElementById('page-title').textContent=titles[id]||id;
   if(id==='drawing') setTimeout(initCanvas,100);
 }
 
 // ===== 회원 관리 (서버 /api/admin — 관리자 토큰 검증, 프론트에서 Firestore 직접 쓰지 않음) =====
-function statusB(s){return {pending:'<span class="badge bo">대기</span>',active:'<span class="badge bg">이용중</span>',expired:'<span class="badge br">만료</span>',suspended:'<span class="badge bgr">정지</span>'}[s]||s;}
+// 목록은 한 번만 받고, 걸러 보기·검색·정렬은 화면에서 한다. 표는 50명씩 그린다(더 보기).
+var MEMBERS=[], M_FILTER='all', M_QUERY='', M_SORT='created', M_SHOW=50, M_PAGE=50;
+var ST_NAME={pending:'대기',active:'이용중',expired:'만료',suspended:'정지'};
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+function statusB(s){return {pending:'<span class="badge bo">대기</span>',active:'<span class="badge bg">이용중</span>',expired:'<span class="badge br">만료</span>',suspended:'<span class="badge bgr">정지</span>'}[s]||esc(s);}
+function isSoon(m){return m.status==='active'&&m.daysLeft!=null&&m.daysLeft>=0&&m.daysLeft<=7;}   // 7일 안에 만료
+function leftTxt(m){
+  if(m.daysLeft==null) return '';
+  if(m.daysLeft>0) return '('+m.daysLeft+'일 남음)';
+  if(m.daysLeft===0) return '(오늘 만료)';
+  return '('+(-m.daysLeft)+'일 지남)';
+}
+// 상태에 맞는 버튼만: 대기=승인 / 이용중·만료=연장·정지 / 정지=해제
+function actBtns(m){
+  var b=function(act,label,cls){return '<button class="btn '+cls+' btn-sm" data-act="'+act+'" data-uid="'+esc(m.uid)+'">'+label+'</button>';};
+  if(m.status==='pending') return b('approve','승인','btn-p');
+  if(m.status==='active'||m.status==='expired') return b('extend','연장','btn-o')+' '+b('suspend','정지','btn-o');
+  if(m.status==='suspended') return b('unsuspend','해제','btn-o');
+  return '';
+}
+function byUid(uid){for(var i=0;i<MEMBERS.length;i++){if(MEMBERS[i].uid===uid) return MEMBERS[i];}return null;}
+
 async function loadMembers(){
-  var r=await jcApi('/api/admin');
-  var list=r.users||[];
-  document.getElementById('mcount').textContent=list.length+'명';
-  // 대시보드: 전체 회원 수 + 최근 가입 5명 (목록은 가입일 최신순)
-  document.getElementById('dTotal').textContent=list.length+'명';
-  document.getElementById('dRecent').innerHTML=list.slice(0,5).map(function(m){
-    return '<tr><td>'+m.phone+'</td><td>'+m.createdAt+'</td><td>'+statusB(m.status)+'</td></tr>';
-  }).join('');
-  document.getElementById('mtable').innerHTML=list.map(function(m){
-    return '<tr><td>'+m.phone+'</td><td>'+m.createdAt+'</td><td>'+statusB(m.status)+'</td><td>'+(m.expiresAt||'—')+'</td><td>'+(m.lastLoginAt||'—')+'</td><td>'
-      +'<button class="btn btn-p btn-sm" onclick="memberAct(\''+m.uid+'\',\'approve\')">승인</button> '
-      +'<button class="btn btn-o btn-sm" onclick="memberAct(\''+m.uid+'\',\'extend\')">연장</button> '
-      +'<button class="btn btn-o btn-sm" onclick="memberAct(\''+m.uid+'\',\'suspend\')">정지</button> '
-      +'<button class="btn btn-o btn-sm" onclick="memberAct(\''+m.uid+'\',\'unsuspend\')">해제</button></td></tr>';
+  var r; try{ r=await jcApi('/api/admin'); }catch(e){ r={}; }
+  MEMBERS=r.users||[];
+  paintDash(); paintFilter(); paintMembers();
+}
+function paintDash(){
+  var n=function(f){return MEMBERS.filter(f).length+'명';};
+  document.getElementById('dTotal').textContent=MEMBERS.length+'명';
+  document.getElementById('dActive').textContent=n(function(m){return m.status==='active';});
+  document.getElementById('dPending').textContent=n(function(m){return m.status==='pending';});
+  document.getElementById('dSoon').textContent=n(isSoon);
+  // 최근 가입 5명 (목록은 가입일 최신순으로 온다). 대기 중이면 그 자리에서 승인
+  document.getElementById('dRecent').innerHTML=MEMBERS.slice(0,5).map(function(m){
+    return '<tr><td>'+esc(m.phone)+'</td><td>'+esc(m.createdAt)+'</td><td>'+statusB(m.status)+'</td><td>'+(m.status==='pending'?actBtns(m):'')+'</td></tr>';
   }).join('');
 }
-async function memberAct(uid,action){
-  await jcApi('/api/admin',{method:'POST',body:JSON.stringify({uid:uid,action:action})});
-  loadMembers();
+function paintFilter(){
+  var keys=['all','pending','active','expired','suspended'], h='';
+  keys.forEach(function(k){
+    var c=(k==='all')?MEMBERS.length:MEMBERS.filter(function(m){return m.status===k;}).length;
+    h+='<button class="mf'+(M_FILTER===k?' on':'')+'" data-f="'+k+'">'+(k==='all'?'전체':ST_NAME[k])+'<b>'+c+'</b></button>';
+  });
+  document.getElementById('mfilter').innerHTML=h;
 }
+function memberList(){
+  var q=M_QUERY.toLowerCase();
+  var list=MEMBERS.filter(function(m){
+    if(M_FILTER!=='all'&&m.status!==M_FILTER) return false;
+    if(q&&String(m.phone||'').toLowerCase().indexOf(q)<0) return false;
+    return true;
+  });
+  // 값이 없는 회원은 맨 뒤
+  var key={created:'createdTs',expires:'expiresTs',login:'lastLoginTs'}[M_SORT], asc=(M_SORT==='expires');
+  list.sort(function(a,b){
+    var x=a[key], y=b[key];
+    if(x==null&&y==null) return 0; if(x==null) return 1; if(y==null) return -1;
+    return asc?(x-y):(y-x);
+  });
+  return list;
+}
+function paintMembers(){
+  var list=memberList(), show=list.slice(0,M_SHOW);
+  document.getElementById('mtable').innerHTML=show.map(function(m){
+    var lt=leftTxt(m);
+    return '<tr><td>'+esc(m.phone)+'</td><td>'+({phone:'휴대폰',email:'이메일'}[m.method]||'—')+'</td><td>'+esc(m.createdAt)+'</td><td>'+statusB(m.status)+'</td>'
+      +'<td'+(isSoon(m)?' class="soon"':'')+'>'+(m.expiresAt?esc(m.expiresAt)+(lt?'<span class="left">'+lt+'</span>':''):'—')+'</td>'
+      +'<td>'+(esc(m.lastLoginAt)||'—')+'</td><td>'+(esc(m.approvedAt)||'—')+'</td><td>'+(esc(m.extendedAt)||'—')+'</td>'
+      +'<td><input class="memo-in" maxlength="200" aria-label="메모" data-uid="'+esc(m.uid)+'" value="'+esc(m.memo)+'"> <button class="btn btn-o btn-sm" data-act="memo" data-uid="'+esc(m.uid)+'">저장</button></td>'
+      +'<td>'+actBtns(m)+'</td></tr>';
+  }).join('');
+  document.getElementById('mempty').style.display=list.length?'none':'block';
+  document.getElementById('mmore').style.display=(list.length>M_SHOW)?'block':'none';
+}
+
+// ----- 결과 알림 (화면 위쪽에 잠깐) -----
+var toastT=null;
+function toast(msg,bad){
+  var el=document.getElementById('atoast');
+  el.textContent=msg; el.className='atoast on'+(bad?' bad':'');
+  clearTimeout(toastT); toastT=setTimeout(function(){el.className='atoast';},2600);
+}
+var FAIL='처리하지 못했습니다. 다시 시도해 주세요';
+async function adminPost(body){
+  try{ var r=await jcApi('/api/admin',{method:'POST',body:JSON.stringify(body)}); return !!(r&&r.ok); }catch(e){ return false; }
+}
+// ----- 화면 안 확인 창: 승인·연장·정지·해제 -----
+var ACT_DONE={approve:'승인했습니다',extend:'연장했습니다',suspend:'정지했습니다',unsuspend:'해제했습니다'};
+function actMsg(m,action){
+  var who=m.phone;
+  if(action==='approve') return who+' 회원을 승인할까요? 오늘부터 30일 동안 이용할 수 있습니다.';
+  if(action==='extend') return who+' 회원의 이용 기간을 연장할까요? 만료일이 '+m.extendTo+'가 됩니다.';
+  if(action==='suspend') return who+' 회원의 이용을 정지할까요? 정지하면 바로 이용할 수 없습니다.';
+  return who+' 회원의 정지를 해제할까요?';
+}
+var pending=null, busy=false;
+function askAct(uid,action){
+  var m=byUid(uid); if(!m||!ACT_DONE[action]) return;
+  pending={uid:uid,action:action};
+  document.getElementById('amMsg').textContent=actMsg(m,action);
+  var yes=document.getElementById('amYes');
+  yes.className='btn '+(action==='suspend'?'btn-d':'btn-p');   // 정지는 확인 버튼 색을 다르게
+  yes.disabled=false; document.getElementById('amNo').disabled=false;
+  document.getElementById('amodal').classList.add('on');
+}
+function closeAsk(){ if(busy) return; pending=null; document.getElementById('amodal').classList.remove('on'); }
+document.getElementById('amNo').onclick=closeAsk;
+document.getElementById('amodal').addEventListener('click',function(e){ if(e.target===this) closeAsk(); });
+document.getElementById('amYes').onclick=async function(){
+  if(busy||!pending) return;
+  busy=true; this.disabled=true; document.getElementById('amNo').disabled=true;   // 실행 중에는 다시 누를 수 없게
+  var p=pending, ok=await adminPost({uid:p.uid,action:p.action});
+  busy=false; closeAsk();
+  toast(ok?ACT_DONE[p.action]:FAIL,!ok);
+  if(ok) loadMembers();
+};
+async function saveMemo(uid,btn){
+  var inp=document.querySelector('.memo-in[data-uid="'+uid.replace(/["\\]/g,'\\$&')+'"]'); if(!inp) return;
+  btn.disabled=true;
+  var ok=await adminPost({uid:uid,action:'memo',memo:inp.value});
+  btn.disabled=false;
+  if(ok){ var m=byUid(uid); if(m) m.memo=inp.value; }
+  toast(ok?'저장했습니다':FAIL,!ok);
+}
+// 버튼(표 · 대시보드) · 걸러 보기 · 검색 · 정렬 · 더 보기
+document.addEventListener('click',function(e){
+  var b=e.target.closest&&e.target.closest('[data-act]');
+  if(b){ var act=b.getAttribute('data-act'), uid=b.getAttribute('data-uid'); if(act==='memo') saveMemo(uid,b); else askAct(uid,act); return; }
+  var f=e.target.closest&&e.target.closest('.mf');
+  if(f){ M_FILTER=f.getAttribute('data-f'); M_SHOW=M_PAGE; paintFilter(); paintMembers(); }
+});
+var searchT=null;
+document.getElementById('msearch').addEventListener('input',function(){
+  var v=this.value.trim(); clearTimeout(searchT);
+  searchT=setTimeout(function(){ M_QUERY=v; M_SHOW=M_PAGE; paintMembers(); },150);
+});
+document.getElementById('msort').addEventListener('change',function(){ M_SORT=this.value; M_SHOW=M_PAGE; paintMembers(); });
+document.getElementById('mmore').onclick=function(){ M_SHOW+=M_PAGE; paintMembers(); };
 window.jcAdminReady=loadMembers;
 
 // ===== 작도 도구 =====
@@ -258,7 +392,7 @@ di.addEventListener('keydown',function(e){
 document.addEventListener('click',function(e){if(!e.target.closest('.draw-search-wrap'))dac.style.display='none';});
 
 var drawMode=false;
-var currentSfx='60';  // chart.html 기본 탭(중기/60분봉)과 맞춤
+var currentSfx='';  // chart.html 기본 탭(중장기/일봉)과 맞춤
 
 // chart.html 로드 완료 시 현재 활성 sfx 동기화
 document.getElementById('chart-frame').addEventListener('load', function(){
