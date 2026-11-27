@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<!-- BUILD:1795728012 -->
+<!-- BUILD:1795760421 -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <script>try{(function(){var q=new URLSearchParams(location.search).get('lang');if(q==='en')sessionStorage.setItem('jc_lang','en');else if(q==='ko')sessionStorage.removeItem('jc_lang');if(sessionStorage.getItem('jc_lang')==='en'){document.documentElement.className+=' jc-en jc-wait';setTimeout(function(){document.documentElement.className=document.documentElement.className.replace(/\s*\bjc-wait\b/g,'');},3000);}})();}catch(e){}</script><style>html.jc-wait body{visibility:hidden}</style>
@@ -343,6 +343,11 @@ body.jc-res .hm-h1,body.jc-res .hm-sub,body.jc-res .hm-chips{display:none}
 .hm-tab{padding:8px 16px;border-radius:8px;border:1px solid #c9d3de;font-size:16px;color:#56687c;background:none;font-family:inherit;cursor:pointer}
 .hm-tab.on{background:#14304d;color:#fff;font-weight:700;border:0}
 .hm-load{width:100%;aspect-ratio:720/330;background:#f4f6f9;display:flex;align-items:center;justify-content:center;font-size:17px;color:#56687c}
+#hmEx{position:relative}
+.hm-host.off{position:absolute;top:0;left:0;right:0;visibility:hidden;pointer-events:none}
+.hm-ex-nm{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 14px;min-width:0}
+.hm-ex-p{font-size:19px;font-weight:800;white-space:nowrap}
+.hm-ex-p span{font-size:12px;font-weight:600;margin-left:6px}
 .hm-cvwrap{position:relative}
 .hm-cvwrap canvas{width:100%;aspect-ratio:720/330;height:auto;display:block;cursor:crosshair;touch-action:pan-y}
 .hm-legend{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px}
@@ -394,6 +399,7 @@ body.jc-res .hm-h1,body.jc-res .hm-sub,body.jc-res .hm-chips{display:none}
   .hm-ex-head{display:flex;flex-direction:column;align-items:stretch;gap:14px}
   .hm-ex-h{font-size:22px}
   .hm-ex-sub{font-size:15px}
+  .hm-ex-p{font-size:17px}
   .hm-tabs{gap:6px}
   .hm-tab{flex:1;text-align:center;padding:10px 0}
   .hm-load{aspect-ratio:auto;height:260px}
@@ -454,14 +460,14 @@ body.jc-res .hm-h1,body.jc-res .hm-sub,body.jc-res .hm-chips{display:none}
 <section id="chart" class="hm hm-ex">
 <div class="hm-card">
 <div class="hm-ex-head">
-<h2 class="hm-ex-h"><span data-i18n="255">삼성전자</span> <span class="hm-ex-sub hm-pc" data-i18n="256">005930 · 장기추세</span><span class="hm-ex-sub hm-m" id="hmExCode">005930</span></h2>
+<div class="hm-ex-nm"><h2 class="hm-ex-h"><span data-i18n="255">삼성전자</span> <span class="hm-ex-sub hm-pc" data-i18n="256">005930 · 장기추세</span><span class="hm-ex-sub hm-m" id="hmExCode">005930</span></h2><span class="hm-ex-p" id="hmExP"></span></div>
 <div class="hm-tabs">
 <button type="button" class="hm-tab" data-t="10" data-i18n="257">단기추세</button>
 <button type="button" class="hm-tab" data-t="60" data-i18n="258">중기추세</button>
 <button type="button" class="hm-tab on" data-t="L" data-i18n="259">장기추세</button>
 </div>
 </div>
-<div id="hmEx"><div class="hm-load" id="hmLoad"></div></div>
+<div id="hmEx"><div class="hm-load" id="hmLoad"><div class="rtv-spin"><div class="rtv-core">RTV</div><div class="rtv-ring"></div></div></div></div>
 <div class="hm-legend hm-pc">
 <div><strong style="color:#b02a5f" data-i18n="57">공방선</strong><span data-i18n="260">매수와 매도가 맞붙었던 가격대입니다.</span></div>
 <div><strong style="color:#137a55" data-i18n="261">목표선 · 위험선</strong><span data-i18n="262">시작점에서 위아래로 뻗은 기준선입니다.</span></div>
@@ -520,9 +526,9 @@ body.jc-res .hm-h1,body.jc-res .hm-sub,body.jc-res .hm-chips{display:none}
     </div>
   </div>
 </div>
-<script src="/i18n.js?v=1795728012"></script>
-<script src="/auth.js?v=1795728012" data-mode="user"></script>
-<script src="/chart-core.js?v=1795728012"></script>
+<script src="/i18n.js?v=1795760421"></script>
+<script src="/auth.js?v=1795760421" data-mode="user"></script>
+<script src="/chart-core.js?v=1795760421"></script>
 <script>
 // ===== 새 홈: 종목 버튼 · 메뉴 이동 · 검색 뒤 화면 전환 · 예시 차트 =====
 (function(){
@@ -552,20 +558,35 @@ body.jc-res .hm-h1,body.jc-res .hm-sub,body.jc-res .hm-chips{display:none}
   }
   chips(); if(MQ.addEventListener) MQ.addEventListener('change',chips); else if(MQ.addListener) MQ.addListener(chips);
   // 예시 차트: 한국어 삼성전자(005930) / 영어 엔비디아(NVDA). 이 두 종목만 로그인 없이 세 탭을 보여 준다(서버 sample=1).
-  var CODE=EN?'NVDA':'005930', DATA=null, drawn={};
+  var CODE=EN?'NVDA':'005930', DATA=null;
   document.getElementById('hmExCode').textContent=CODE;
   if(EN && window.JC_C){ document.getElementById('hmSwUp').style.borderTopColor=JC_C.scenUpHex; var dn=document.getElementById('hmSwDn'); dn.style.borderTopColor=JC_C.scenDnHex; dn.style.borderTopStyle='dashed'; }
   var KEY={'10':'10분','60':'60분','L':'일봉'};
+  function okBlk(t){ var b=DATA&&DATA[KEY[t]]; return (b&&b.chart&&b.projection)?b:null; }
+  // 탭 전환: 세 차트는 응답이 왔을 때 한 번에 그려 두고, 여기서는 보이기/숨기기만 바꾼다(다시 그리지 않음 → 깜빡임 없음)
   function show(t){
     var tabs=document.querySelectorAll('.hm-tab');
     for(var i=0;i<tabs.length;i++) tabs[i].classList.toggle('on', tabs[i].getAttribute('data-t')===t);
     if(!DATA) return;
-    var hosts=document.querySelectorAll('.hm-host');
-    for(var j=0;j<hosts.length;j++) hosts[j].style.display=(hosts[j].getAttribute('data-t')===t)?'block':'none';
-    var blk=DATA[KEY[t]], load=document.getElementById('hmLoad');
-    if(!blk||!blk.chart||!blk.projection){ load.style.display='flex'; load.textContent=JT(218); return; }
+    var ok=!!okBlk(t), hosts=document.querySelectorAll('.hm-host');
+    for(var j=0;j<hosts.length;j++) hosts[j].classList.toggle('off', !(ok&&hosts[j].getAttribute('data-t')===t));
+    var load=document.getElementById('hmLoad');
+    if(!ok){ load.style.display='flex'; load.textContent=JT(218); return; }
     load.style.display='none';
-    if(!drawn[t]){ drawn[t]=1; window.__IS_US=(DATA['시장']==='미국'); window.__IS_JP=(DATA['시장']==='일본'); try{ mkChart(blk, blk.projection, 'h'+t); }catch(e){ console.error('example chart:',e); } }
+  }
+  // 종목 이름 줄의 현재가·등락 — 종목 분석 화면 머리와 같은 계산(일봉 마지막 종가 − 그 전 봉 종가)·같은 모양·같은 색
+  function price(){
+    var d=DATA['일봉'], el=document.getElementById('hmExP');
+    if(!el||!d||!d.chart||!d.chart.length) return;
+    var US=(DATA['시장']==='미국'), JP=(DATA['시장']==='일본'), cur=d.cur||0;
+    var last=d.chart[d.chart.length-1], prev=(d.chart.length>=2)?d.chart[d.chart.length-2].c:last.o;
+    var chg=cur-prev, pct=prev>0?(chg/prev*100):0;
+    var col=chg>0?(window.JC_C?JC_C.up:'#e24b4a'):(chg<0?(window.JC_C?JC_C.dn:'#378add'):'#5a6b7d');
+    var arrow=chg>0?'▲':(chg<0?'▼':'-');
+    var ps=US?('$'+cur.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})):JP?('¥'+Math.round(cur).toLocaleString()):JTF(66,[cur.toLocaleString()]);
+    var cs=(US?('$'+Math.abs(chg).toFixed(2)):JP?('¥'+Math.abs(Math.round(chg)).toLocaleString()):(Math.abs(Math.round(chg)).toLocaleString()))+' '+Math.abs(pct).toFixed(2)+'%';
+    el.style.color=col; el.style.fontFamily=getComputedStyle(document.body).fontFamily;
+    el.innerHTML=ps+'<span>'+arrow+' '+cs+'</span>';
   }
   var tb=document.querySelectorAll('.hm-tab');
   for(var i=0;i<tb.length;i++) tb[i].onclick=function(){ show(this.getAttribute('data-t')); };
@@ -574,10 +595,14 @@ body.jc-res .hm-h1,body.jc-res .hm-sub,body.jc-res .hm-chips{display:none}
     DATA=x; var h='';
     ['10','60','L'].forEach(function(t){
       var s='h'+t;
-      h+='<div class="hm-host" id="host'+s+'" data-t="'+t+'" style="display:none"><div style="display:none"><button id="zin'+s+'"></button><button id="zout'+s+'"></button><button id="zall'+s+'"></button></div>'
+      h+='<div class="hm-host'+(t==='L'?'':' off')+'" id="host'+s+'" data-t="'+t+'"><div style="display:none"><button id="zin'+s+'"></button><button id="zout'+s+'"></button><button id="zall'+s+'"></button></div>'
         +'<div class="hm-cvwrap"><canvas id="cv'+s+'"></canvas><div class="linetip" id="tip'+s+'"></div><div class="chart-notice" id="notice'+s+'" style="display:none"></div></div></div>';
     });
     document.getElementById('hmEx').insertAdjacentHTML('beforeend',h);
+    // 세 탭을 한 번에 그린 뒤 회전 표시를 내린다 (안 보이는 탭은 같은 자리에 겹쳐 숨겨 둠 → 크기가 있어 바로 그려짐)
+    window.__IS_US=(DATA['시장']==='미국'); window.__IS_JP=(DATA['시장']==='일본');
+    ['L','60','10'].forEach(function(t){ var b=okBlk(t); if(b){ try{ mkChart(b, b.projection, 'h'+t); }catch(e){ console.error('example chart:',e); } } });
+    price();
     show('L');
   }).catch(function(){ var l=document.getElementById('hmLoad'); l.style.display='flex'; l.textContent=JT(218); });
 })();
