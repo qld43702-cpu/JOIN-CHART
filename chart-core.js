@@ -83,6 +83,7 @@ function mkMethodLabel(val,nm,col,methods){
 }
 
 async function go(code){
+  if(window.JC_SCALP) scalpStop();   // 3분 탭 자동 조회 멈춤 (관리자 화면에서만)
   var box=document.getElementById('result');
   var guide=document.getElementById('guide'); if(guide)guide.style.display='none';
   var hero=document.getElementById('heroIntro'); if(hero)hero.style.display='none';
@@ -194,12 +195,16 @@ function render(x){
   html+='<button class="trk-tab" data-trk="10"'+(has10?'':' style="display:none"')+'>'+(JC_FO?FO_TABS[0]:JT(67)+'<span>'+minName+'</span>')+'</button>';
   html+='<button class="trk-tab" data-trk="60"'+(has60?'':' style="display:none"')+'>'+(JC_FO?FO_TABS[1]:JT(68)+'<span>'+JT(69)+'</span>')+'</button>';
   html+='<button class="trk-tab on" data-trk="" >'+(JC_FO?FO_TABS[2]:JT(70)+'<span>'+JT(71)+'</span>')+'</button>';
+  // 3분 탭: 관리자 화면(chart.html 의 window.JC_SCALP)에서, 한국 종목(숫자 6자리)일 때만
+  var scalpOn=!!window.JC_SCALP&&!JC_FO&&/^\d{6}$/.test(String(x['종목코드']||''));
+  if(scalpOn) html+='<button class="trk-tab" data-trk="s3">3분</button>';
   html+='</div>';
 
   // 패널들 (기본: 셋째 탭(장기 / 선물 60분) 보임)
   html+='<div class="trk-panel" data-pnl="10" style="display:none">'+trackHtml('10', minName, JT(72), IS_US)+'</div>';
   html+='<div class="trk-panel" data-pnl="60" style="display:none">'+trackHtml('60', JT(69), JT(73), IS_US)+'</div>';
   html+='<div class="trk-panel" data-pnl="" style="display:block">'+trackHtml('', JT(71), JT(74), IS_US)+'</div>';
+  if(scalpOn) html+='<div class="trk-panel" data-pnl="s3" style="display:none">'+scalpHtml()+'</div>';
 
   // 최종 리포트 (선물·옵션 화면은 리포트 없이 판정 표시만)
   if(JC_FO) html+=foJudgeRow(d, pj, t10, t60);
@@ -227,6 +232,13 @@ function render(x){
     });
   });
 
+  if(scalpOn){
+    // 3분 탭을 누르면 조회 시작(보이는 동안 자동 조회), 다른 탭으로 가면 멈춤
+    window.__scalpGet=null;
+    tabs.forEach(function(tb){ tb.addEventListener('click',function(){
+      if(tb.getAttribute('data-trk')==='s3') scalpStart(String(x['종목코드'])); else scalpStop();
+    }); });
+  }
   var rb=document.getElementById('repBtn');
   if(rb) rb.addEventListener('click',function(){ buildReport(x, d, pj, t10, t60); });
 
@@ -471,8 +483,62 @@ function buildReport(x, d, pj, t10, t60){
   area.scrollIntoView({behavior:'smooth',block:'start'});
 }
 
+// ===== 3분 탭 (관리자 전용) — chart.html 이 window.JC_SCALP=true 로 켠다. 플래그가 없으면 아래 함수는 불리지 않는다 =====
+var SCALP_MS=15000;   // 자동 조회 간격
+var _scalp={code:null,timer:null,seq:0,busy:-1,ctrl:null};
+function scalpHtml(){
+  var h=trackHtml('s3','','',false);
+  h=h.replace('<div class="chart-host"','<div id="scalpSt" style="white-space:pre-wrap;font-size:14px;font-weight:700;color:#1b3a5c;margin:0 0 8px"></div><div class="chart-host"');
+  h=h.replace('</div><div class="scen-hint">','<span><i style="background:#f28c38"></i>돌파 신호</span><span><i style="background:#7f77dd"></i>VWAP</span></div><div class="scen-hint">');
+  return h;
+}
+function scalpLine(w){
+  if(!w) return '';
+  return '돌파 신호 '+(w.signal?'○':'×')+'  ·  거래량 '+(w.relvol!=null?Number(w.relvol).toFixed(1):'-')+'배  ·  VWAP '+(w.vwap_ok?'위':'아래')+'  ·  20봉 고점 돌파 '+(w.high_ok?'○':'×')+(w.forming?' (진행 중)':'');
+}
+function scalpVisible(){ var p=document.querySelector('.trk-panel[data-pnl="s3"]'); return !!p&&p.style.display!=='none'; }
+function scalpStop(){ if(_scalp.timer){clearInterval(_scalp.timer);_scalp.timer=null;} _scalp.seq++; }
+function scalpStart(code){
+  scalpStop(); _scalp.code=code; scalpLoad();
+  _scalp.timer=setInterval(function(){ if(!scalpVisible()){scalpStop();return;} scalpLoad(); },SCALP_MS);
+}
+async function scalpLoad(){
+  var seq=_scalp.seq, code=_scalp.code;
+  if(_scalp.busy===seq) return;   // 앞 조회가 아직 안 끝남
+  _scalp.busy=seq;
+  try{
+    var tk=window.jcIdToken?await window.jcIdToken():'';
+    var x=await fetch('/api/scalp?code='+code,{headers:tk?{'Authorization':'Bearer '+tk}:{}}).then(function(r){return r.json();});
+    if(seq!==_scalp.seq||!scalpVisible()) return;   // 그 사이 다른 탭·다른 종목으로 감
+    scalpPaint(x);
+  }catch(e){ console.error('scalp:',e); }
+  finally{ if(_scalp.busy===seq) _scalp.busy=-1; }
+}
+function scalpPaint(x){
+  var pnl=document.querySelector('.trk-panel[data-pnl="s3"]'); if(!pnl) return;
+  if(!x||x.error||!x.chart){ var st=document.getElementById('scalpSt'); if(st) st.textContent=(x&&x.error)?String(x.error):''; return; }
+  // 다시 그리기 전: 화면 범위·기법 체크 상태를 기억해 두고, 패널을 새로 만들어 앞 차트의 이벤트를 모두 떼어 낸다
+  if(_ds('s3').drawing) return;   // 작도 도구로 긋는 중이면 이번 차례는 건너뜀
+  var keep=window.__scalpGet?window.__scalpGet():null, chk=[];
+  pnl.querySelectorAll('.mtd').forEach(function(el){chk.push(el.checked);});
+  if(_scalp.ctrl) _scalp.ctrl.abort();
+  _scalp.ctrl=window.AbortController?new AbortController():null;
+  var oldD=document.getElementById('dcvs3');
+  pnl.innerHTML=scalpHtml();
+  var newD=document.getElementById('dcvs3');
+  if(oldD&&newD) newD.parentNode.replaceChild(oldD,newD);   // 작도 도구 캔버스는 그대로 둔다(켜짐 상태·이벤트 유지)
+  pnl.querySelectorAll('.mtd').forEach(function(el,i){ if(chk[i]!=null) el.checked=chk[i]; });
+  document.getElementById('scalpSt').textContent=scalpLine(x.now);
+  window.__scalpKeep=keep;
+  try{ mkChart(x, x.projection||{methods:{}}, 's3'); }catch(e){ console.error('scalp chart:',e); }
+  window.__scalpKeep=null;
+  requestAnimationFrame(function(){ try{ _redraw('s3'); }catch(e){} });
+}
+
 function mkChart(data,pj,sfx){
   sfx=sfx||'';
+  var IS_SCALP=!!window.JC_SCALP&&sfx==='s3';   // 관리자 3분 탭 (그 밖에는 항상 false → 아래 추가 동작 없음)
+  var _wopt=(IS_SCALP&&_scalp.ctrl)?{signal:_scalp.ctrl.signal}:undefined;   // 3분 탭: 다시 그릴 때 window 이벤트를 떼어 내기 위함
   var IS_US=!!window.__IS_US;
   var IS_JP=!!window.__IS_JP;
   function fmtP(v){ if(PREVIEW) return '***'; if(JC_FO) return Number(v).toFixed(2); return IS_US ? ('$'+Number(v).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})) : IS_JP ? ('¥'+Math.round(v).toLocaleString()) : Math.round(v).toLocaleString(); }
@@ -710,6 +776,25 @@ function mkChart(data,pj,sfx){
       if(!st){ctx.moveTo(x,y);st=true;}else{ctx.lineTo(x,y);}
     }
     ctx.stroke();
+    if(IS_SCALP){
+      // 3분 탭 첨가 표시: VWAP(가는 선, 날짜가 바뀌면 끊음) + 돌파 신호(봉 아래 작은 위쪽 삼각형)
+      var vw=data.vwap||[], sg=data.signals||[];
+      ctx.save();ctx.beginPath();ctx.rect(plot.x0,plot.y0,plot.x1-plot.x0,plot.y1-plot.y0);ctx.clip();
+      ctx.strokeStyle='#7f77dd';ctx.lineWidth=1;ctx.beginPath();var vst=false;
+      for(var vi=Math.max(0,viewS);vi<=Math.min(viewE,n-1);vi++){
+        if(vw[vi]==null){vst=false;continue;}
+        if(vi>0&&ch[vi].rawd!==ch[vi-1].rawd) vst=false;
+        if(!vst){ctx.moveTo(xOf(vi),yOf(vw[vi]));vst=true;}else{ctx.lineTo(xOf(vi),yOf(vw[vi]));}
+      }
+      ctx.stroke();
+      ctx.fillStyle='#f28c38';
+      for(var si=0;si<sg.length;si++){
+        var gi=sg[si]; if(gi<viewS||gi>viewE||gi>=n) continue;
+        var sx=xOf(gi), sy=yOf(ch[gi].l)+5;
+        ctx.beginPath();ctx.moveTo(sx,sy);ctx.lineTo(sx-4,sy+7);ctx.lineTo(sx+4,sy+7);ctx.closePath();ctx.fill();
+      }
+      ctx.restore();
+    }
     // 위험선
     risks.forEach(function(d){
       if(!d.price_only){
@@ -924,7 +1009,7 @@ function mkChart(data,pj,sfx){
   },{passive:false});
   var drag=false, dx0=0, dvs=0;
   cv.addEventListener('mousedown',function(e){drag=true;dx0=e.clientX;dvs=viewS;});
-  window.addEventListener('mouseup',function(){drag=false;});
+  window.addEventListener('mouseup',function(){drag=false;},_wopt);
   cv.addEventListener('mousemove',function(e){
     if(!drag)return;
     var dx=e.clientX-dx0, per=(plot.x1-plot.x0)/getSpan();
@@ -1034,8 +1119,21 @@ function mkChart(data,pj,sfx){
   // 시나리오는 버튼 없이 항상 표시(상승·하락 동시).
   // 뷰 조정은 기존 시나리오 버튼과 동일: 시작점 ~ 미래 끝까지 다 보이게.
   playScenario('both');
+  if(IS_SCALP){
+    // 3분 탭 자동 조회: 다시 그릴 때는 페이드 없이 바로, 사용자가 확대·이동한 화면 범위는 현재 봉 기준으로 유지
+    var _iS=viewS,_iE=viewE,_kp=window.__scalpKeep;
+    if(_kp){
+      if(fadeTimer){clearInterval(fadeTimer);fadeTimer=null;} scenFade=1;
+      if(_kp.changed){
+        var _sp=Math.min(TOTAL,_kp.e-_kp.s+1), _s=_kp.s+(n-_kp.n);
+        if(_s+_sp>TOTAL)_s=TOTAL-_sp; if(_s<0)_s=0;
+        viewS=_s;viewE=_s+_sp-1;userView=!!_kp.user;
+      }
+    }
+    window.__scalpGet=function(){ return {s:viewS,e:viewE,n:n,user:userView,changed:!!(_kp&&_kp.changed)||viewS!==_iS||viewE!==_iE}; };
+  }
   try{lay();draw(null,null);}catch(err){console.error('draw error:',err);}
-  window.addEventListener('resize',function(){lay();draw(null,null);});
+  window.addEventListener('resize',function(){lay();draw(null,null);},_wopt);
 }
 
 
