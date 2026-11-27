@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<!-- BUILD:1795787306 -->
+<!-- BUILD:1795787746 -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>JOIN CHART — 어드민</title>
@@ -22,7 +22,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .topbar{background:#fff;border-bottom:1px solid #e5eaf0;padding:16px 24px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-shrink:0}
 .topbar h1{font-size:22px;font-weight:700;color:#1b3a5c;margin-right:auto}
 .topbar .tdate{font-size:15px;color:#56687c}
-.page{display:none;padding:24px;flex:1;max-width:1248px;width:100%}
+.page{display:none;padding:20px 16px;flex:1;width:100%}
 .page.on{display:block}
 .page.drawing-page{padding:0;display:none;flex-direction:column;max-width:none;}
 .page.drawing-page.on{display:flex;}
@@ -30,12 +30,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .stat-card{background:#fff;border-radius:10px;border:1px solid #e5eaf0;padding:18px 20px}
 .stat-card .sl{font-size:14px;color:#56687c;margin-bottom:8px}
 .stat-card .sv{font-size:28px;font-weight:700;color:#1b3a5c}
-.card{background:#fff;border-radius:10px;border:1px solid #e5eaf0;padding:20px;margin-bottom:16px}
+.card{background:#fff;border-radius:10px;border:1px solid #e5eaf0;padding:16px;margin-bottom:16px}
 .card-title{font-size:17px;font-weight:700;color:#1b3a5c;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between}
 .tbl-wrap{overflow-x:auto}
 table{width:100%;border-collapse:collapse;font-size:16px}
-th{text-align:left;padding:12px;font-size:14px;color:#2f4257;font-weight:700;border-bottom:1px solid #d5dce4;background:#f1f4f8;white-space:nowrap}
-td{height:48px;padding:6px 12px;border-bottom:1px solid #f0f3f7;color:#1a2a3a;vertical-align:middle;white-space:nowrap}
+th{text-align:left;padding:12px 8px;font-size:14px;color:#2f4257;font-weight:700;border-bottom:1px solid #d5dce4;background:#f1f4f8;white-space:nowrap}
+td{height:48px;padding:6px 8px;border-bottom:1px solid #f0f3f7;color:#1a2a3a;vertical-align:middle;white-space:nowrap}
 tr:last-child td{border-bottom:none}
 .badge{display:inline-block;padding:5px 12px;border-radius:20px;font-size:14px;font-weight:600}
 .bg{background:#e1f5ee;color:#0f6e56}.bb{background:#e6f1fb;color:#185fa5}
@@ -82,6 +82,26 @@ tr[data-row]:hover td.over{background:#fcebeb}
 .ad-log .lt{color:#56687c;flex-shrink:0}
 .ad-none{color:#56687c;font-size:15px;padding:8px 0}
 .memo-in{width:170px;height:40px;border:1px solid #d5dce4;border-radius:8px;padding:0 10px;font-size:16px;outline:none;color:#1a2a3a}
+/* 표를 화면 너비에 맞춘다: 메모 칸이 남는 너비를 가져가고, 안 들어가면 단계(lv1→lv3)로 줄인다. 단계는 fitTables() 가 정한다.
+   lv1 남은 일수·로그인 시각을 날짜 아래 줄로 / lv2 가입 방식·가입일을 회원 아래 작은 글씨로, 메모는 글만(고치기는 상세 창) / lv3 버튼·회원 칸을 더 좁게, 관리 칸은 오른쪽에 고정 */
+th.c-memo,td.c-memo{width:100%}
+.memo-box{display:flex;gap:6px;align-items:center;min-width:120px}
+.memo-box .memo-in{flex:1;width:0;min-width:60px}
+.ad-line .memo-box{flex:1;min-width:0}
+.m-sub,.memo-txt{display:none}
+.m-sub{font-size:13px;color:#56687c;margin-top:2px}
+.lt2{margin-left:6px}
+.lv1 .left,.lv2 .left,.lv3 .left,.lv1 .lt2,.lv2 .lt2,.lv3 .lt2{display:block;margin-left:0}
+.lv2 .c-method,.lv3 .c-method,.lv2 .c-created,.lv3 .c-created{display:none}
+.lv2 .m-sub,.lv3 .m-sub{display:block}
+.lv2 .memo-box,.lv3 .memo-box{display:none}
+.lv2 .memo-txt,.lv3 .memo-txt{display:block;overflow:hidden;text-overflow:ellipsis}
+.lv2 td.c-memo,.lv3 td.c-memo{max-width:0;overflow:hidden}
+.lv3 .btn-sm{padding:0 8px}
+.lv3 .m-name{max-width:150px;overflow:hidden;text-overflow:ellipsis}
+.lv3 th:last-child,.lv3 td:last-child{position:sticky;right:0;background:#fff}
+.lv3 th:last-child{background:#f1f4f8}
+@media(max-width:1199px){.sidebar{width:190px}.sb-logo{padding:20px 16px 16px}.sb-item{padding:15px 16px}}
 .mempty{padding:30px 0;text-align:center;color:#56687c;font-size:16px}
 .mmore{display:block;margin:14px auto 0}
 /* 화면 안 확인 창 · 결과 알림 */
@@ -122,8 +142,8 @@ tr[data-row]:hover td.over{background:#fcebeb}
 </style>
 </head>
 <body>
-<script src="/i18n.js?v=1795787306"></script>
-<script src="/auth.js?v=1795787306" data-mode="admin"></script>
+<script src="/i18n.js?v=1795787746"></script>
+<script src="/auth.js?v=1795787746" data-mode="admin"></script>
 <div class="admin-wrap">
   <div class="sidebar">
     <div class="sb-logo">
@@ -154,7 +174,7 @@ tr[data-row]:hover td.over{background:#fcebeb}
       <div class="card">
         <div class="card-title">최근 가입 회원</div>
         <div class="tbl-wrap"><table>
-          <thead><tr><th>회원</th><th>가입 방식</th><th>가입일</th><th>상태</th><th>만료일</th><th>마지막 로그인</th><th>메모</th><th>관리</th></tr></thead>
+          <thead><tr><th>회원</th><th class="c-method">가입 방식</th><th class="c-created">가입일</th><th>상태</th><th>만료일</th><th>마지막 로그인</th><th class="c-memo">메모</th><th>관리</th></tr></thead>
           <tbody id="dRecent"></tbody>
         </table></div>
       </div>
@@ -174,7 +194,7 @@ tr[data-row]:hover td.over{background:#fcebeb}
           <button class="btn btn-o" id="mcsv">목록 내려받기</button>
         </div>
         <div class="tbl-wrap"><table>
-          <thead><tr><th>회원</th><th>가입 방식</th><th>가입일</th><th>상태</th><th>만료일</th><th>마지막 로그인</th><th>메모</th><th>관리</th></tr></thead>
+          <thead><tr><th>회원</th><th class="c-method">가입 방식</th><th class="c-created">가입일</th><th>상태</th><th>만료일</th><th>마지막 로그인</th><th class="c-memo">메모</th><th>관리</th></tr></thead>
           <tbody id="mtable"></tbody>
         </table></div>
         <div class="mempty" id="mempty" style="display:none">해당하는 회원이 없습니다</div>
@@ -233,6 +253,7 @@ function showPage(id, el) {
   document.querySelectorAll('.sb-item').forEach(function(i){i.classList.remove('on');});
   document.getElementById('page-'+id).classList.add('on');
   el.classList.add('on');
+  if(window.fitTables) fitTables();   // 방금 보이게 된 표를 화면 너비에 맞춤
   var titles={dashboard:'대시보드',members:'회원 관리',drawing:'작도 도구'};
   document.getElementById('page-title').textContent=titles[id]||id;
   if(id==='drawing') setTimeout(initCanvas,100);
@@ -265,21 +286,36 @@ function actBtns(m){
   }).join(' ');
 }
 function memoBox(m){
-  return '<input class="memo-in" maxlength="200" aria-label="메모" data-uid="'+esc(m.uid)+'" value="'+esc(m.memo)+'"> <button class="btn btn-o btn-sm" data-act="memo" data-uid="'+esc(m.uid)+'">저장</button>';
+  return '<div class="memo-box"><input class="memo-in" maxlength="200" aria-label="메모" data-uid="'+esc(m.uid)+'" value="'+esc(m.memo)+'"><button class="btn btn-o btn-sm" data-act="memo" data-uid="'+esc(m.uid)+'">저장</button></div>';
 }
 // 표 한 줄 (대시보드 · 회원 관리 같은 모양). 줄을 누르면 상세 창
 function rowHtml(m){
-  var lt=leftTxt(m), c=expCls(m);
-  return '<tr data-row="'+esc(m.uid)+'"><td>'+esc(m.phone)+'</td><td>'+(METHOD[m.method]||'—')+'</td><td>'+esc(m.createdAt)+'</td><td>'+statusB(m.status)+'</td>'
+  var lt=leftTxt(m), c=expCls(m), mt=METHOD[m.method]||'', lg=String(m.lastLoginAt||'').split(' ');
+  return '<tr data-row="'+esc(m.uid)+'">'
+    +'<td><div class="m-name" title="'+esc(m.phone)+'">'+esc(m.phone)+'</div><div class="m-sub">'+[mt,esc(m.createdAt)].filter(function(x){return x;}).join(' · ')+'</div></td>'
+    +'<td class="c-method">'+(mt||'—')+'</td><td class="c-created">'+esc(m.createdAt)+'</td><td>'+statusB(m.status)+'</td>'
     +'<td'+(c?' class="'+c+'"':'')+'>'+(m.expiresAt?esc(m.expiresAt)+(lt?'<span class="left">'+lt+'</span>':''):'-')+'</td>'
-    +'<td>'+(esc(m.lastLoginAt)||'—')+'</td><td>'+memoBox(m)+'</td><td>'+actBtns(m)+'</td></tr>';
+    +'<td>'+(lg[0]?esc(lg[0])+(lg[1]?'<span class="lt2">'+esc(lg[1])+'</span>':''):'—')+'</td>'
+    +'<td class="c-memo">'+memoBox(m)+'<div class="memo-txt" data-uid="'+esc(m.uid)+'" title="'+esc(m.memo)+'">'+esc(m.memo)+'</div></td>'
+    +'<td>'+actBtns(m)+'</td></tr>';
 }
+// 표가 칸에 안 들어가면 단계를 올려 줄인다 (CSS 의 lv1~lv3). 화면에 보이는 표만 잰다
+function fitTables(){
+  var ws=document.querySelectorAll('.tbl-wrap');
+  for(var i=0;i<ws.length;i++){
+    var w=ws[i]; if(!w.clientWidth) continue;
+    w.className='tbl-wrap';
+    for(var l=1;l<=3&&w.scrollWidth>w.clientWidth+1;l++) w.className='tbl-wrap lv'+l;
+  }
+}
+var fitT=null;
+window.addEventListener('resize',function(){ clearTimeout(fitT); fitT=setTimeout(fitTables,80); });
 function byUid(uid){for(var i=0;i<MEMBERS.length;i++){if(MEMBERS[i].uid===uid) return MEMBERS[i];}return null;}
 
 async function loadMembers(){
   var r; try{ r=await jcApi('/api/admin'); }catch(e){ r={}; }
   MEMBERS=r.users||[];
-  paintDash(); paintFilter(); paintMembers(); paintDetail();
+  paintDash(); paintFilter(); paintMembers(); paintDetail(); fitTables();
 }
 function paintDash(){
   var n=function(f){return MEMBERS.filter(f).length+'명';};
@@ -319,6 +355,7 @@ function paintMembers(){
   document.getElementById('mtable').innerHTML=list.slice(0,M_SHOW).map(rowHtml).join('');
   document.getElementById('mempty').style.display=list.length?'none':'block';
   document.getElementById('mmore').style.display=(list.length>M_SHOW)?'block':'none';
+  fitTables();
 }
 
 // ----- 회원 상세 창 (화면 오른쪽): 정보 · 메모 · 만료일 직접 지정 · 처리 기록 · 승인·연장·정지·해제 -----
@@ -400,6 +437,8 @@ async function saveMemo(uid,btn){
     // 같은 회원의 다른 메모 칸(대시보드 · 회원 관리 · 상세 창)도 같은 값으로
     var all=document.querySelectorAll('.memo-in');
     for(var i=0;i<all.length;i++){ if(all[i].getAttribute('data-uid')===uid) all[i].value=v; }
+    var tx=document.querySelectorAll('.memo-txt');
+    for(var k=0;k<tx.length;k++){ if(tx[k].getAttribute('data-uid')===uid){ tx[k].textContent=v; tx[k].title=v; } }
   }
   toast(ok?'저장했습니다':FAIL,!ok);
 }
