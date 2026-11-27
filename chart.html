@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<!-- BUILD:1795808988 -->
+<!-- BUILD:1795809149 -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>JOIN CHART — 차트</title>
@@ -317,8 +317,8 @@ header{display:flex;align-items:center;gap:11px;margin-bottom:16px}
     </div>
   </div>
 </div>
-<script src="/i18n.js?v=1795808988"></script>
-<script src="/auth.js?v=1795808988" data-mode="embed"></script>
+<script src="/i18n.js?v=1795809149"></script>
+<script src="/auth.js?v=1795809149" data-mode="embed"></script>
 <div class="wrap"><div class="body-pad">
 <div id="result"></div>
 </div></div>
@@ -339,8 +339,8 @@ header{display:flex;align-items:center;gap:11px;margin-bottom:16px}
     var cv=p&&p.querySelector('.chart-host canvas');
     if(!rb||!cv) return;
     var ch=cv.getBoundingClientRect().height; if(!ch) return;
-    var padB=parseFloat(getComputedStyle(document.body).paddingBottom)||0;
-    var other=rb.getBoundingClientRect().bottom+window.scrollY+padB-ch;   // 차트를 뺀 나머지 전부의 높이
+    var ra=document.getElementById('reportArea');
+    var other=document.body.getBoundingClientRect().height-ch-(ra?ra.offsetHeight:0);   // 차트(와 펼친 리포트)를 뺀 나머지 전부의 높이
     var h=Math.max(FIT_MIN, Math.floor(window.innerHeight-other));
     var key=p.getAttribute('data-pnl')||'';
     if(H[key]===h) return;
@@ -360,6 +360,6 @@ header{display:flex;align-items:center;gap:11px;margin-bottom:16px}
 })();
 </script>
 <script>window.JC_SCALP=true;   /* 관리자 화면에서만: 한국 종목에 3분 탭을 붙인다 (chart-core.js) */</script>
-<script src="/chart-core.js?v=1795808988"></script>
+<script src="/chart-core.js?v=1795809149"></script>
 </body>
 </html>
