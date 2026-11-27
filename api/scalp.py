@@ -5,7 +5,7 @@
 #  작도: 선물 첫째 탭과 같은 흐름 (analyze.py · fo.py 의 함수를 불러 쓰기만 한다)
 #  첨가: 돌파 신호(거래량 배수 · VWAP 위 · 직전 고점 돌파)
 # ============================================================
-import os, sys, datetime as _dt
+import os, sys, time, datetime as _dt
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from http.server import BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
@@ -22,16 +22,29 @@ NCNT = 3            # 분봉 주기(분)
 PAGES = 2           # 연속조회 쪽 수(500봉씩)
 CH = "/stock/chart"
 TAB = 0             # fo.py 의 첫째 탭 자리 (배수 0.47 · 주식 단기 기준값)
+T_FIRST = '090300'  # 정규장 첫 3분봉이 끝나는 시각
+T_LAST = '153000'   # 정규장 마지막 봉이 끝나는 시각
+LIMIT_MSG = '호출 거래건수를 초과'   # LS 호출 한도 오류 글
+RETRY_WAIT = 1.1    # 한도 오류 뒤 다시 부르기 전 기다리는 시간(초)
 
 def is_admin(headers):
     uid, u, _ = _auth.access(headers)
     return bool(u) and u.get('role') == 'admin'
 
+def ls_retry(*a):
+    """fo.ls 와 같되, LS 가 호출 한도 오류를 주면 RETRY_WAIT 초 뒤 같은 호출을 한 번만 다시 한다"""
+    try:
+        return F.ls(*a)
+    except F.LSError as e:
+        if LIMIT_MSG not in str(e): raise
+        time.sleep(RETRY_WAIT)
+        return F.ls(*a)
+
 def bars3(code):
-    """LS t8412 3분봉 (d, t, o, h, l, c, v). 호출 간격·토큰은 fo.ls 그대로"""
+    """LS t8412 3분봉 (d, t, o, h, l, c, v). 호출 간격·토큰은 fo.ls 그대로. 정규장 봉만 남긴다"""
     rows = []; cd = ct = ''; cont = 'N'; ck = ''
     for _ in range(PAGES):
-        j, h = F.ls('t8412', CH, {'shcode': code, 'ncnt': NCNT, 'qrycnt': 500, 'nday': '0', 'sdate': '20250101',
+        j, h = ls_retry('t8412', CH, {'shcode': code, 'ncnt': NCNT, 'qrycnt': 500, 'nday': '0', 'sdate': '20250101',
                                   'edate': '20991231', 'cts_date': cd, 'cts_time': ct, 'comp_yn': 'N'}, cont, ck)
         rr = j.get('t8412OutBlock1') or []
         if not rr: break
@@ -45,6 +58,8 @@ def bars3(code):
         k = (x['date'], x['time'])
         if k in seen: continue
         seen.add(k)
+        # 정규장만: 봉이 끝나는 시각이 09:03 ~ 15:30 인 봉 (그 밖 — 09:00 이전, 15:30 이후 ~ 20:00 — 은 버린다)
+        if not (T_FIRST <= str(x['time']).zfill(6)[:6] <= T_LAST): continue
         out.append({'d': x['date'], 't': x['time'], 'o': float(x['open']), 'h': float(x['high']), 'l': float(x['low']),
                     'c': float(x['close']), 'v': float(x.get('jdiff_vol') or 0)})
     out.sort(key=lambda z: (z['d'], z['t']))
