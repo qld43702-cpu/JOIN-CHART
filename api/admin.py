@@ -2,16 +2,19 @@
 #  회원 관리 — 관리자(users/{uid}.role == "admin") 전용
 #  GET  /api/admin                       → 가입자 목록
 #  POST /api/admin {uid, action}          action: approve(승인 30일) / extend(연장 +30일) / suspend(정지) / unsuspend(해제)
-#  POST /api/admin {uid, action:'memo', memo}   회원 메모 저장 (입금자명 등)
-#  처리 기록: 승인하면 approvedAt, 연장하면 extendedAt 을 회원 문서에 남긴다.
+#  POST /api/admin {uid, action:'memo', memo}        회원 메모 저장 (입금자명 등)
+#  POST /api/admin {uid, action:'setexp', date}      만료일 직접 지정 (YYYY-MM-DD, 한국 날짜의 그날 끝까지)
+#  처리 기록: 승인 approvedAt · 연장 extendedAt 을 남기고, 승인·연장·정지·해제·만료일 변경은 log(목록)에 시각과 함께 쌓는다.
 # ============================================================
 import os, sys, re, datetime as _dt
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from http.server import BaseHTTPRequestHandler
+from firebase_admin import firestore
 import _auth
 
 DAYS=_dt.timedelta(days=30)
 MEMO_MAX=200
+LOG_SHOW=50
 
 def is_admin(headers):
     uid,u,_=_auth.access(headers)
@@ -21,6 +24,21 @@ def _ts(t):
     """정렬용 시각(초). 없으면 None"""
     try: return int(t.timestamp()) if t else None
     except Exception: return None
+
+def _log(action, n, to=None):
+    """처리 기록 한 줄 (회원 문서의 log 에 덧붙임). to = 바뀐 만료일(한국 날짜)"""
+    e={'at':n,'action':action}
+    if to: e['to']=to
+    return firestore.ArrayUnion([e])
+
+def _log_rows(u):
+    out=[]
+    for e in (u.get('log') or []):
+        if not isinstance(e,dict): continue
+        out.append({'_at':e.get('at'),'at':_auth.kst(e.get('at'),"%Y-%m-%d %H:%M"),'action':str(e.get('action') or ''),'to':str(e.get('to') or '')})
+    out.sort(key=lambda r:_ts(r['_at']) or 0, reverse=True)    # 최근 것부터
+    for r in out: r.pop('_at')
+    return out[:LOG_SHOW]
 
 class handler(BaseHTTPRequestHandler):
     def do_GET(self):
@@ -43,6 +61,7 @@ class handler(BaseHTTPRequestHandler):
                     'daysLeft':((exp.astimezone(_auth._KST).date()-today).days if exp else None),
                     # 지금 연장하면 되는 만료일 (아래 extend 와 같은 계산): 만료 전이면 기존 만료일 +30일, 지났으면 오늘 +30일
                     'extendTo':_auth.kst((exp if exp and exp>n else n)+DAYS),
+                    'log':_log_rows(u),
                     'createdTs':_ts(u.get('createdAt')),'expiresTs':_ts(exp),'lastLoginTs':_ts(u.get('lastLoginAt')),
                     '_c':u.get('createdAt')})
             rows.sort(key=lambda r:r['_c'] or _auth.now(),reverse=True)
@@ -59,17 +78,26 @@ class handler(BaseHTTPRequestHandler):
             if not uid or not s.exists: return _auth.send_json(self,404,{'error':'not_found'})
             n=_auth.now()
             if action=='approve':
-                ref.update({'approved':True,'expiresAt':n+DAYS,'approvedAt':n})
+                ref.update({'approved':True,'expiresAt':n+DAYS,'approvedAt':n,'log':_log('approve',n,_auth.kst(n+DAYS))})
             elif action=='extend':
                 exp=s.to_dict().get('expiresAt')
                 # 만료 전이면 기존 만료일 +30일, 이미 만료됐으면 오늘 +30일
-                ref.update({'expiresAt':(exp if exp and exp>n else n)+DAYS,'extendedAt':n})
+                new=(exp if exp and exp>n else n)+DAYS
+                ref.update({'expiresAt':new,'extendedAt':n,'log':_log('extend',n,_auth.kst(new))})
             elif action=='suspend':
-                ref.update({'suspended':True})
+                ref.update({'suspended':True,'log':_log('suspend',n)})
             elif action=='unsuspend':
-                ref.update({'suspended':False})   # 해제 → 원래 상태(대기/이용중/만료)로
+                ref.update({'suspended':False,'log':_log('unsuspend',n)})   # 해제 → 원래 상태(대기/이용중/만료)로
             elif action=='memo':
                 ref.update({'memo':str(b.get('memo') or '')[:MEMO_MAX]})
+            elif action=='setexp':
+                # 만료일 직접 지정: 그 날짜(한국 시간)의 끝까지 이용. 승인 여부·정지 여부는 건드리지 않는다
+                d=str(b.get('date') or '')
+                try: day=_dt.datetime.strptime(d,"%Y-%m-%d")
+                except Exception: return _auth.send_json(self,400,{'error':'date'})
+                if not (2020<=day.year<=2100): return _auth.send_json(self,400,{'error':'date'})
+                new=day.replace(hour=23,minute=59,second=59,tzinfo=_auth._KST)
+                ref.update({'expiresAt':new,'log':_log('setexp',n,d)})
             else:
                 return _auth.send_json(self,400,{'error':'action'})
             _auth.send_json(self,200,{'ok':True})
