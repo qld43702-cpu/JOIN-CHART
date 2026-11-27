@@ -483,7 +483,7 @@ function mkChart(data,pj,sfx){
   // 교차점(작도) 없음 = 충분한 차트 분석 불가 → 안내 + 확인 버튼
   var _notice=document.getElementById('notice'+sfx);
   if(_notice){
-    if(!draws.length){
+    if(!draws.length&&!PREVIEW){   // 미리보기는 교차점을 아예 받지 않으므로 안내 상자를 띄우지 않는다
       _notice.innerHTML='<div class="cn-box">'+
         '<div class="cn-ic">📊</div>'+
         '<div class="cn-tt">'+JT(75)+'</div>'+

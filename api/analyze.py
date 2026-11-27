@@ -1,4 +1,4 @@
-# BUILD:1782268309
+# BUILD:1795803274
 # ============================================================
 #  종목 작도 표시 API — 일봉 + 60분 두 트랙, 작도 다수
 #  GET /api/analyze?code=090360
@@ -247,14 +247,15 @@ def last_down_slope(MA2,t0,t1):
     if t1-t0<=1: return (MA2[t1]-MA2[t0])/max(1,t1-t0)
     return MA2[t1]-MA2[t1-1]
 
-def trim_adjust(bars):
+def trim_adjust(bars, kr=True):
     """권리조정(액면분할/병합/거래정지) 구간 이후부터 시작.
-    ① 거래량 3일 연속 0  ② 전일 대비 가격 갭 40%+ (수정주가로도 안 잡힌 경우)"""
+    ① 거래량 3일 연속 0 — 일봉에만  ② 전일 대비 가격 갭 40%+ (수정주가로도 안 잡힌 경우) — 한국(kr=True)에만"""
     if len(bars)<10: return bars
     has_vol = 'v' in bars[0]
+    is_min = 't' in bars[0]   # 분봉 판별은 첫 봉으로 (일봉 끝에 붙는 LS 오늘 봉에는 't' 가 있다)
     cut=0
-    # 거래량 3일 연속 0 → 마지막 그런 구간 다음부터 (거래량 있을 때만)
-    if has_vol:
+    # 거래량 3일 연속 0 → 마지막 그런 구간 다음부터 (거래량 있을 때만, 일봉만)
+    if has_vol and not is_min:
         zero=0
         for i in range(len(bars)):
             v=bars[i].get('v',0)
@@ -264,7 +265,7 @@ def trim_adjust(bars):
             else:
                 zero=0
     # 가격 갭: 전일 종가 대비 시가/종가가 40%+ 튀거나 빠짐 → 그 다음부터
-    for i in range(1,len(bars)):
+    for i in range(1,len(bars) if kr else 0):
         p=bars[i-1]['c']
         if p<=0: continue
         r=bars[i]['c']/p
@@ -274,11 +275,11 @@ def trim_adjust(bars):
         return bars[cut:]
     return bars
 
-def build_drawings(bars, fo=False):
+def build_drawings(bars, fo=False, kr=True):
     """작도 다수: 모든 하락-상승-하락(상승파동1개) 작도. 교차점/녹색선 다.
     fo=True(선물·옵션): 권리조정 자르기 안 함 · 값 소수 2자리 · 시간 라벨 분까지"""
     if not fo:
-        bars=trim_adjust(bars)  # 권리조정 구간 제거
+        bars=trim_adjust(bars, kr)  # 권리조정 구간 제거
     nd=2 if fo else 1
     c=[b['c'] for b in bars]
     MA2=ma(c,2)
@@ -744,15 +745,10 @@ def resolve_risk(day, m60):
         day['risks']=[]; day['risk_on']=False; day['risk_src']=None; day['view_start']=None
 
 # ===== 미리보기(preview) — 로그인·승인(active) 없이 내려가는 응답 =====
-# 모양만 보이고 실제 가격은 복원 못 하게: 모든 가격을 숨긴 비율(k·p+b)로 바꾸고 흔든다.
-#   캔들: 전 구간 ±2%, 최근 20봉 ±4% (봉마다 o/h/l/c/2일선에 같은 비율)
-#   선·점 값(교차점·목표·시작점·기울기 등): ±3%
-#   리포트 멘트(pattern, wave.desc)는 빼고 보냄. 결과 캐시 기간 동안 같은 흔들림 유지.
-_PV_POINT={'A_y1','B_y1','yc','M_y0','M_y1','M_ky','ep','target','cur',
-           'up_target','green_max','dn_target','mc_target','anchor_price','recent_pivot_price'}
-_PV_SLOPE={'A_slope','B_slope','M_slope','M_s1','M_s2','up_slope'}
-_PV_LIST={'fib_levels','sr_levels','xpoints'}
-
+# 분석 결과(교차점·목표·시작점·기울기)는 어떤 형태로도 넣지 않는다. 캔들 모양만 보낸다.
+#   캔들: 모든 가격을 숨긴 비율(k·p+b)로 바꾸고 전 구간 ±2%, 최근 20봉 ±4% (봉마다 o/h/l/c/2일선에 같은 비율)
+#   선·점: 원본 값과 무관한 고정 모양(목표 = 흔든 현재가의 ±10%·+20%, 시작점 = 끝에서 21번째 봉)
+#   결과 캐시 기간 동안 같은 흔들림 유지.
 def build_preview(out):
     import random, copy
     rnd=random.Random(os.urandom(16))
@@ -763,34 +759,31 @@ def build_preview(out):
     if base<=0: base=1.0
     k=rnd.uniform(0.5,2.0); b=rnd.uniform(0.1,0.8)*base*k
     def num(v): return isinstance(v,(int,float)) and not isinstance(v,bool)
-    def P(v,e): return round(k*v*(1+rnd.uniform(-e,e))+b,2) if num(v) else v
-    def walk(d):
-        for key,v in list(d.items()):
-            if key in _PV_POINT: d[key]=P(v,0.03)
-            elif key in _PV_SLOPE: d[key]=round(k*v*(1+rnd.uniform(-0.03,0.03)),3) if num(v) else v
-            elif key in _PV_LIST and isinstance(v,list): d[key]=[P(x,0.03) for x in v]
-            elif key=='tech_targets' and isinstance(v,dict): d[key]={t:P(x,0.03) for t,x in v.items()}
-            elif isinstance(v,dict): walk(v)
-            elif isinstance(v,list):
-                for it in v:
-                    if isinstance(it,dict): walk(it)
-    pv=copy.deepcopy(out)
-    for key in ('일봉','60분','10분'):
-        blk=pv.get(key)
-        if not isinstance(blk,dict): continue
-        blk.pop('pattern',None)
-        ch=blk.pop('chart',None)
-        walk(blk)
-        wave=(blk.get('projection') or {}).get('wave')
-        if isinstance(wave,dict): wave.pop('desc',None)
-        if ch:
-            n=len(ch)
-            for i,r in enumerate(ch):
-                e=0.04 if i>=n-20 else 0.02
-                f=1+rnd.uniform(-e,e)
-                for pk in ('o','h','l','c','m2'):
-                    if num(r.get(pk)): r[pk]=round(k*r[pk]*f+b,2)
-            blk['chart']=ch
+    pv={}
+    for key,blk in out.items():
+        if not (key in ('일봉','60분','10분') and isinstance(blk,dict) and blk.get('chart')):
+            pv[key]=copy.deepcopy(blk); continue
+        ch=[dict(r) for r in blk['chart']]; n=len(ch)
+        for i,r in enumerate(ch):
+            e=0.04 if i>=n-20 else 0.02
+            f=1+rnd.uniform(-e,e)
+            for pk in ('o','h','l','c','m2'):
+                if num(r.get(pk)): r[pk]=round(k*r[pk]*f+b,2)
+        cur=ch[-1].get('c')
+        nb={'chart':ch,'draws':[],'risks':[],'risk_on':False,'risk_src':None,'view_start':None,'draws_start':0,'cur':cur}
+        opj=blk.get('projection')
+        if isinstance(opj,dict) and opj:
+            ai=max(0,n-21); ap=ch[ai].get('o')
+            pj={'fut':20,'cur':cur,'up_slope':0,
+                'up_target':round(cur*1.10,2),'green_max':round(cur*1.20,2),'dn_target':round(cur*0.90,2),
+                'methods':{},'tech_targets':{},'wave':{'phase':'?','next':'mixed'},
+                'fib_levels':[],'sr_levels':[],'xpoints':[],'green_start':None,
+                'anchor_idx':ai,'anchor_price':ap,'recent_pivot':None,'recent_pivot_price':ap}
+            if 'judge_pct' in opj: pj['judge_pct']=opj['judge_pct']   # 가격과 무관한 설정값 (선물 판정 폭)
+            nb['projection']=pj
+        else:
+            nb['projection']=None
+        pv[key]=nb
     pv['preview']=True
     return pv
 
@@ -894,9 +887,10 @@ class handler(BaseHTTPRequestHandler):
                 _msg=_i18n.t(227,_lang,nm,_nd,_n60,_n10)
                 self.wfile.write(json.dumps({'error':_msg}).encode()); return
             # 탭별 독립 판단: 봉 15개 이상이면 작도 시도, 미만이면 '데이터 부족'
-            dd = build_drawings(day) if day and len(day)>=15 else {'error':'데이터 부족'}
-            mm = build_drawings(m60) if m60 and len(m60)>=15 else {'error':'데이터 부족'}
-            tt = build_drawings(m10) if m10 and len(m10)>=15 else {'error':'데이터 부족'}
+            kr = not (is_jp(code) or is_us(code))
+            dd = build_drawings(day, kr=kr) if day and len(day)>=15 else {'error':'데이터 부족'}
+            mm = build_drawings(m60, kr=kr) if m60 and len(m60)>=15 else {'error':'데이터 부족'}
+            tt = build_drawings(m10, kr=kr) if m10 and len(m10)>=15 else {'error':'데이터 부족'}
             # 일봉 위험: ①범위안 ②60분끌어옴 ③과거1개  (60분 all_risks 참조하므로 먼저)
             if 'draws' in dd:
                 resolve_risk(dd, mm if 'draws' in mm else None)
